@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findOrCreateUser } from "@/lib/auth";
+import { signUp } from "@/lib/auth";
 import { createCampaign } from "@/lib/campaigns";
 import { requestJoin, approveRequest } from "@/lib/memberships";
 import {
@@ -12,7 +12,7 @@ import {
 import { listNotifications } from "@/lib/notifications";
 
 function setup(emailPrefix: string) {
-  const dm = findOrCreateUser("DM", `${emailPrefix}-dm@example.com`);
+  const dm = signUp("DM", `${emailPrefix}-dm@example.com`, "testpassword123");
   const campaign = createCampaign({
     dmId: dm.id,
     title: "T",
@@ -20,7 +20,7 @@ function setup(emailPrefix: string) {
     system: "S",
     capacity: 4,
   });
-  const player = findOrCreateUser("Player", `${emailPrefix}-p@example.com`);
+  const player = signUp("Player", `${emailPrefix}-p@example.com`, "testpassword123");
   const m = requestJoin(campaign.id, player.id);
   approveRequest(m.id, dm.id);
   return { dm, campaign, player };

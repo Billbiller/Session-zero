@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findOrCreateUser } from "@/lib/auth";
+import { signUp } from "@/lib/auth";
 import { createCampaign } from "@/lib/campaigns";
 import {
   requestJoin,
@@ -10,7 +10,7 @@ import {
 import { hasPrivateAccess, activePartyUserIds } from "@/lib/access";
 
 function setup(emailPrefix: string) {
-  const dm = findOrCreateUser("DM", `${emailPrefix}-dm@example.com`);
+  const dm = signUp("DM", `${emailPrefix}-dm@example.com`, "testpassword123");
   const campaign = createCampaign({
     dmId: dm.id,
     title: "T",
@@ -29,7 +29,7 @@ describe("hasPrivateAccess", () => {
 
   it("grants an approved member access", () => {
     const { dm, campaign } = setup("ha2");
-    const player = findOrCreateUser("Player", "ha2-p@example.com");
+    const player = signUp("Player", "ha2-p@example.com", "testpassword123");
     const m = requestJoin(campaign.id, player.id);
     approveRequest(m.id, dm.id);
     expect(hasPrivateAccess(player.id, campaign.id)).toBe(true);
@@ -37,14 +37,14 @@ describe("hasPrivateAccess", () => {
 
   it("denies a pending requester", () => {
     const { campaign } = setup("ha3");
-    const player = findOrCreateUser("Player", "ha3-p@example.com");
+    const player = signUp("Player", "ha3-p@example.com", "testpassword123");
     requestJoin(campaign.id, player.id);
     expect(hasPrivateAccess(player.id, campaign.id)).toBe(false);
   });
 
   it("denies a declined requester", () => {
     const { dm, campaign } = setup("ha4");
-    const player = findOrCreateUser("Player", "ha4-p@example.com");
+    const player = signUp("Player", "ha4-p@example.com", "testpassword123");
     const m = requestJoin(campaign.id, player.id);
     declineRequest(m.id, dm.id);
     expect(hasPrivateAccess(player.id, campaign.id)).toBe(false);
@@ -52,7 +52,7 @@ describe("hasPrivateAccess", () => {
 
   it("revokes access immediately once a member leaves", () => {
     const { dm, campaign } = setup("ha5");
-    const player = findOrCreateUser("Player", "ha5-p@example.com");
+    const player = signUp("Player", "ha5-p@example.com", "testpassword123");
     const m = requestJoin(campaign.id, player.id);
     approveRequest(m.id, dm.id);
     expect(hasPrivateAccess(player.id, campaign.id)).toBe(true);
@@ -62,7 +62,7 @@ describe("hasPrivateAccess", () => {
 
   it("denies a complete stranger", () => {
     const { campaign } = setup("ha6");
-    const stranger = findOrCreateUser("Stranger", "ha6-s@example.com");
+    const stranger = signUp("Stranger", "ha6-s@example.com", "testpassword123");
     expect(hasPrivateAccess(stranger.id, campaign.id)).toBe(false);
   });
 
@@ -75,9 +75,9 @@ describe("hasPrivateAccess", () => {
 describe("activePartyUserIds", () => {
   it("includes the DM and every approved member, excluding pending/declined/left", () => {
     const { dm, campaign } = setup("ap1");
-    const approved = findOrCreateUser("Approved", "ap1-a@example.com");
-    const pending = findOrCreateUser("Pending", "ap1-pe@example.com");
-    const left = findOrCreateUser("Left", "ap1-l@example.com");
+    const approved = signUp("Approved", "ap1-a@example.com", "testpassword123");
+    const pending = signUp("Pending", "ap1-pe@example.com", "testpassword123");
+    const left = signUp("Left", "ap1-l@example.com", "testpassword123");
 
     const m1 = requestJoin(campaign.id, approved.id);
     approveRequest(m1.id, dm.id);

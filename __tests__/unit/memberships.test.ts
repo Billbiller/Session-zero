@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findOrCreateUser } from "@/lib/auth";
+import { signUp } from "@/lib/auth";
 import { createCampaign, approvedHeadcount, getCampaign, setCancelled } from "@/lib/campaigns";
 import {
   requestJoin,
@@ -13,7 +13,7 @@ import { listNotifications } from "@/lib/notifications";
 import db from "@/lib/db";
 
 function setupCampaign(capacity: number, emailPrefix: string) {
-  const dm = findOrCreateUser("DM", `${emailPrefix}-dm@example.com`);
+  const dm = signUp("DM", `${emailPrefix}-dm@example.com`, "testpassword123");
   const campaign = createCampaign({
     dmId: dm.id,
     title: "T",
@@ -27,7 +27,7 @@ function setupCampaign(capacity: number, emailPrefix: string) {
 describe("memberships", () => {
   it("lets a player request to join, notifying the DM", () => {
     const { dm, campaign } = setupCampaign(4, "m1");
-    const player = findOrCreateUser("Player", "m1-p@example.com");
+    const player = signUp("Player", "m1-p@example.com", "testpassword123");
     const membership = requestJoin(campaign.id, player.id);
     expect(membership.status).toBe("pending");
     const dmNotifications = listNotifications(dm.id).items;
@@ -41,7 +41,7 @@ describe("memberships", () => {
 
   it("blocks a second active request from the same player", () => {
     const { campaign } = setupCampaign(4, "m3");
-    const player = findOrCreateUser("Player", "m3-p@example.com");
+    const player = signUp("Player", "m3-p@example.com", "testpassword123");
     requestJoin(campaign.id, player.id);
     expect(() => requestJoin(campaign.id, player.id)).toThrow(MembershipError);
   });
@@ -49,13 +49,13 @@ describe("memberships", () => {
   it("blocks join requests on a cancelled campaign", () => {
     const { dm, campaign } = setupCampaign(4, "m4");
     setCancelled(campaign.id, dm.id, true);
-    const player = findOrCreateUser("Player", "m4-p@example.com");
+    const player = signUp("Player", "m4-p@example.com", "testpassword123");
     expect(() => requestJoin(campaign.id, player.id)).toThrow(MembershipError);
   });
 
   it("approves a request, notifying the requester", () => {
     const { dm, campaign } = setupCampaign(4, "m5");
-    const player = findOrCreateUser("Player", "m5-p@example.com");
+    const player = signUp("Player", "m5-p@example.com", "testpassword123");
     const membership = requestJoin(campaign.id, player.id);
     const approved = approveRequest(membership.id, dm.id);
     expect(approved.status).toBe("approved");
@@ -66,7 +66,7 @@ describe("memberships", () => {
 
   it("declines a request, notifying the requester", () => {
     const { dm, campaign } = setupCampaign(4, "m6");
-    const player = findOrCreateUser("Player", "m6-p@example.com");
+    const player = signUp("Player", "m6-p@example.com", "testpassword123");
     const membership = requestJoin(campaign.id, player.id);
     const declined = declineRequest(membership.id, dm.id);
     expect(declined.status).toBe("declined");
@@ -77,16 +77,16 @@ describe("memberships", () => {
 
   it("rejects approve/decline from a non-DM", () => {
     const { campaign } = setupCampaign(4, "m7");
-    const player = findOrCreateUser("Player", "m7-p@example.com");
-    const stranger = findOrCreateUser("Stranger", "m7-s@example.com");
+    const player = signUp("Player", "m7-p@example.com", "testpassword123");
+    const stranger = signUp("Stranger", "m7-s@example.com", "testpassword123");
     const membership = requestJoin(campaign.id, player.id);
     expect(() => approveRequest(membership.id, stranger.id)).toThrow(MembershipError);
   });
 
   it("auto-fills (closes to new requests) once capacity is hit", () => {
     const { dm, campaign } = setupCampaign(1, "m8");
-    const player = findOrCreateUser("Player", "m8-p@example.com");
-    const other = findOrCreateUser("Other", "m8-o@example.com");
+    const player = signUp("Player", "m8-p@example.com", "testpassword123");
+    const other = signUp("Other", "m8-o@example.com", "testpassword123");
     const membership = requestJoin(campaign.id, player.id);
     approveRequest(membership.id, dm.id);
     expect(getCampaign(campaign.id)?.accepting_requests).toBe(0);
@@ -95,9 +95,9 @@ describe("memberships", () => {
 
   it("auto-reopens when a leave drops below capacity, and leaving notifies the rest of the party not just the DM", () => {
     const { dm, campaign } = setupCampaign(3, "m9");
-    const p1 = findOrCreateUser("P1", "m9-p1@example.com");
-    const p2 = findOrCreateUser("P2", "m9-p2@example.com");
-    const p3 = findOrCreateUser("P3", "m9-p3@example.com");
+    const p1 = signUp("P1", "m9-p1@example.com", "testpassword123");
+    const p2 = signUp("P2", "m9-p2@example.com", "testpassword123");
+    const p3 = signUp("P3", "m9-p3@example.com", "testpassword123");
 
     for (const p of [p1, p2, p3]) {
       const m = requestJoin(campaign.id, p.id);
@@ -128,8 +128,8 @@ describe("memberships", () => {
 
   it("lets a DM manually reopen a full campaign without anyone leaving", () => {
     const { dm, campaign } = setupCampaign(1, "m10");
-    const player = findOrCreateUser("Player", "m10-p@example.com");
-    const other = findOrCreateUser("Other", "m10-o@example.com");
+    const player = signUp("Player", "m10-p@example.com", "testpassword123");
+    const other = signUp("Other", "m10-o@example.com", "testpassword123");
     const membership = requestJoin(campaign.id, player.id);
     approveRequest(membership.id, dm.id);
     expect(getCampaign(campaign.id)?.accepting_requests).toBe(0);
@@ -148,8 +148,8 @@ describe("memberships", () => {
 
   it("lists requests filtered by status", () => {
     const { dm, campaign } = setupCampaign(4, "m12");
-    const p1 = findOrCreateUser("P1", "m12-p1@example.com");
-    const p2 = findOrCreateUser("P2", "m12-p2@example.com");
+    const p1 = signUp("P1", "m12-p1@example.com", "testpassword123");
+    const p2 = signUp("P2", "m12-p2@example.com", "testpassword123");
     const m1 = requestJoin(campaign.id, p1.id);
     requestJoin(campaign.id, p2.id);
     approveRequest(m1.id, dm.id);

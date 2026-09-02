@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findOrCreateUser } from "@/lib/auth";
+import { signUp } from "@/lib/auth";
 import {
   notify,
   notifyMany,
@@ -12,20 +12,20 @@ import { setPreference } from "@/lib/notificationPreferences";
 
 describe("notifications", () => {
   it("creates a notification and counts it as unread", () => {
-    const user = findOrCreateUser("Alice", "n1@example.com");
+    const user = signUp("Alice", "n1@example.com", "testpassword123");
     notify(user.id, "join_requested", null, "hello");
     expect(getUnreadCount(user.id)).toBe(1);
   });
 
   it("marks a single notification read", () => {
-    const user = findOrCreateUser("Bob", "n2@example.com");
+    const user = signUp("Bob", "n2@example.com", "testpassword123");
     const n = notify(user.id, "join_requested", null, "hello")!;
     markRead(n.id, user.id);
     expect(getUnreadCount(user.id)).toBe(0);
   });
 
   it("marks all notifications read", () => {
-    const user = findOrCreateUser("Carl", "n3@example.com");
+    const user = signUp("Carl", "n3@example.com", "testpassword123");
     notify(user.id, "join_requested", null, "a");
     notify(user.id, "join_approved", null, "b");
     markAllRead(user.id);
@@ -33,15 +33,15 @@ describe("notifications", () => {
   });
 
   it("fans a notification out to many users", () => {
-    const a = findOrCreateUser("A", "n4a@example.com");
-    const b = findOrCreateUser("B", "n4b@example.com");
+    const a = signUp("A", "n4a@example.com", "testpassword123");
+    const b = signUp("B", "n4b@example.com", "testpassword123");
     notifyMany([a.id, b.id], "schedule_updated", null, "hi");
     expect(getUnreadCount(a.id)).toBe(1);
     expect(getUnreadCount(b.id)).toBe(1);
   });
 
   it("paginates and orders notifications newest first", () => {
-    const user = findOrCreateUser("Dana", "n5@example.com");
+    const user = signUp("Dana", "n5@example.com", "testpassword123");
     notify(user.id, "join_requested", null, "first");
     notify(user.id, "join_approved", null, "second");
     const { items, total } = listNotifications(user.id, { page: 1, pageSize: 1 });
@@ -51,7 +51,7 @@ describe("notifications", () => {
   });
 
   it("suppresses creation entirely for a muted type (nothing is written)", () => {
-    const user = findOrCreateUser("Eve", "n6@example.com");
+    const user = signUp("Eve", "n6@example.com", "testpassword123");
     setPreference(user.id, "party_notes_updated", false);
     const result = notify(user.id, "party_notes_updated", null, "muted");
     expect(result).toBeNull();
@@ -60,7 +60,7 @@ describe("notifications", () => {
   });
 
   it("still delivers an unmuted type to the same user", () => {
-    const user = findOrCreateUser("Frank", "n7@example.com");
+    const user = signUp("Frank", "n7@example.com", "testpassword123");
     setPreference(user.id, "party_notes_updated", false);
     const result = notify(user.id, "schedule_updated", null, "not muted");
     expect(result).not.toBeNull();

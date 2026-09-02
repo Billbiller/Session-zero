@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL
 );
 
@@ -95,5 +96,13 @@ CREATE TABLE IF NOT EXISTS party_notes (
   updated_at TEXT
 );
 `);
+
+// Lightweight migration for databases created before password_hash existed
+// (placeholder-auth era). New databases already get the column from the
+// CREATE TABLE above, so this is a no-op for them.
+const userColumns = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+if (!userColumns.some((c) => c.name === "password_hash")) {
+  db.exec("ALTER TABLE users ADD COLUMN password_hash TEXT NOT NULL DEFAULT ''");
+}
 
 export default db;

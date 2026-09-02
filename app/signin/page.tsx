@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function SignInPage() {
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
@@ -14,10 +16,13 @@ export default function SignInPage() {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
-    const res = await fetch("/api/auth/signin", {
+    const endpoint = mode === "signin" ? "/api/auth/signin" : "/api/auth/signup";
+    const body =
+      mode === "signin" ? { email, password } : { displayName, email, password };
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName, email }),
+      body: JSON.stringify(body),
     });
     setSubmitting(false);
     if (!res.ok) {
@@ -31,21 +36,46 @@ export default function SignInPage() {
 
   return (
     <div className="max-w-sm">
-      <h1 className="mb-4 text-xl font-semibold">Sign in</h1>
-      <p className="mb-4 text-sm text-black/60 dark:text-white/60">
-        Session Zero uses placeholder sign-in for now &mdash; just a display
-        name and email, no password. Real authentication is on the backlog.
-      </p>
+      <div className="mb-4 flex gap-4 border-b border-black/10 dark:border-white/10">
+        <button
+          onClick={() => {
+            setMode("signin");
+            setError(null);
+          }}
+          className={`pb-2 text-sm font-medium ${
+            mode === "signin"
+              ? "border-b-2 border-black dark:border-white"
+              : "text-black/50 dark:text-white/50"
+          }`}
+        >
+          Sign in
+        </button>
+        <button
+          onClick={() => {
+            setMode("signup");
+            setError(null);
+          }}
+          className={`pb-2 text-sm font-medium ${
+            mode === "signup"
+              ? "border-b-2 border-black dark:border-white"
+              : "text-black/50 dark:text-white/50"
+          }`}
+        >
+          Create account
+        </button>
+      </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-sm">
-          Display name
-          <input
-            required
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
-          />
-        </label>
+        {mode === "signup" && (
+          <label className="flex flex-col gap-1 text-sm">
+            Display name
+            <input
+              required
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+            />
+          </label>
+        )}
         <label className="flex flex-col gap-1 text-sm">
           Email
           <input
@@ -56,13 +86,35 @@ export default function SignInPage() {
             className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
           />
         </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Password
+          <input
+            required
+            type="password"
+            minLength={mode === "signup" ? 8 : undefined}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+          />
+          {mode === "signup" && (
+            <span className="text-xs text-black/50 dark:text-white/50">
+              At least 8 characters.
+            </span>
+          )}
+        </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button
           type="submit"
           disabled={submitting}
           className="rounded bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
         >
-          {submitting ? "Signing in..." : "Sign in"}
+          {submitting
+            ? mode === "signin"
+              ? "Signing in..."
+              : "Creating account..."
+            : mode === "signin"
+              ? "Sign in"
+              : "Create account"}
         </button>
       </form>
     </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findOrCreateUser } from "@/lib/auth";
+import { signUp } from "@/lib/auth";
 import { createCampaign } from "@/lib/campaigns";
 import { requestJoin, approveRequest } from "@/lib/memberships";
 import { getNotes, updateNotes, PartyNotesError } from "@/lib/partyNotes";
@@ -7,7 +7,7 @@ import { listNotifications } from "@/lib/notifications";
 import { setPreference } from "@/lib/notificationPreferences";
 
 function setupParty(emailPrefix: string) {
-  const dm = findOrCreateUser("DM", `${emailPrefix}-dm@example.com`);
+  const dm = signUp("DM", `${emailPrefix}-dm@example.com`, "testpassword123");
   const campaign = createCampaign({
     dmId: dm.id,
     title: "T",
@@ -15,8 +15,8 @@ function setupParty(emailPrefix: string) {
     system: "S",
     capacity: 4,
   });
-  const p1 = findOrCreateUser("P1", `${emailPrefix}-p1@example.com`);
-  const p2 = findOrCreateUser("P2", `${emailPrefix}-p2@example.com`);
+  const p1 = signUp("P1", `${emailPrefix}-p1@example.com`, "testpassword123");
+  const p2 = signUp("P2", `${emailPrefix}-p2@example.com`, "testpassword123");
   for (const p of [p1, p2]) {
     const m = requestJoin(campaign.id, p.id);
     approveRequest(m.id, dm.id);
@@ -40,7 +40,7 @@ describe("partyNotes", () => {
 
   it("rejects edits from someone without private access", () => {
     const { campaign } = setupParty("pn3");
-    const stranger = findOrCreateUser("Stranger", "pn3-s@example.com");
+    const stranger = signUp("Stranger", "pn3-s@example.com", "testpassword123");
     expect(() => updateNotes(campaign.id, stranger.id, "hack")).toThrow(PartyNotesError);
   });
 

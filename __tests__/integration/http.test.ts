@@ -39,11 +39,23 @@ class CookieJar {
     return res;
   }
 
-  async signIn(displayName: string, email: string) {
+  /** Creates a brand-new account (each test uses unique emails) and signs this jar in as it. */
+  async signUp(displayName: string, email: string) {
+    const res = await this.fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName, email, password: "testpassword123" }),
+    });
+    const data = await res.json();
+    return data.user as { id: string; display_name: string; email: string };
+  }
+
+  /** Signs this jar in to an existing account. */
+  async signIn(email: string, password = "testpassword123") {
     const res = await this.fetch("/api/auth/signin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName, email }),
+      body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
     return data.user as { id: string; display_name: string; email: string };
@@ -108,9 +120,9 @@ describe("HTTP integration", () => {
     const playerJar = new CookieJar();
     const otherJar = new CookieJar();
 
-    await dmJar.signIn("Flow DM", "flow-dm@example.com");
-    const player = await playerJar.signIn("Flow Player", "flow-player@example.com");
-    await otherJar.signIn("Flow Other", "flow-other@example.com");
+    await dmJar.signUp("Flow DM", "flow-dm@example.com");
+    const player = await playerJar.signUp("Flow Player", "flow-player@example.com");
+    await otherJar.signUp("Flow Other", "flow-other@example.com");
 
     const createRes = await dmJar.fetch("/api/campaigns", {
       method: "POST",
@@ -178,11 +190,11 @@ describe("HTTP integration", () => {
     const leftJar = new CookieJar();
     const strangerJar = new CookieJar();
 
-    await dmJar.signIn("Priv DM", "priv-dm@example.com");
-    await memberJar.signIn("Priv Member", "priv-member@example.com");
-    await pendingJar.signIn("Priv Pending", "priv-pending@example.com");
-    await leftJar.signIn("Priv Left", "priv-left@example.com");
-    await strangerJar.signIn("Priv Stranger", "priv-stranger@example.com");
+    await dmJar.signUp("Priv DM", "priv-dm@example.com");
+    await memberJar.signUp("Priv Member", "priv-member@example.com");
+    await pendingJar.signUp("Priv Pending", "priv-pending@example.com");
+    await leftJar.signUp("Priv Left", "priv-left@example.com");
+    await strangerJar.signUp("Priv Stranger", "priv-stranger@example.com");
 
     const { campaign } = await (
       await dmJar.fetch("/api/campaigns", {
@@ -257,10 +269,10 @@ describe("HTTP integration", () => {
     const p2Jar = new CookieJar();
     const p3Jar = new CookieJar();
 
-    await dmJar.signIn("Fanout DM", "fanout-dm@example.com");
-    await p1Jar.signIn("Fanout P1", "fanout-p1@example.com");
-    await p2Jar.signIn("Fanout P2", "fanout-p2@example.com");
-    await p3Jar.signIn("Fanout P3", "fanout-p3@example.com");
+    await dmJar.signUp("Fanout DM", "fanout-dm@example.com");
+    await p1Jar.signUp("Fanout P1", "fanout-p1@example.com");
+    await p2Jar.signUp("Fanout P2", "fanout-p2@example.com");
+    await p3Jar.signUp("Fanout P3", "fanout-p3@example.com");
 
     const { campaign } = await (
       await dmJar.fetch("/api/campaigns", {
@@ -317,9 +329,9 @@ describe("HTTP integration", () => {
     const mutedJar = new CookieJar();
     const otherJar = new CookieJar();
 
-    await dmJar.signIn("Mute DM", "mute-dm@example.com");
-    await mutedJar.signIn("Mute Player", "mute-player@example.com");
-    await otherJar.signIn("Mute Other", "mute-other@example.com");
+    await dmJar.signUp("Mute DM", "mute-dm@example.com");
+    await mutedJar.signUp("Mute Player", "mute-player@example.com");
+    await otherJar.signUp("Mute Other", "mute-other@example.com");
 
     const { campaign } = await (
       await dmJar.fetch("/api/campaigns", {
@@ -385,5 +397,51 @@ describe("HTTP integration", () => {
     expect(
       afterUnmutedTrigger.items.some((n: { type: string }) => n.type === "member_left_party")
     ).toBe(true);
+  });
+
+  it("enforces real password authentication end-to-end", async () => {
+    const jar = new CookieJar();
+    const email = "auth-e2e@example.com";
+
+    const signupRes = await jar.fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName: "Auth Tester", email, password: "correcthorse1" }),
+    });
+    expect(signupRes.status).toBe(200);
+
+    // A second signup with the same email is rejected.
+    const dupeRes = await jar.fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName: "Someone Else", email, password: "anotherpassword1" }),
+    });
+    expect(dupeRes.status).toBe(409);
+
+    // Sign in with the wrong password is rejected.
+    const wrongPasswordRes = await jar.fetch("/api/auth/signin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password: "not-the-password" }),
+    });
+    expect(wrongPasswordRes.status).toBe(401);
+
+    // Sign in with the correct password succeeds and yields a session cookie
+    // that unlocks an authenticated endpoint.
+    const rightPasswordRes = await jar.fetch("/api/auth/signin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password: "correcthorse1" }),
+    });
+    expect(rightPasswordRes.status).toBe(200);
+    expect((await jar.fetch("/api/notifications")).status).toBe(200);
+
+    // Signing in to an email that was never signed up is rejected too.
+    const unknownRes = await jar.fetch("/api/auth/signin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "never-signed-up@example.com", password: "whatever123" }),
+    });
+    expect(unknownRes.status).toBe(401);
   });
 });

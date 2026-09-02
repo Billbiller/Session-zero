@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findOrCreateUser } from "@/lib/auth";
+import { signUp } from "@/lib/auth";
 import {
   createCampaign,
   updateCampaign,
@@ -12,7 +12,7 @@ import {
 import { requestJoin, approveRequest } from "@/lib/memberships";
 
 function makeDm(email: string) {
-  return findOrCreateUser("DM " + email, email);
+  return signUp("DM " + email, email, "testpassword123");
 }
 
 describe("campaigns", () => {
@@ -52,7 +52,7 @@ describe("campaigns", () => {
 
   it("rejects edits from a non-DM", () => {
     const dm = makeDm("dm4@example.com");
-    const stranger = findOrCreateUser("Stranger", "stranger1@example.com");
+    const stranger = signUp("Stranger", "stranger1@example.com", "testpassword123");
     const campaign = createCampaign({
       dmId: dm.id,
       title: "T",
@@ -67,8 +67,8 @@ describe("campaigns", () => {
 
   it("enforces the capacity floor at the current approved headcount", () => {
     const dm = makeDm("dm5@example.com");
-    const p1 = findOrCreateUser("P1", "p1-floor@example.com");
-    const p2 = findOrCreateUser("P2", "p2-floor@example.com");
+    const p1 = signUp("P1", "p1-floor@example.com", "testpassword123");
+    const p2 = signUp("P2", "p2-floor@example.com", "testpassword123");
     const campaign = createCampaign({
       dmId: dm.id,
       title: "T",

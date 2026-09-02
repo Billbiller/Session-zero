@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { z } from "zod";
-import { signIn, createSession, AuthError, SESSION_COOKIE_NAME } from "@/lib/auth";
+import { signUp, createSession, AuthError, SESSION_COOKIE_NAME } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
+  displayName: z.string().trim().min(1, "Display name is required."),
   email: z.string().trim().email("A valid email is required."),
-  password: z.string().min(1, "Password is required."),
+  password: z.string().min(8, "Password must be at least 8 characters."),
 });
 
 export async function POST(request: NextRequest) {
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
     );
   }
   try {
-    const user = signIn(parsed.data.email, parsed.data.password);
+    const user = signUp(parsed.data.displayName, parsed.data.email, parsed.data.password);
     const token = createSession(user.id);
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE_NAME, token, {
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ user });
   } catch (err) {
     if (err instanceof AuthError) {
-      return NextResponse.json({ error: err.message }, { status: 401 });
+      return NextResponse.json({ error: err.message }, { status: 409 });
     }
     throw err;
   }
