@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import db from "./db";
 import { isEnabled } from "./notificationPreferences";
+import { publishUnreadCount } from "./notificationEvents";
 import type { Notification, NotificationType } from "./types";
 
 export {
@@ -34,6 +35,10 @@ export function notify(
     `INSERT INTO notifications (id, user_id, type, campaign_id, message, read, created_at)
      VALUES (@id, @user_id, @type, @campaign_id, @message, @read, @created_at)`
   ).run(notification);
+  // Push the fresh unread count to any open SSE stream for this user (see
+  // notificationEvents.ts + app/api/notifications/stream/route.ts) so the
+  // NavBar badge updates live instead of waiting on its polling fallback.
+  publishUnreadCount(userId, getUnreadCount(userId));
   return notification;
 }
 
@@ -80,10 +85,12 @@ export function markRead(notificationId: string, userId: string): void {
   db.prepare(
     "UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?"
   ).run(notificationId, userId);
+  publishUnreadCount(userId, getUnreadCount(userId));
 }
 
 export function markAllRead(userId: string): void {
   db.prepare("UPDATE notifications SET read = 1 WHERE user_id = ?").run(
     userId
   );
+  publishUnreadCount(userId, getUnreadCount(userId));
 }

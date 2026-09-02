@@ -15,19 +15,57 @@ export default function NavBar({
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
+    let pollInterval: ReturnType<typeof setInterval> | undefined;
 
-    async function poll() {
+    async function pollOnce() {
       const res = await fetch("/api/notifications?pageSize=1");
       if (!res.ok || cancelled) return;
       const data = await res.json();
       if (!cancelled) setUnreadCount(data.unreadCount ?? 0);
     }
 
-    poll();
-    const interval = setInterval(poll, 15000);
+    function startPolling() {
+      if (pollInterval || cancelled) return;
+      pollOnce();
+      pollInterval = setInterval(pollOnce, 15000);
+    }
+
+    // EventSource isn't available during SSR and may be missing/blocked in
+    // some environments (older browsers, some proxies) — polling is the
+    // fallback in both cases, not just on a live connection dropping.
+    if (typeof EventSource === "undefined") {
+      startPolling();
+      return () => {
+        cancelled = true;
+        if (pollInterval) clearInterval(pollInterval);
+      };
+    }
+
+    const source = new EventSource("/api/notifications/stream");
+
+    source.addEventListener("unread", (event) => {
+      if (cancelled) return;
+      try {
+        const data = JSON.parse((event as MessageEvent).data);
+        if (typeof data.unreadCount === "number") setUnreadCount(data.unreadCount);
+      } catch {
+        // malformed event — ignore, the next one (or the polling fallback) will catch up
+      }
+    });
+
+    // No reconnect/backoff logic here on purpose: EventSource already
+    // retries the connection on its own, but if it keeps failing (e.g. a
+    // proxy that strips text/event-stream) we drop to polling permanently
+    // for this mount rather than flapping between the two.
+    source.onerror = () => {
+      source.close();
+      startPolling();
+    };
+
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      source.close();
+      if (pollInterval) clearInterval(pollInterval);
     };
   }, [user]);
 

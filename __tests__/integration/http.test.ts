@@ -444,4 +444,74 @@ describe("HTTP integration", () => {
     });
     expect(unknownRes.status).toBe(401);
   });
+
+  it("pushes a live unread-count update over the notifications SSE stream (6e)", async () => {
+    const dmJar = new CookieJar();
+    const playerJar = new CookieJar();
+
+    await dmJar.signUp("SSE DM", "sse-dm@example.com");
+    await playerJar.signUp("SSE Player", "sse-player@example.com");
+
+    // Requires an auth cookie, same as the other /api/notifications routes.
+    const signedOutRes = await fetch(`${BASE_URL}/api/notifications/stream`);
+    expect(signedOutRes.status).toBe(401);
+
+    const streamRes = await playerJar.fetch("/api/notifications/stream");
+    expect(streamRes.status).toBe(200);
+    expect(streamRes.headers.get("content-type")).toContain("text/event-stream");
+    expect(streamRes.body).not.toBeNull();
+
+    const reader = streamRes.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    async function readUntil(predicate: (buf: string) => boolean, timeoutMs = 10000) {
+      const deadline = Date.now() + timeoutMs;
+      while (!predicate(buffer)) {
+        if (Date.now() > deadline) {
+          throw new Error(`Timed out waiting for SSE data. Buffer so far: ${buffer}`);
+        }
+        const { value, done } = await reader.read();
+        if (done) throw new Error("Stream closed before expected data arrived.");
+        buffer += decoder.decode(value, { stream: true });
+      }
+    }
+
+    // The route sends an immediate snapshot on connect: unreadCount 0 (no
+    // notifications yet for this brand-new user).
+    await readUntil((buf) => buf.includes('"unreadCount":0'));
+
+    const { campaign } = await (
+      await dmJar.fetch("/api/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "SSE Campaign",
+          description: "",
+          system: "SSE System",
+          capacity: 3,
+        }),
+      })
+    ).json();
+
+    // Joining triggers a join_requested notification to the DM, not the
+    // player, so drive the trigger the other direction: the player joins,
+    // then the DM approves — approveRequest() notifies membership.user_id
+    // (the player) with join_approved.
+    const { membership } = await (
+      await playerJar.fetch(`/api/campaigns/${campaign.id}/join`, { method: "POST" })
+    ).json();
+    await dmJar.fetch(`/api/campaigns/${campaign.id}/requests/${membership.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve" }),
+    });
+
+    await readUntil((buf) => {
+      const matches = [...buf.matchAll(/"unreadCount":(\d+)/g)];
+      return matches.some((m) => Number(m[1]) > 0);
+    });
+
+    await reader.cancel();
+  });
 });
