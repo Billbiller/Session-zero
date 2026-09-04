@@ -145,8 +145,15 @@ export function manualReopen(id: string, dmId: string): Campaign {
 
 export type CampaignSort = "newest" | "oldest" | "title";
 
+function escapeLikePattern(value: string): string {
+  // Escape LIKE wildcards (% and _) and the escape character itself so a
+  // keyword search treats them as literal characters, not SQL wildcards.
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
+
 export function listCampaigns(opts: {
   system?: string;
+  q?: string;
   sort?: CampaignSort;
   page?: number;
   pageSize?: number;
@@ -159,6 +166,13 @@ export function listCampaigns(opts: {
   if (opts.system) {
     where.push("system = @system");
     params.system = opts.system;
+  }
+  const keyword = opts.q?.trim();
+  if (keyword) {
+    where.push(
+      "(LOWER(title) LIKE @q ESCAPE '\\' OR LOWER(description) LIKE @q ESCAPE '\\' OR LOWER(system) LIKE @q ESCAPE '\\')"
+    );
+    params.q = `%${escapeLikePattern(keyword.toLowerCase())}%`;
   }
   if (!opts.includeCancelled) {
     where.push("cancelled = 0");

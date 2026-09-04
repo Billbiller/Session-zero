@@ -7,14 +7,15 @@ const PAGE_SIZE = 10;
 export default async function CampaignsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ system?: string; sort?: string; page?: string }>;
+  searchParams: Promise<{ system?: string; q?: string; sort?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const system = params.system?.trim() || undefined;
+  const q = params.q?.trim() || undefined;
   const sort = (params.sort as CampaignSort) || "newest";
   const page = Number(params.page || "1");
 
-  const { items, total } = listCampaigns({ system, sort, page, pageSize: PAGE_SIZE });
+  const { items, total } = listCampaigns({ system, q, sort, page, pageSize: PAGE_SIZE });
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
@@ -30,6 +31,15 @@ export default async function CampaignsPage({
       </div>
 
       <form className="flex flex-wrap items-end gap-3 text-sm" method="get">
+        <label className="flex flex-col gap-1">
+          Search
+          <input
+            name="q"
+            defaultValue={q}
+            placeholder="Keyword in title, description, or system"
+            className="w-64 rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+          />
+        </label>
         <label className="flex flex-col gap-1">
           System
           <input
@@ -61,7 +71,7 @@ export default async function CampaignsPage({
 
       {items.length === 0 && (
         <p className="text-sm text-black/60 dark:text-white/60">
-          No campaigns match yet.
+          {q || system ? "No campaigns match your search." : "No campaigns match yet."}
         </p>
       )}
 
@@ -97,7 +107,7 @@ export default async function CampaignsPage({
               key={p}
               href={{
                 pathname: "/campaigns",
-                query: { system, sort, page: p },
+                query: { system, q, sort, page: p },
               }}
               className={
                 p === page

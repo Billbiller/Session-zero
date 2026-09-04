@@ -8,10 +8,11 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const system = searchParams.get("system") || undefined;
+  const q = searchParams.get("q") || undefined;
   const sort = (searchParams.get("sort") as CampaignSort) || undefined;
   const page = Number(searchParams.get("page") || "1");
   const pageSize = Number(searchParams.get("pageSize") || "10");
-  const result = listCampaigns({ system, sort, page, pageSize });
+  const result = listCampaigns({ system, q, sort, page, pageSize });
   return NextResponse.json(result);
 }
 

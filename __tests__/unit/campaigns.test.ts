@@ -119,6 +119,92 @@ describe("campaigns", () => {
     expect(items).toHaveLength(0);
   });
 
+  it("searches by free-text keyword across title, description, and system", () => {
+    const dm = makeDm("dm-search1@example.com");
+    createCampaign({
+      dmId: dm.id,
+      title: "Curse of the Kwzx7Sunless Citadel",
+      description: "A classic low-level kwzx7dungeon crawl.",
+      system: "Unique Search System A",
+      capacity: 4,
+    });
+    createCampaign({
+      dmId: dm.id,
+      title: "Weekly Kwzx7Pathfinder Society",
+      description: "Organized play, kwzx7drop-in friendly.",
+      system: "Unique Search System B Kwzx7Pathfinder",
+      capacity: 6,
+    });
+    createCampaign({
+      dmId: dm.id,
+      title: "Unrelated one-shot",
+      description: "Nothing to do with dungeons.",
+      system: "Unique Search System C",
+      capacity: 4,
+    });
+
+    const byTitle = listCampaigns({ q: "kwzx7sunless" });
+    expect(byTitle.total).toBe(1);
+    expect(byTitle.items[0].title).toBe("Curse of the Kwzx7Sunless Citadel");
+
+    const byDescription = listCampaigns({ q: "kwzx7drop-in" });
+    expect(byDescription.total).toBe(1);
+    expect(byDescription.items[0].title).toBe("Weekly Kwzx7Pathfinder Society");
+
+    const bySystem = listCampaigns({ q: "kwzx7pathfinder" });
+    expect(bySystem.total).toBe(1);
+    expect(bySystem.items[0].title).toBe("Weekly Kwzx7Pathfinder Society");
+
+    // Case-insensitive.
+    const upper = listCampaigns({ q: "KWZX7SUNLESS" });
+    expect(upper.total).toBe(1);
+
+    // Combines with the exact system filter (AND, not OR).
+    const combined = listCampaigns({
+      q: "kwzx7dungeon",
+      system: "Unique Search System A",
+    });
+    expect(combined.total).toBe(1);
+    const combinedMiss = listCampaigns({
+      q: "kwzx7dungeon",
+      system: "Unique Search System B Kwzx7Pathfinder",
+    });
+    expect(combinedMiss.total).toBe(0);
+
+    // No match.
+    expect(listCampaigns({ q: "nonexistent keyword kwzx7zzz" }).total).toBe(0);
+  });
+
+  it("treats % and _ in a keyword search as literal characters, not SQL wildcards", () => {
+    const dm = makeDm("dm-search2@example.com");
+    createCampaign({
+      dmId: dm.id,
+      title: "50% off session zero swag_bonus",
+      description: "",
+      system: "Unique Search System D",
+      capacity: 4,
+    });
+    createCampaign({
+      dmId: dm.id,
+      title: "Totally different campaign",
+      description: "",
+      system: "Unique Search System E",
+      capacity: 4,
+    });
+
+    // A literal "%" in the query should only match campaigns containing
+    // a literal "%", not act as a wildcard matching everything.
+    const percent = listCampaigns({ q: "50%" });
+    expect(percent.total).toBe(1);
+    expect(percent.items[0].system).toBe("Unique Search System D");
+
+    // A literal "_" should only match a literal underscore, not "any character".
+    const underscore = listCampaigns({ q: "swag_bonus" });
+    expect(underscore.total).toBe(1);
+    const underscoreNoMatch = listCampaigns({ q: "swagXbonus" });
+    expect(underscoreNoMatch.total).toBe(0);
+  });
+
   it("lets the DM manually reopen a campaign", () => {
     const dm = makeDm("dm8@example.com");
     const campaign = createCampaign({
