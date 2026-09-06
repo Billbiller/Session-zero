@@ -72,6 +72,15 @@ export default function ProfilePage() {
   if (loading) return <p className="text-sm">Loading...</p>;
   if (!profile) return null;
 
+  // Campaigns a character can be linked to: everywhere the user is
+  // currently the DM or an active member (matches the server-side
+  // hasPrivateAccess check), excluding cancelled campaigns since starting
+  // a new character there wouldn't make sense.
+  const assignableCampaigns = [...dming, ...playing]
+    .filter((c) => !c.cancelled)
+    .filter((c, i, arr) => arr.findIndex((other) => other.id === c.id) === i)
+    .map((c) => ({ id: c.id, title: c.title }));
+
   return (
     <div className="flex max-w-lg flex-col gap-8">
       <div>
@@ -123,7 +132,7 @@ export default function ProfilePage() {
       </div>
 
       <div>
-        <CharacterManager />
+        <CharacterManager assignableCampaigns={assignableCampaigns} />
       </div>
 
       <div>

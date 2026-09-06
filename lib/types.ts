@@ -118,6 +118,7 @@ export const CHARACTER_AVATARS = [
 export interface Character {
   id: string;
   user_id: string;
+  campaign_id: string | null;
   name: string;
   archetype: string;
   bio: string;

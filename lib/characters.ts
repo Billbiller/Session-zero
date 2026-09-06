@@ -1,5 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import db from "./db";
+import { getCampaign } from "./campaigns";
+import { hasPrivateAccess } from "./access";
 import { CHARACTER_AVATARS, type Character } from "./types";
 
 export class CharacterError extends Error {}
@@ -31,8 +33,25 @@ function defaultAvatarFor(name: string): string {
   return CHARACTER_AVATARS[sum % CHARACTER_AVATARS.length];
 }
 
-function defaultCharacterRow(): Pick<Character, "archetype" | "bio" | "backstory"> {
-  return { archetype: "", bio: "", backstory: "" };
+/** A character always belongs to a user (its owner), and is always visible
+ * on that user's public /players/[id] page regardless of campaign — that's
+ * the account-level "who is this person" identity. A character can
+ * *additionally* be linked to one campaign (campaign_id, nullable), which
+ * also surfaces it on that campaign's page alongside the roster — for a
+ * player who wants to say "this is the character I'm bringing to this
+ * table." Linking requires the same DM-or-approved-member check as party
+ * notes/session log (hasPrivateAccess), so a character can't be attached to
+ * a campaign its owner isn't actually part of. Unlinking (setting
+ * campaign_id back to null) never needs that check — removing a claim
+ * can't spoof anything the way adding one could. */
+function assertCampaignLinkAllowed(campaignId: string, userId: string): void {
+  const campaign = getCampaign(campaignId);
+  if (!campaign) throw new CharacterError("Campaign not found.");
+  if (!hasPrivateAccess(userId, campaignId)) {
+    throw new CharacterError(
+      "You can only link a character to a campaign you're the DM of or an active member of."
+    );
+  }
 }
 
 export function listCharactersForUser(userId: string): Character[] {
@@ -41,6 +60,19 @@ export function listCharactersForUser(userId: string): Character[] {
       "SELECT * FROM characters WHERE user_id = ? ORDER BY created_at DESC, rowid DESC"
     )
     .all(userId) as Character[];
+}
+
+/** Characters linked to a campaign, oldest first — shown alongside the
+ * roster on the campaign detail page. Public in the same way the roster
+ * is: no access check here, matching this app's existing DM/player-name
+ * visibility (and every character here is already fully public via its
+ * owner's /players/[id] page regardless). */
+export function listCharactersForCampaign(campaignId: string): Character[] {
+  return db
+    .prepare(
+      "SELECT * FROM characters WHERE campaign_id = ? ORDER BY created_at ASC, rowid ASC"
+    )
+    .all(campaignId) as Character[];
 }
 
 export function getCharacter(id: string): Character | null {
@@ -77,21 +109,22 @@ function validateFields(fields: {
   }
 }
 
-export function createCharacter(
-  userId: string,
-  input: {
-    name: string;
-    archetype?: string;
-    bio?: string;
-    backstory?: string;
-    avatarEmoji?: string;
-  }
-): Character {
-  const defaults = defaultCharacterRow();
+export interface CharacterCreateInput {
+  name: string;
+  archetype?: string;
+  bio?: string;
+  backstory?: string;
+  avatarEmoji?: string;
+  /** Optional campaign to link this character to on creation. Must be a
+   * campaign the creating user has DM/active-member access to. */
+  campaignId?: string | null;
+}
+
+export function createCharacter(userId: string, input: CharacterCreateInput): Character {
   const name = (input.name ?? "").trim();
-  const archetype = (input.archetype ?? defaults.archetype).trim();
-  const bio = (input.bio ?? defaults.bio).trim();
-  const backstory = (input.backstory ?? defaults.backstory).trim();
+  const archetype = (input.archetype ?? "").trim();
+  const bio = (input.bio ?? "").trim();
+  const backstory = (input.backstory ?? "").trim();
   validateFields({ name, archetype, bio, backstory });
 
   const avatar_emoji =
@@ -99,10 +132,14 @@ export function createCharacter(
       ? input.avatarEmoji
       : defaultAvatarFor(name);
 
+  const campaignId = input.campaignId ?? null;
+  if (campaignId) assertCampaignLinkAllowed(campaignId, userId);
+
   const now = new Date().toISOString();
   const character: Character = {
     id: uuidv4(),
     user_id: userId,
+    campaign_id: campaignId,
     name,
     archetype,
     bio,
@@ -112,22 +149,27 @@ export function createCharacter(
     updated_at: now,
   };
   db.prepare(
-    `INSERT INTO characters (id, user_id, name, archetype, bio, backstory, avatar_emoji, created_at, updated_at)
-     VALUES (@id, @user_id, @name, @archetype, @bio, @backstory, @avatar_emoji, @created_at, @updated_at)`
+    `INSERT INTO characters (id, user_id, campaign_id, name, archetype, bio, backstory, avatar_emoji, created_at, updated_at)
+     VALUES (@id, @user_id, @campaign_id, @name, @archetype, @bio, @backstory, @avatar_emoji, @created_at, @updated_at)`
   ).run(character);
   return character;
+}
+
+export interface CharacterUpdateInput {
+  name?: string;
+  archetype?: string;
+  bio?: string;
+  backstory?: string;
+  avatarEmoji?: string;
+  /** undefined = leave the campaign link unchanged; null = unlink;
+   * a campaign id = link/re-link (access-checked). */
+  campaignId?: string | null;
 }
 
 export function updateCharacter(
   characterId: string,
   userId: string,
-  input: {
-    name?: string;
-    archetype?: string;
-    bio?: string;
-    backstory?: string;
-    avatarEmoji?: string;
-  }
+  input: CharacterUpdateInput
 ): Character {
   const current = getCharacter(characterId);
   if (!current) throw new CharacterError("Character not found.");
@@ -148,12 +190,22 @@ export function updateCharacter(
         : current.avatar_emoji
       : current.avatar_emoji;
 
+  let campaign_id = current.campaign_id;
+  if (input.campaignId !== undefined) {
+    if (input.campaignId === null) {
+      campaign_id = null;
+    } else {
+      assertCampaignLinkAllowed(input.campaignId, userId);
+      campaign_id = input.campaignId;
+    }
+  }
+
   const updated_at = new Date().toISOString();
   db.prepare(
     `UPDATE characters
-     SET name = ?, archetype = ?, bio = ?, backstory = ?, avatar_emoji = ?, updated_at = ?
+     SET name = ?, archetype = ?, bio = ?, backstory = ?, avatar_emoji = ?, campaign_id = ?, updated_at = ?
      WHERE id = ?`
-  ).run(name, archetype, bio, backstory, avatar_emoji, updated_at, characterId);
+  ).run(name, archetype, bio, backstory, avatar_emoji, campaign_id, updated_at, characterId);
 
   return getCharacter(characterId) as Character;
 }

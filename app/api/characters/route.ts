@@ -6,6 +6,7 @@ import {
   CharacterError,
   CHARACTER_AVATARS,
 } from "@/lib/characters";
+import { getCampaign } from "@/lib/campaigns";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +14,14 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const auth = await requireUser();
   if ("error" in auth) return auth.error;
-  return NextResponse.json({ characters: listCharactersForUser(auth.user.id) });
+  // Enrich with the linked campaign's current title (if any) so the
+  // profile page can show/link to it without needing a separate lookup,
+  // and so it's accurate even for a campaign the user has since left.
+  const characters = listCharactersForUser(auth.user.id).map((c) => ({
+    ...c,
+    campaignTitle: c.campaign_id ? (getCampaign(c.campaign_id)?.title ?? null) : null,
+  }));
+  return NextResponse.json({ characters });
 }
 
 const bodySchema = z.object({
@@ -22,6 +30,9 @@ const bodySchema = z.object({
   bio: z.string().max(1000).optional(),
   backstory: z.string().max(4000).optional(),
   avatarEmoji: z.enum(CHARACTER_AVATARS).optional(),
+  // A campaign to link this character to (must be one the creator has
+  // DM/active-member access to — enforced in lib/characters.ts, not here).
+  campaignId: z.string().min(1).nullable().optional(),
 });
 
 export async function POST(request: NextRequest) {

@@ -16,6 +16,9 @@ const bodySchema = z.object({
   bio: z.string().max(1000).optional(),
   backstory: z.string().max(4000).optional(),
   avatarEmoji: z.enum(CHARACTER_AVATARS).optional(),
+  // undefined = leave the campaign link unchanged; null = unlink; a
+  // campaign id = link/re-link (access-checked in lib/characters.ts).
+  campaignId: z.string().min(1).nullable().optional(),
 });
 
 export async function PATCH(

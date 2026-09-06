@@ -5,12 +5,22 @@ import type { Character } from "@/lib/types";
 import { CHARACTER_AVATARS } from "@/lib/types";
 import CharacterSummary from "./CharacterSummary";
 
+type CharacterWithCampaignTitle = Character & { campaignTitle: string | null };
+
+interface AssignableCampaign {
+  id: string;
+  title: string;
+}
+
 interface FormState {
   name: string;
   archetype: string;
   bio: string;
   backstory: string;
   avatarEmoji: string;
+  /** "" means "not linked to a campaign" in the <select>; converted to
+   * null/omitted before hitting the API. */
+  campaignId: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -19,20 +29,29 @@ const EMPTY_FORM: FormState = {
   bio: "",
   backstory: "",
   avatarEmoji: CHARACTER_AVATARS[0],
+  campaignId: "",
 };
 
-function formFromCharacter(character: Character): FormState {
+function formFromCharacter(character: CharacterWithCampaignTitle): FormState {
   return {
     name: character.name,
     archetype: character.archetype,
     bio: character.bio,
     backstory: character.backstory,
     avatarEmoji: character.avatar_emoji,
+    campaignId: character.campaign_id ?? "",
   };
 }
 
-export default function CharacterManager() {
-  const [characters, setCharacters] = useState<Character[]>([]);
+export default function CharacterManager({
+  assignableCampaigns,
+}: {
+  /** Campaigns the signed-in user is currently the DM of or an active
+   * member of — the only campaigns a character can (re)link to, since
+   * linking is access-checked server-side the same way. */
+  assignableCampaigns: AssignableCampaign[];
+}) {
+  const [characters, setCharacters] = useState<CharacterWithCampaignTitle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -61,13 +80,40 @@ export default function CharacterManager() {
     load();
   }, [load]);
 
+  function campaignOptionsFor(form: FormState) {
+    // If a character is linked to a campaign the user no longer has in
+    // their assignable list (e.g. they've since left it), keep that option
+    // visible and selected rather than silently dropping the link the
+    // moment the edit form renders.
+    const options = [...assignableCampaigns];
+    if (form.campaignId && !options.some((c) => c.id === form.campaignId)) {
+      const current = characters.find((c) => c.id === editingId);
+      options.push({
+        id: form.campaignId,
+        title: current?.campaignTitle ?? "Campaign no longer available",
+      });
+    }
+    return options;
+  }
+
+  function toPayload(form: FormState) {
+    return {
+      name: form.name,
+      archetype: form.archetype,
+      bio: form.bio,
+      backstory: form.backstory,
+      avatarEmoji: form.avatarEmoji,
+      campaignId: form.campaignId ? form.campaignId : null,
+    };
+  }
+
   async function handleCreate() {
     setSubmitting(true);
     setError(null);
     const res = await fetch("/api/characters", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newForm),
+      body: JSON.stringify(toPayload(newForm)),
     });
     setSubmitting(false);
     const data = await res.json().catch(() => ({}));
@@ -86,7 +132,7 @@ export default function CharacterManager() {
     const res = await fetch(`/api/characters/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editForm),
+      body: JSON.stringify(toPayload(editForm)),
     });
     setSubmitting(false);
     const data = await res.json().catch(() => ({}));
@@ -151,6 +197,21 @@ export default function CharacterManager() {
             {CHARACTER_AVATARS.map((emoji) => (
               <option key={emoji} value={emoji}>
                 {emoji}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          Playing in
+          <select
+            value={form.campaignId}
+            onChange={(e) => setForm({ ...form, campaignId: e.target.value })}
+            className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+          >
+            <option value="">Not linked to a campaign</option>
+            {campaignOptionsFor(form).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.title}
               </option>
             ))}
           </select>
@@ -236,7 +297,12 @@ export default function CharacterManager() {
               )
             ) : (
               <div className="flex items-start justify-between gap-3">
-                <CharacterSummary character={c} />
+                <CharacterSummary
+                  character={c}
+                  linkedCampaign={
+                    c.campaign_id ? { id: c.campaign_id, title: c.campaignTitle ?? "" } : null
+                  }
+                />
                 <div className="flex shrink-0 flex-col items-end gap-1 text-xs">
                   <button
                     onClick={() => {

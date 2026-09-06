@@ -1,9 +1,22 @@
+import Link from "next/link";
 import type { Character } from "@/lib/types";
 
 /** Presentational-only display of a character's public fields — shared by
- * the editable "My characters" list on /profile and the read-only list on
- * /players/[id], so the two views can't drift apart. */
-export default function CharacterSummary({ character }: { character: Character }) {
+ * the editable "My characters" list on /profile, the read-only list on
+ * /players/[id], and the read-only "characters at this table" list on a
+ * campaign's page, so none of the three views can drift apart.
+ *
+ * linkedCampaign is optional context about the campaign a character is
+ * attached to (if any) — omitted entirely on the campaign's own page
+ * (redundant there), shown as a link back to that campaign everywhere
+ * else (the profile and public-player views). */
+export default function CharacterSummary({
+  character,
+  linkedCampaign,
+}: {
+  character: Character;
+  linkedCampaign?: { id: string; title: string } | null;
+}) {
   return (
     <div className="flex gap-3">
       <span className="text-2xl leading-none" aria-hidden="true">
@@ -18,6 +31,14 @@ export default function CharacterSummary({ character }: { character: Character }
             </span>
           )}
         </p>
+        {linkedCampaign && (
+          <p className="text-xs text-black/60 dark:text-white/60">
+            Playing in{" "}
+            <Link href={`/campaigns/${linkedCampaign.id}`} className="underline">
+              {linkedCampaign.title}
+            </Link>
+          </p>
+        )}
         {character.bio && <p className="text-sm">{character.bio}</p>}
         {character.backstory && (
           <p className="whitespace-pre-wrap text-sm text-black/70 dark:text-white/70">

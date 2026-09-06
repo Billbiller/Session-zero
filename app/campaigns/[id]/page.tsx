@@ -8,6 +8,7 @@ import { listRequests } from "@/lib/memberships";
 import { getNotes } from "@/lib/partyNotes";
 import { listEntries } from "@/lib/sessionLog";
 import { computeScheduleStatus } from "@/lib/schedule";
+import { listCharactersForCampaign } from "@/lib/characters";
 import db from "@/lib/db";
 import type { Membership, User } from "@/lib/types";
 
@@ -18,6 +19,7 @@ import RosterPanel from "@/components/RosterPanel";
 import ScheduleForm from "@/components/ScheduleForm";
 import PartyNotesPanel from "@/components/PartyNotesPanel";
 import SessionLogPanel from "@/components/SessionLogPanel";
+import CharacterSummary from "@/components/CharacterSummary";
 
 export default async function CampaignDetailPage({
   params,
@@ -53,6 +55,7 @@ export default async function CampaignDetailPage({
       )
       .all(id) as User[]
   );
+  const campaignCharacters = listCharactersForCampaign(id);
 
   return (
     <div className="flex flex-col gap-6">
@@ -103,6 +106,29 @@ export default async function CampaignDetailPage({
       )}
 
       <RosterPanel dm={dm} members={approvedMembers} />
+
+      <div className="rounded border border-black/10 p-4 dark:border-white/10">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="font-medium">Characters at this table</h2>
+          {access && (
+            <Link href="/profile" className="text-sm underline">
+              Manage your characters
+            </Link>
+          )}
+        </div>
+        <ul className="flex flex-col gap-3 text-sm">
+          {campaignCharacters.map((c) => (
+            <li key={c.id} className="border-t border-black/10 pt-3 first:border-t-0 first:pt-0 dark:border-white/10">
+              <CharacterSummary character={c} />
+            </li>
+          ))}
+          {campaignCharacters.length === 0 && (
+            <li className="text-black/60 dark:text-white/60">
+              No characters linked to this campaign yet.
+            </li>
+          )}
+        </ul>
+      </div>
 
       {access && (
         <>

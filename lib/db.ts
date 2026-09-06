@@ -107,6 +107,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 CREATE TABLE IF NOT EXISTS characters (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id),
+  campaign_id TEXT REFERENCES campaigns(id),
   name TEXT NOT NULL,
   archetype TEXT NOT NULL DEFAULT '',
   bio TEXT NOT NULL DEFAULT '',
@@ -117,6 +118,7 @@ CREATE TABLE IF NOT EXISTS characters (
 );
 
 CREATE INDEX IF NOT EXISTS idx_characters_user ON characters(user_id);
+CREATE INDEX IF NOT EXISTS idx_characters_campaign ON characters(campaign_id);
 `);
 
 // Lightweight migration for databases created before password_hash existed
