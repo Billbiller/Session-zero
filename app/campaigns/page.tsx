@@ -88,8 +88,15 @@ export default async function CampaignsPage({
                 {campaign.title}
               </Link>
               <p className="text-sm text-black/60 dark:text-white/60">
-                {campaign.system} &middot; DM: {dm?.display_name ?? "Unknown"} &middot;{" "}
-                {headcount}/{campaign.capacity} players
+                {campaign.system} &middot; DM:{" "}
+                {dm ? (
+                  <Link href={`/players/${dm.id}`} className="underline">
+                    {dm.display_name}
+                  </Link>
+                ) : (
+                  "Unknown"
+                )}{" "}
+                &middot; {headcount}/{campaign.capacity} players
                 {!campaign.accepting_requests && " (closed to new requests)"}
               </p>
               {campaign.description && (

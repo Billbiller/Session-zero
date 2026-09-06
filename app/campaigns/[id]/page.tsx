@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getCampaign, approvedHeadcount } from "@/lib/campaigns";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getUserById } from "@/lib/auth";
@@ -65,8 +66,15 @@ export default async function CampaignDetailPage({
           )}
         </h1>
         <p className="text-sm text-black/60 dark:text-white/60">
-          {campaign.system} &middot; DM: {dm?.display_name ?? "Unknown"} &middot; {headcount}/
-          {campaign.capacity} players
+          {campaign.system} &middot; DM:{" "}
+          {dm ? (
+            <Link href={`/players/${dm.id}`} className="underline">
+              {dm.display_name}
+            </Link>
+          ) : (
+            "Unknown"
+          )}{" "}
+          &middot; {headcount}/{campaign.capacity} players
         </p>
         {campaign.description && <p className="mt-2 text-sm">{campaign.description}</p>}
       </div>

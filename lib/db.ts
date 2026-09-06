@@ -95,6 +95,14 @@ CREATE TABLE IF NOT EXISTS party_notes (
   updated_by TEXT REFERENCES users(id),
   updated_at TEXT
 );
+
+CREATE TABLE IF NOT EXISTS profiles (
+  user_id TEXT PRIMARY KEY REFERENCES users(id),
+  bio TEXT NOT NULL DEFAULT '',
+  preferred_systems TEXT NOT NULL DEFAULT '',
+  availability TEXT NOT NULL DEFAULT '',
+  updated_at TEXT
+);
 `);
 
 // Lightweight migration for databases created before password_hash existed

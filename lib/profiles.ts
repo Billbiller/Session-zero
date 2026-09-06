@@ -1,0 +1,104 @@
+import db from "./db";
+import type { Campaign, Profile } from "./types";
+
+export class ProfileError extends Error {}
+
+const MAX_BIO = 2000;
+const MAX_PREFERRED_SYSTEMS = 300;
+const MAX_AVAILABILITY = 300;
+
+function defaultProfile(userId: string): Profile {
+  return {
+    user_id: userId,
+    bio: "",
+    preferred_systems: "",
+    availability: "",
+    updated_at: null,
+  };
+}
+
+/** Every user has an implicit empty profile until they save one — mirrors
+ * notification_preferences' "default until a row says otherwise" pattern. */
+export function getProfile(userId: string): Profile {
+  const row = db.prepare("SELECT * FROM profiles WHERE user_id = ?").get(userId) as
+    | Profile
+    | undefined;
+  return row ?? defaultProfile(userId);
+}
+
+export function upsertProfile(
+  userId: string,
+  input: { bio?: string; preferredSystems?: string; availability?: string }
+): Profile {
+  const current = getProfile(userId);
+  const bio = (input.bio ?? current.bio).trim();
+  const preferredSystems = (input.preferredSystems ?? current.preferred_systems).trim();
+  const availability = (input.availability ?? current.availability).trim();
+
+  if (bio.length > MAX_BIO) {
+    throw new ProfileError(`Bio can't be longer than ${MAX_BIO} characters.`);
+  }
+  if (preferredSystems.length > MAX_PREFERRED_SYSTEMS) {
+    throw new ProfileError(
+      `Preferred systems can't be longer than ${MAX_PREFERRED_SYSTEMS} characters.`
+    );
+  }
+  if (availability.length > MAX_AVAILABILITY) {
+    throw new ProfileError(
+      `Availability can't be longer than ${MAX_AVAILABILITY} characters.`
+    );
+  }
+
+  const updated_at = new Date().toISOString();
+  db.prepare(
+    `INSERT INTO profiles (user_id, bio, preferred_systems, availability, updated_at)
+     VALUES (@user_id, @bio, @preferred_systems, @availability, @updated_at)
+     ON CONFLICT (user_id) DO UPDATE SET
+       bio = excluded.bio,
+       preferred_systems = excluded.preferred_systems,
+       availability = excluded.availability,
+       updated_at = excluded.updated_at`
+  ).run({
+    user_id: userId,
+    bio,
+    preferred_systems: preferredSystems,
+    availability,
+    updated_at,
+  });
+  return getProfile(userId);
+}
+
+/** Splits the stored comma-separated preferred-systems string into a clean
+ * list of individual system names for display (chips, etc). */
+export function splitPreferredSystems(value: string): string[] {
+  return value
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+export interface MyCampaigns {
+  dming: Campaign[];
+  playing: Campaign[];
+}
+
+/** Campaigns a user is DMing, and campaigns they're an active (approved)
+ * player in — the data behind the "My campaigns" view on the profile page. */
+export function myCampaigns(userId: string): MyCampaigns {
+  const dming = db
+    .prepare(
+      "SELECT * FROM campaigns WHERE dm_id = ? ORDER BY created_at DESC, rowid DESC"
+    )
+    .all(userId) as Campaign[];
+
+  const playing = db
+    .prepare(
+      `SELECT campaigns.* FROM campaigns
+       JOIN memberships ON memberships.campaign_id = campaigns.id
+       WHERE memberships.user_id = ? AND memberships.status = 'approved'
+       ORDER BY memberships.updated_at DESC, memberships.rowid DESC`
+    )
+    .all(userId) as Campaign[];
+
+  return { dming, playing };
+}

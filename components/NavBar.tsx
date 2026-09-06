@@ -95,9 +95,9 @@ export default function NavBar({
                 )}
               </Link>
               <Link href="/settings/notifications">Settings</Link>
-              <span className="text-black/60 dark:text-white/60">
+              <Link href="/profile" className="text-black/60 dark:text-white/60">
                 {user.displayName}
-              </span>
+              </Link>
               <button onClick={handleSignOut} className="underline">
                 Sign out
               </button>

@@ -83,3 +83,11 @@ export interface PartyNotes {
 }
 
 export type ScheduleStatus = "unscheduled" | "upcoming" | "past-due";
+
+export interface Profile {
+  user_id: string;
+  bio: string;
+  preferred_systems: string;
+  availability: string;
+  updated_at: string | null;
+}
