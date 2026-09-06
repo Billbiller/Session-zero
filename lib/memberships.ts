@@ -154,6 +154,23 @@ export function leaveCampaign(campaignId: string, userId: string): void {
       `A fellow party member has left "${campaign.title}".`
     );
   }
+
+  // Leaving is the natural "this relationship with the DM is wrapping up"
+  // moment — prompt both sides to rate each other while it's fresh, rather
+  // than waiting for some other trigger (there's no discrete "session
+  // ended" event in this app to hang the prompt on instead).
+  notify(
+    userId,
+    "rating_prompt",
+    campaignId,
+    `You left "${campaign.title}" — rate the DM to help other players.`
+  );
+  notify(
+    campaign.dm_id,
+    "rating_prompt",
+    campaignId,
+    `A player left "${campaign.title}" — rate them to help other DMs.`
+  );
 }
 
 export function listRequests(

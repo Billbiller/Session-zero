@@ -20,6 +20,7 @@ import ScheduleForm from "@/components/ScheduleForm";
 import PartyNotesPanel from "@/components/PartyNotesPanel";
 import SessionLogPanel from "@/components/SessionLogPanel";
 import CharacterSummary from "@/components/CharacterSummary";
+import RatingsPanel from "@/components/RatingsPanel";
 
 export default async function CampaignDetailPage({
   params,
@@ -129,6 +130,8 @@ export default async function CampaignDetailPage({
           )}
         </ul>
       </div>
+
+      <RatingsPanel campaignId={id} signedIn={!!viewer} />
 
       {access && (
         <>

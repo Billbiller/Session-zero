@@ -3,7 +3,36 @@ import { getUserById } from "@/lib/auth";
 import { getProfile, splitPreferredSystems } from "@/lib/profiles";
 import { listCharactersForUser } from "@/lib/characters";
 import { getCampaign } from "@/lib/campaigns";
+import { getUserRatingSummary } from "@/lib/ratings";
 import CharacterSummary from "@/components/CharacterSummary";
+
+function reputationLine(label: string, summary: { average: number | null; count: number; tagCounts: Record<string, number> }) {
+  const topTags = Object.entries(summary.tagCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([tag]) => tag);
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-sm font-medium">{label}</p>
+      {summary.count === 0 ? (
+        <p className="text-sm text-black/60 dark:text-white/60">Unrated so far</p>
+      ) : (
+        <>
+          <p className="text-sm">
+            {"★".repeat(Math.round(summary.average ?? 0))}
+            {"☆".repeat(5 - Math.round(summary.average ?? 0))}{" "}
+            <span className="text-black/60 dark:text-white/60">
+              {(summary.average ?? 0).toFixed(1)} ({summary.count} rating{summary.count === 1 ? "" : "s"})
+            </span>
+          </p>
+          {topTags.length > 0 && (
+            <p className="text-xs text-black/60 dark:text-white/60">{topTags.join(" · ")}</p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 export default async function PlayerProfilePage({
   params,
@@ -17,10 +46,16 @@ export default async function PlayerProfilePage({
   const profile = getProfile(id);
   const systems = splitPreferredSystems(profile.preferred_systems);
   const characters = listCharactersForUser(id);
+  const ratingSummary = getUserRatingSummary(id);
 
   return (
     <div className="flex max-w-lg flex-col gap-4">
       <h1 className="text-2xl font-semibold">{user.display_name}</h1>
+
+      <div className="flex flex-col gap-3 rounded border border-black/10 p-3 dark:border-white/10 sm:flex-row sm:gap-6">
+        {reputationLine("As DM", ratingSummary.asDm)}
+        {reputationLine("As player", ratingSummary.asPlayer)}
+      </div>
 
       {profile.bio ? (
         <p className="text-sm">{profile.bio}</p>

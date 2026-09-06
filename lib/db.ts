@@ -119,6 +119,22 @@ CREATE TABLE IF NOT EXISTS characters (
 
 CREATE INDEX IF NOT EXISTS idx_characters_user ON characters(user_id);
 CREATE INDEX IF NOT EXISTS idx_characters_campaign ON characters(campaign_id);
+
+CREATE TABLE IF NOT EXISTS ratings (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id),
+  rater_id TEXT NOT NULL REFERENCES users(id),
+  ratee_id TEXT NOT NULL REFERENCES users(id),
+  ratee_role TEXT NOT NULL CHECK (ratee_role IN ('dm','player')),
+  stars INTEGER NOT NULL CHECK (stars BETWEEN 1 AND 5),
+  tags TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (campaign_id, rater_id, ratee_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ratings_ratee ON ratings(ratee_id);
+CREATE INDEX IF NOT EXISTS idx_ratings_campaign ON ratings(campaign_id);
 `);
 
 // Lightweight migration for databases created before password_hash existed

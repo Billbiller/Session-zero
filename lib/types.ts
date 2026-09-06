@@ -40,6 +40,7 @@ export const NOTIFICATION_TYPES = [
   "session_log_posted",
   "schedule_updated",
   "campaign_cancelled",
+  "rating_prompt",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -54,6 +55,7 @@ export const NOTIFICATION_LABELS: Record<NotificationType, string> = {
   session_log_posted: "A new session log entry is posted",
   schedule_updated: "The next session date changes",
   campaign_cancelled: "A campaign you're in is cancelled",
+  rating_prompt: "You're invited to rate a DM or player after leaving a campaign",
 };
 
 export interface Notification {
@@ -126,4 +128,49 @@ export interface Character {
   avatar_emoji: string;
   created_at: string;
   updated_at: string;
+}
+
+export const DM_RATING_TAGS = [
+  "Great narrator",
+  "Fair rulings",
+  "Well prepared",
+  "On time",
+  "Flexible with rules",
+  "Great worldbuilding",
+  "Good communicator",
+  "Fun to play with",
+] as const;
+
+export const PLAYER_RATING_TAGS = [
+  "On time",
+  "Team player",
+  "Good roleplayer",
+  "Well prepared",
+  "Great communicator",
+  "Follows the story",
+  "Fun to have at the table",
+  "Respectful of others",
+] as const;
+
+export type RatingTag =
+  | (typeof DM_RATING_TAGS)[number]
+  | (typeof PLAYER_RATING_TAGS)[number];
+
+export type RateeRole = "dm" | "player";
+
+export interface Rating {
+  id: string;
+  campaign_id: string;
+  rater_id: string;
+  ratee_id: string;
+  ratee_role: RateeRole;
+  stars: number;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RatingSummary {
+  asDm: { average: number | null; count: number; tagCounts: Record<string, number> };
+  asPlayer: { average: number | null; count: number; tagCounts: Record<string, number> };
 }
