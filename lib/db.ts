@@ -103,6 +103,20 @@ CREATE TABLE IF NOT EXISTS profiles (
   availability TEXT NOT NULL DEFAULT '',
   updated_at TEXT
 );
+
+CREATE TABLE IF NOT EXISTS characters (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  name TEXT NOT NULL,
+  archetype TEXT NOT NULL DEFAULT '',
+  bio TEXT NOT NULL DEFAULT '',
+  backstory TEXT NOT NULL DEFAULT '',
+  avatar_emoji TEXT NOT NULL DEFAULT '🎲',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_characters_user ON characters(user_id);
 `);
 
 // Lightweight migration for databases created before password_hash existed

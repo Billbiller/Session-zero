@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Campaign, Profile } from "@/lib/types";
+import CharacterManager from "@/components/CharacterManager";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -119,6 +120,10 @@ export default function ProfilePage() {
             {saved && <span className="text-black/60 dark:text-white/60">Saved.</span>}
           </div>
         </form>
+      </div>
+
+      <div>
+        <CharacterManager />
       </div>
 
       <div>

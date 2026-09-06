@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { getUserById } from "@/lib/auth";
 import { getProfile, splitPreferredSystems } from "@/lib/profiles";
+import { listCharactersForUser } from "@/lib/characters";
+import CharacterSummary from "@/components/CharacterSummary";
 
 export default async function PlayerProfilePage({
   params,
@@ -13,6 +15,7 @@ export default async function PlayerProfilePage({
 
   const profile = getProfile(id);
   const systems = splitPreferredSystems(profile.preferred_systems);
+  const characters = listCharactersForUser(id);
 
   return (
     <div className="flex max-w-lg flex-col gap-4">
@@ -44,6 +47,19 @@ export default async function PlayerProfilePage({
         <div>
           <h2 className="text-sm font-medium">Availability</h2>
           <p className="text-sm">{profile.availability}</p>
+        </div>
+      )}
+
+      {characters.length > 0 && (
+        <div>
+          <h2 className="text-sm font-medium">Characters</h2>
+          <ul className="mt-2 flex flex-col gap-3">
+            {characters.map((c) => (
+              <li key={c.id} className="border-t border-black/10 pt-3 dark:border-white/10">
+                <CharacterSummary character={c} />
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

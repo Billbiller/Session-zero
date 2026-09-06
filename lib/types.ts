@@ -91,3 +91,38 @@ export interface Profile {
   availability: string;
   updated_at: string | null;
 }
+
+export const CHARACTER_AVATARS = [
+  "🧙‍♂️",
+  "🧙‍♀️",
+  "🗡️",
+  "🛡️",
+  "🏹",
+  "🐉",
+  "🧝‍♀️",
+  "🧝‍♂️",
+  "🧌",
+  "👑",
+  "🔮",
+  "🪄",
+  "🦸‍♂️",
+  "🦸‍♀️",
+  "🥷",
+  "🧛‍♂️",
+  "🧛‍♀️",
+  "🐺",
+  "🦉",
+  "🎲",
+] as const;
+
+export interface Character {
+  id: string;
+  user_id: string;
+  name: string;
+  archetype: string;
+  bio: string;
+  backstory: string;
+  avatar_emoji: string;
+  created_at: string;
+  updated_at: string;
+}
