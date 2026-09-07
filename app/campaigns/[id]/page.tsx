@@ -21,6 +21,7 @@ import PartyNotesPanel from "@/components/PartyNotesPanel";
 import SessionLogPanel from "@/components/SessionLogPanel";
 import CharacterSummary from "@/components/CharacterSummary";
 import RatingsPanel from "@/components/RatingsPanel";
+import CampaignRatingPanel from "@/components/CampaignRatingPanel";
 import Section from "@/components/Section";
 import SubRequestPanel from "@/components/SubRequestPanel";
 
@@ -98,6 +99,8 @@ export default async function CampaignDetailPage({
         </p>
         {campaign.description && <p className="mt-2 text-sm">{campaign.description}</p>}
       </div>
+
+      <CampaignRatingPanel campaignId={id} />
 
       <JoinLeaveControls
         campaignId={id}

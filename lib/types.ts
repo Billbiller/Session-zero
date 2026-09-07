@@ -394,3 +394,36 @@ export interface RatingSummary {
   asDm: { average: number | null; count: number; tagCounts: Record<string, number> };
   asPlayer: { average: number | null; count: number; tagCounts: Record<string, number> };
 }
+
+/** Backlog #28: rating the campaign itself, not just the DM/players --
+ * "the table's vibe" rather than any one person's performance. A
+ * separate concept from RatingTag above (which is person-specific and
+ * split dm/player); campaign tags apply to every campaign uniformly. */
+export const CAMPAIGN_RATING_TAGS = [
+  "Well organized",
+  "True to the pitch",
+  "Welcoming to newcomers",
+  "Great worldbuilding",
+  "Balanced combat & roleplay",
+  "Reliable scheduling",
+  "Great communication",
+  "Would recommend",
+] as const;
+
+export type CampaignRatingTag = (typeof CAMPAIGN_RATING_TAGS)[number];
+
+export interface CampaignRating {
+  id: string;
+  campaign_id: string;
+  rater_id: string;
+  stars: number;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampaignRatingSummary {
+  average: number | null;
+  count: number;
+  tagCounts: Record<string, number>;
+}

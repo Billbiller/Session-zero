@@ -152,6 +152,26 @@ CREATE TABLE IF NOT EXISTS ratings (
 CREATE INDEX IF NOT EXISTS idx_ratings_ratee ON ratings(ratee_id);
 CREATE INDEX IF NOT EXISTS idx_ratings_campaign ON ratings(campaign_id);
 
+-- Backlog #28: rating the campaign itself (not just DM/players) -- a
+-- separate table from ratings rather than relaxing that table's
+-- ratee_id (which REFERENCES users(id)) to sometimes point at a
+-- campaigns.id instead. One rating per (campaign, rater), upsertable,
+-- same convention as person-to-person ratings. Only a current-or-former
+-- approved member may rate (not the DM, not a stranger) -- see
+-- lib/campaignRatings.ts.
+CREATE TABLE IF NOT EXISTS campaign_ratings (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id),
+  rater_id TEXT NOT NULL REFERENCES users(id),
+  stars INTEGER NOT NULL CHECK (stars BETWEEN 1 AND 5),
+  tags TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (campaign_id, rater_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_campaign_ratings_campaign ON campaign_ratings(campaign_id);
+
 -- Phase 1 of backlog #27 (recurring weekly availability): a user marks
 -- which day/time-of-day blocks they're generally free, as a structured
 -- complement to profiles.availability's free text. day_of_week is 0=Monday
