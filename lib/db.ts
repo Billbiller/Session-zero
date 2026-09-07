@@ -362,6 +362,31 @@ CREATE TABLE IF NOT EXISTS npc_notes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_npc_notes_campaign ON npc_notes(campaign_id);
+
+-- Backlog #34, phase 1: resource vault -- per-campaign uploads (maps,
+-- handouts, homebrew notes). Follows the same base64-data:-URL-in-SQLite
+-- pattern already established for character portraits (#26), but with a
+-- broader allowed file-type set (images, PDF, and plain text -- not just
+-- images) and a larger size cap justified in lib/campaignResources.ts.
+-- Visible to the campaign's active party -- hasPrivateAccess (DM +
+-- approved active members), the same boundary already gating party
+-- notes/session log/table chat, since a DM's homebrew prep isn't meant
+-- to be public. Phase 2 (a cross-community library browsable by system)
+-- is explicitly out of scope here -- see the backlog entry and
+-- claude/progress.md for the reasoning.
+CREATE TABLE IF NOT EXISTS campaign_resources (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id),
+  uploader_id TEXT NOT NULL REFERENCES users(id),
+  name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  mime_type TEXT NOT NULL,
+  data_url TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_campaign_resources_campaign ON campaign_resources(campaign_id);
 `);
 
 // Lightweight migration for databases created before password_hash existed

@@ -19,6 +19,7 @@ import RosterPanel from "@/components/RosterPanel";
 import ScheduleForm from "@/components/ScheduleForm";
 import PartyNotesPanel from "@/components/PartyNotesPanel";
 import CampaignChatPanel from "@/components/CampaignChatPanel";
+import ResourceVaultPanel from "@/components/ResourceVaultPanel";
 import InitiativeTrackerPanel from "@/components/InitiativeTrackerPanel";
 import NpcNotesPanel from "@/components/NpcNotesPanel";
 import SessionLogPanel from "@/components/SessionLogPanel";
@@ -200,6 +201,7 @@ export default async function CampaignDetailPage({
             status={computeScheduleStatus(campaign.next_session_at)}
           />
           <CampaignChatPanel campaignId={id} viewerId={viewer?.id ?? null} />
+          <ResourceVaultPanel campaignId={id} viewerId={viewer?.id ?? null} isDm={isDm} />
           <PartyNotesPanel campaignId={id} initialContent={getNotes(id).content} />
           <SessionLogPanel
             campaignId={id}

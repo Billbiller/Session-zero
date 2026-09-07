@@ -72,6 +72,7 @@ export const NOTIFICATION_TYPES = [
   "sub_placement_resolved",
   "message_received",
   "campaign_chat_message",
+  "campaign_resource_uploaded",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -93,6 +94,7 @@ export const NOTIFICATION_LABELS: Record<NotificationType, string> = {
   sub_placement_resolved: "A sub placement is confirmed, declined, or cancelled",
   message_received: "Someone sends you a direct message",
   campaign_chat_message: "Someone posts in your table's group chat",
+  campaign_resource_uploaded: "A new file is added to your campaign's resource vault",
 };
 
 export interface Notification {
@@ -531,5 +533,36 @@ export interface NpcNote {
   notes: string;
   created_at: string;
   updated_at: string;
+}
+
+/** Backlog #34, phase 1: resource vault -- per-campaign uploads (maps,
+ * handouts, homebrew notes). Follows the same base64 data: URL-in-SQLite
+ * storage pattern already established for character portraits (#26),
+ * but supports a broader allowed-type set (images, PDF, and plain text)
+ * with a larger size cap -- see MAX_RESOURCE_DATA_URL_LENGTH in
+ * lib/campaignResources.ts for the exact limit and its justification.
+ * Visible to the campaign's active party (hasPrivateAccess -- DM +
+ * approved active members), the same boundary as party notes/session
+ * log/table chat -- not the cross-community library the backlog line
+ * also describes, which is an explicitly out-of-scope phase 2 (needs
+ * the system-hub browsing surface from backlog #36 to make sense as a
+ * destination; see claude/progress.md). */
+export interface CampaignResource {
+  id: string;
+  campaign_id: string;
+  uploader_id: string;
+  name: string;
+  description: string;
+  mime_type: string;
+  data_url: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A resource enriched with the uploader's display name -- computed
+ * server-side, matching this file's existing client-safe-types
+ * convention (e.g. CampaignMessageWithSender above). */
+export interface CampaignResourceWithUploader extends CampaignResource {
+  uploaderName: string;
 }
 
