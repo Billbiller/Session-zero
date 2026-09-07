@@ -85,6 +85,7 @@ export default function NavBar({
           <Link href="/campaigns">Browse</Link>
           <Link href="/systems">Systems</Link>
           <Link href="/subs">Find a sub</Link>
+          <Link href="/boards">Boards</Link>
           {user && (
             <>
               <Link href="/campaigns/new">New campaign</Link>

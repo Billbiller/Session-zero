@@ -690,3 +690,86 @@ export const CURATED_SYSTEM_INFO: Record<CuratedSystemSlug, CuratedSystemInfo> =
     aliases: ["powered by the apocalypse", "pbta", "apocalypse world"],
   },
 };
+
+/** Backlog #37: lightweight community discussion boards. The concrete
+ * first slice of backlog #25 (clubs/curated community lists), scoped
+ * narrow per that item's own text: a fixed, curated set of topic boards
+ * (not user-created ones), each with flat threads + flat replies (no
+ * nesting) and "light moderation" meaning self-moderation only -- a
+ * thread/reply's own author can delete it, and there is deliberately no
+ * admin/reporting system yet (that's a bigger, separate feature; see
+ * claude/progress.md for the explicit scope cut). Not campaign-scoped --
+ * these are topic-based (BoardGameGeek/Discord forum-channel style), a
+ * different axis from every other private/campaign-gated feature in this
+ * app. Browsing is public, matching campaign browsing/sub pool/system
+ * hubs; posting a thread or reply requires sign-in. */
+export const BOARD_TOPICS = [
+  "new-player-questions",
+  "homebrew-showcase",
+  "lfg-advice",
+  "local-meetups",
+] as const;
+
+export type BoardSlug = (typeof BOARD_TOPICS)[number];
+
+export interface BoardInfo {
+  name: string;
+  description: string;
+}
+
+export const BOARD_INFO: Record<BoardSlug, BoardInfo> = {
+  "new-player-questions": {
+    name: "New Player Questions",
+    description:
+      "New to tabletop RPGs, or new to a specific system? Ask anything here -- rules, etiquette, what to bring to your first session.",
+  },
+  "homebrew-showcase": {
+    name: "Homebrew & House Rules",
+    description:
+      "Share homebrew classes, settings, one-shots, and house-rule variants you've built for your own table.",
+  },
+  "lfg-advice": {
+    name: "Looking for Group Advice",
+    description:
+      "Trouble finding a table or filling one? Swap advice on writing a good pitch, screening players, or what to do when a group falls through.",
+  },
+  "local-meetups": {
+    name: "Local Meetups & In-Person Games",
+    description:
+      "Organize or find in-person meetups, game stores, and conventions running tabletop games near you -- this app's own in-person-first product direction, given a place to talk about it.",
+  },
+};
+
+export interface BoardThread {
+  id: string;
+  board_slug: BoardSlug;
+  author_id: string;
+  title: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A thread enriched with the author's display name and its reply count --
+ * computed server-side, matching this file's existing client-safe-types
+ * convention (e.g. CampaignMessageWithSender). */
+export interface BoardThreadWithAuthor extends BoardThread {
+  authorName: string;
+  replyCount: number;
+}
+
+/** Flat, not nested -- a reply always belongs to a thread directly, never
+ * to another reply, matching the backlog line's own "keep it simple"
+ * framing. */
+export interface BoardReply {
+  id: string;
+  thread_id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BoardReplyWithAuthor extends BoardReply {
+  authorName: string;
+}

@@ -423,6 +423,40 @@ CREATE TABLE IF NOT EXISTS session_reminders_sent (
   sent_at TEXT NOT NULL,
   PRIMARY KEY (campaign_id, user_id, session_at)
 );
+
+-- Backlog #37: lightweight community discussion boards -- the concrete
+-- first slice of backlog #25 (clubs/curated community lists). A fixed,
+-- curated set of topic boards (board_slug, constrained by CHECK to the
+-- app-level BOARD_TOPICS const in lib/types.ts -- there is no user-created
+-- board), not campaign-scoped. Browsing is public; posting requires
+-- sign-in (see lib/boards.ts). "Light moderation" for this pass means
+-- self-moderation only -- a thread/reply's own author can delete it, with
+-- no admin/reporting system yet.
+CREATE TABLE IF NOT EXISTS board_threads (
+  id TEXT PRIMARY KEY,
+  board_slug TEXT NOT NULL CHECK (board_slug IN ('new-player-questions','homebrew-showcase','lfg-advice','local-meetups')),
+  author_id TEXT NOT NULL REFERENCES users(id),
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_board_threads_board ON board_threads(board_slug);
+
+-- Flat replies -- a reply always belongs to a thread directly, never to
+-- another reply (no nesting, matching backlog #37's own "keep it simple"
+-- framing).
+CREATE TABLE IF NOT EXISTS board_replies (
+  id TEXT PRIMARY KEY,
+  thread_id TEXT NOT NULL REFERENCES board_threads(id),
+  author_id TEXT NOT NULL REFERENCES users(id),
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_board_replies_thread ON board_replies(thread_id);
 `);
 
 // Lightweight migration for databases created before password_hash existed
