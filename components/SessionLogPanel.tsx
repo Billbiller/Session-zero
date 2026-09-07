@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SessionLogEntryWithKudos } from "@/lib/types";
+import Section from "@/components/Section";
 
 export default function SessionLogPanel({
   campaignId,
@@ -95,7 +96,7 @@ export default function SessionLogPanel({
   }
 
   return (
-    <div className="rounded border border-black/10 p-4 dark:border-white/10">
+    <Section>
       <h2 className="mb-2 font-medium">Session log</h2>
       {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
       {isDm && (
@@ -188,6 +189,6 @@ export default function SessionLogPanel({
           <li className="text-black/60 dark:text-white/60">No entries yet.</li>
         )}
       </ul>
-    </div>
+    </Section>
   );
 }

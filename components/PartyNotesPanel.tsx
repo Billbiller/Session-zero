@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Section from "@/components/Section";
 
 export default function PartyNotesPanel({
   campaignId,
@@ -35,7 +36,7 @@ export default function PartyNotesPanel({
   }
 
   return (
-    <div className="rounded border border-black/10 p-4 dark:border-white/10">
+    <Section>
       <div className="mb-2 flex items-center justify-between">
         <h2 className="font-medium">Party notes</h2>
         {!editing && (
@@ -77,6 +78,6 @@ export default function PartyNotesPanel({
           {content || <span className="text-black/60 dark:text-white/60">No notes yet.</span>}
         </p>
       )}
-    </div>
+    </Section>
   );
 }

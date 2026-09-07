@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Membership } from "@/lib/types";
+import Section from "@/components/Section";
 
 type RequestRow = Membership & { user: { display_name: string } | null };
 
@@ -36,15 +37,15 @@ export default function RequestsPanel({
 
   if (requests.length === 0) {
     return (
-      <div className="rounded border border-black/10 p-4 dark:border-white/10">
+      <Section>
         <h2 className="font-medium">Pending requests</h2>
         <p className="mt-1 text-sm text-black/60 dark:text-white/60">No pending requests.</p>
-      </div>
+      </Section>
     );
   }
 
   return (
-    <div className="rounded border border-black/10 p-4 dark:border-white/10">
+    <Section>
       <h2 className="mb-2 font-medium">Pending requests</h2>
       {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
       <ul className="flex flex-col gap-2">
@@ -70,6 +71,6 @@ export default function RequestsPanel({
           </li>
         ))}
       </ul>
-    </div>
+    </Section>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Section from "@/components/Section";
 
 interface Target {
   userId: string;
@@ -84,7 +85,7 @@ export default function RatingsPanel({
   const roleLabel = role === "dm" ? "your players" : "your DM";
 
   return (
-    <div className="rounded border border-black/10 p-4 dark:border-white/10">
+    <Section>
       <h2 className="mb-2 font-medium">Rate {roleLabel}</h2>
       {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
       <ul className="flex flex-col gap-3 text-sm">
@@ -160,6 +161,6 @@ export default function RatingsPanel({
           </li>
         ))}
       </ul>
-    </div>
+    </Section>
   );
 }

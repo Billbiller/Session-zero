@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { User } from "@/lib/types";
+import Section from "@/components/Section";
 
 export default function RosterPanel({
   dm,
@@ -9,7 +10,7 @@ export default function RosterPanel({
   members: User[];
 }) {
   return (
-    <div className="rounded border border-black/10 p-4 dark:border-white/10">
+    <Section>
       <h2 className="mb-2 font-medium">Roster</h2>
       <ul className="flex flex-col gap-1 text-sm">
         {dm && (
@@ -31,6 +32,6 @@ export default function RosterPanel({
           <li className="text-black/60 dark:text-white/60">No approved players yet.</li>
         )}
       </ul>
-    </div>
+    </Section>
   );
 }

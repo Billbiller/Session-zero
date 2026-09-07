@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { SubRequestSummary, SubVolunteerWithName } from "@/lib/types";
+import Section from "@/components/Section";
 
 const STATUS_LABELS: Record<SubRequestSummary["status"], string> = {
   open: "Open",
@@ -141,7 +142,7 @@ export default function SubRequestPanel({
   if (requests.length === 0 && !canPost) return null;
 
   return (
-    <div className="rounded border border-black/10 p-4 dark:border-white/10">
+    <Section>
       <h2 className="mb-2 font-medium">Looking for a sub</h2>
       {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
       {canPost && (
@@ -262,6 +263,6 @@ export default function SubRequestPanel({
           <li className="text-black/60 dark:text-white/60">No sub requests posted yet.</li>
         )}
       </ul>
-    </div>
+    </Section>
   );
 }

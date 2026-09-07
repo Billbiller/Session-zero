@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { DANGER_LEVELS, DANGER_LEVEL_LABELS, type Campaign, type DangerLevel } from "@/lib/types";
+import Section from "@/components/Section";
 
 export default function DmControls({ campaign }: { campaign: Campaign }) {
   const [editing, setEditing] = useState(false);
@@ -73,7 +74,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
   }
 
   return (
-    <div className="rounded border border-black/10 p-4 dark:border-white/10">
+    <Section>
       <h2 className="mb-3 font-medium">DM controls</h2>
       {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
       {!editing ? (
@@ -180,6 +181,6 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
           </div>
         </form>
       )}
-    </div>
+    </Section>
   );
 }

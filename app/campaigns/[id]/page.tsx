@@ -21,6 +21,7 @@ import PartyNotesPanel from "@/components/PartyNotesPanel";
 import SessionLogPanel from "@/components/SessionLogPanel";
 import CharacterSummary from "@/components/CharacterSummary";
 import RatingsPanel from "@/components/RatingsPanel";
+import Section from "@/components/Section";
 import SubRequestPanel from "@/components/SubRequestPanel";
 
 export default async function CampaignDetailPage({
@@ -123,7 +124,7 @@ export default async function CampaignDetailPage({
 
       <RosterPanel dm={dm} members={approvedMembers} />
 
-      <div className="rounded border border-black/10 p-4 dark:border-white/10">
+      <Section>
         <div className="mb-2 flex items-center justify-between">
           <h2 className="font-medium">Characters at this table</h2>
           {access && (
@@ -152,7 +153,7 @@ export default async function CampaignDetailPage({
             </li>
           )}
         </ul>
-      </div>
+      </Section>
 
       <RatingsPanel campaignId={id} signedIn={!!viewer} />
 

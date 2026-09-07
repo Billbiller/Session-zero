@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ScheduleStatus } from "@/lib/types";
+import Section from "@/components/Section";
 
 const STATUS_LABEL: Record<ScheduleStatus, string> = {
   unscheduled: "No session scheduled yet",
@@ -54,7 +55,7 @@ export default function ScheduleForm({
   }
 
   return (
-    <div className="rounded border border-black/10 p-4 dark:border-white/10">
+    <Section>
       <h2 className="mb-2 font-medium">Next session</h2>
       <p className="mb-2 text-sm">
         Status: <span className="font-medium">{STATUS_LABEL[status]}</span>
@@ -95,6 +96,6 @@ export default function ScheduleForm({
         </form>
       )}
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-    </div>
+    </Section>
   );
 }
