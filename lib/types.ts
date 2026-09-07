@@ -600,3 +600,93 @@ export interface SessionRsvpSummary {
   isDm: boolean;
   response: RsvpResponse | null;
 }
+
+/** Backlog #36: curated system-specific hubs. `campaigns.system` stays
+ * free text (see lib/campaigns.ts) -- forcing it onto a closed enum here
+ * would break every existing campaign's arbitrary system string plus the
+ * existing free-text keyword search (backlog #7). This is the resolution
+ * to the tension the backlog item itself names: "curated" vs.
+ * "system-agnostic, don't force an enum" isn't a contradiction as long as
+ * the curated list is a browsing *layer* over the free text, not a
+ * reclassification of it -- a hand-picked set of well-known systems
+ * (matching the original prototype's own showcased set: 5e, Pathfinder
+ * 2e, Call of Cthulhu, Vampire: The Masquerade, and the PbtA/Forged-in-
+ * the-Dark family, split here into two distinct named systems rather than
+ * one hub since they really are different systems) with a description
+ * and a page listing campaigns whose free-text `system` matches its
+ * name/aliases -- see lib/systems.ts for the matching logic. A campaign
+ * whose `system` doesn't match any curated entry is exactly what the
+ * prototype's own "+ your system" card was gesturing at: a real,
+ * first-class campaign, just not featured on a curated hub -- it stays
+ * fully visible via the ordinary /campaigns browse+search this app
+ * already has, linked from the curated index as an explicit
+ * "Other/homebrew" catch-all rather than silently dropped or blocked. */
+export const CURATED_SYSTEMS = [
+  "dnd-5e",
+  "pathfinder-2e",
+  "call-of-cthulhu",
+  "vampire-masquerade",
+  "blades-in-the-dark",
+  "powered-by-the-apocalypse",
+] as const;
+
+export type CuratedSystemSlug = (typeof CURATED_SYSTEMS)[number];
+
+export interface CuratedSystemInfo {
+  name: string;
+  description: string;
+  /** Case-insensitive substring match patterns (in addition to `name`
+   * itself) used to find campaigns whose free-text `system` field belongs
+   * to this curated hub -- see lib/systems.ts's systemMatchPatterns()/
+   * campaignsForSystem(). Best-effort, not authoritative: a DM can type
+   * anything into `system`, so this can both miss real matches (an
+   * unlisted phrasing) and never claims to be exhaustive. */
+  aliases: readonly string[];
+}
+
+export const CURATED_SYSTEM_INFO: Record<CuratedSystemSlug, CuratedSystemInfo> = {
+  "dnd-5e": {
+    name: "Dungeons & Dragons 5th Edition",
+    description:
+      "The best-selling modern tabletop RPG -- high-fantasy adventuring with classes, levels, and a d20 core. The default starting point for most new tables.",
+    aliases: [
+      "dungeons & dragons 5e",
+      "dungeons and dragons 5e",
+      "d&d 5e",
+      "dnd 5e",
+      "d&d5e",
+      "dnd5e",
+      "5th edition",
+    ],
+  },
+  "pathfinder-2e": {
+    name: "Pathfinder 2nd Edition",
+    description:
+      "Paizo's crunchy, tactical d20 fantasy system -- deeper character-building options and more structured combat than 5e, from the studio that grew out of the original D&D 3.5e OGL.",
+    aliases: ["pathfinder 2e", "pathfinder second edition", "pathfinder 2nd edition", "pf2e", "pf2"],
+  },
+  "call-of-cthulhu": {
+    name: "Call of Cthulhu",
+    description:
+      "Lovecraftian horror investigation using the Basic Roleplaying (BRP) percentile system -- sanity loss, cosmic dread, and mysteries better solved than fought.",
+    aliases: ["call of cthulhu", "cthulhu", "coc"],
+  },
+  "vampire-masquerade": {
+    name: "Vampire: The Masquerade",
+    description:
+      "World of Darkness gothic-punk horror -- play a vampire navigating political intrigue, hunger, and humanity, using the Storyteller system.",
+    aliases: ["vampire: the masquerade", "vampire the masquerade", "vtm"],
+  },
+  "blades-in-the-dark": {
+    name: "Blades in the Dark",
+    description:
+      "A heist-driven crew of scoundrels in a haunted industrial city, using the Forged in the Dark system -- flashbacks, clocks, and a focus on consequences over dice-fishing.",
+    aliases: ["blades in the dark", "bitd", "forged in the dark"],
+  },
+  "powered-by-the-apocalypse": {
+    name: "Powered by the Apocalypse (PbtA)",
+    description:
+      "A narrative-first family of systems (Apocalypse World, Monsterhearts, Masks, and many others) built around move-driven fiction rather than simulationist rules.",
+    aliases: ["powered by the apocalypse", "pbta", "apocalypse world"],
+  },
+};

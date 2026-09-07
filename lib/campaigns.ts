@@ -162,7 +162,10 @@ export function manualReopen(id: string, dmId: string): Campaign {
 
 export type CampaignSort = "newest" | "oldest" | "title";
 
-function escapeLikePattern(value: string): string {
+// Exported (not just used internally) so lib/systems.ts's curated
+// system-hub matching (backlog #36) can build its own OR'd LIKE clauses
+// against `system` the same escaped way, instead of re-implementing this.
+export function escapeLikePattern(value: string): string {
   // Escape LIKE wildcards (% and _) and the escape character itself so a
   // keyword search treats them as literal characters, not SQL wildcards.
   return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
@@ -176,6 +179,13 @@ export function listCampaigns(opts: {
    * a lighter-weight first step toward "near me" discovery. Not a
    * geocoded distance search; see the location field's own doc comment. */
   location?: string;
+  /** Backlog #36 (curated system hubs): OR'd case-insensitive substring
+   * match against `system`, one clause per pattern, ANDed with every
+   * other filter the same way `system`/`q`/`location` already are. Never
+   * populated from raw user input directly -- lib/systems.ts builds this
+   * from a curated system's own name + aliases -- but escaped via
+   * escapeLikePattern the same defensive way regardless. */
+  systemAliases?: string[];
   sort?: CampaignSort;
   page?: number;
   pageSize?: number;
@@ -200,6 +210,17 @@ export function listCampaigns(opts: {
   if (location) {
     where.push("LOWER(location) LIKE @location ESCAPE '\\'");
     params.location = `%${escapeLikePattern(location.toLowerCase())}%`;
+  }
+  const systemAliases = (opts.systemAliases ?? [])
+    .map((alias) => alias.trim())
+    .filter((alias) => alias.length > 0);
+  if (systemAliases.length > 0) {
+    const clauses = systemAliases.map((alias, i) => {
+      const key = `sysAlias${i}`;
+      params[key] = `%${escapeLikePattern(alias.toLowerCase())}%`;
+      return `LOWER(system) LIKE @${key} ESCAPE '\\'`;
+    });
+    where.push(`(${clauses.join(" OR ")})`);
   }
   if (!opts.includeCancelled) {
     where.push("cancelled = 0");

@@ -43,7 +43,15 @@ export default async function CampaignsPage({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Browse campaigns</h1>
+        <div>
+          <h1 className="text-2xl font-semibold">Browse campaigns</h1>
+          <Link
+            href="/systems"
+            className="text-sm text-black/60 hover:underline dark:text-white/60"
+          >
+            Browse by system
+          </Link>
+        </div>
         <div className="flex items-center gap-3">
           <div className="flex rounded border border-black/20 text-sm dark:border-white/20">
             <Link
