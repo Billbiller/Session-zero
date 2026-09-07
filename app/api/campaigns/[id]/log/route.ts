@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createEntry, listEntries } from "@/lib/sessionLog";
+import { createEntry, listEntriesWithKudos } from "@/lib/sessionLog";
 import { hasPrivateAccess } from "@/lib/access";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
 
@@ -16,7 +16,7 @@ export async function GET(
   if (!hasPrivateAccess(auth.user.id, id)) {
     return NextResponse.json({ error: "Not authorized." }, { status: 403 });
   }
-  return NextResponse.json({ entries: listEntries(id) });
+  return NextResponse.json({ entries: listEntriesWithKudos(id, auth.user.id) });
 }
 
 const bodySchema = z.object({ content: z.string().trim().min(1) });

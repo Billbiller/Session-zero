@@ -2,22 +2,28 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { SessionLogEntry } from "@/lib/types";
+import type { SessionLogEntryWithKudos } from "@/lib/types";
 
 export default function SessionLogPanel({
   campaignId,
   isDm,
   entries,
+  viewerId,
 }: {
   campaignId: string;
   isDm: boolean;
-  entries: SessionLogEntry[];
+  entries: SessionLogEntryWithKudos[];
+  /** Null when signed out, though in practice this panel only renders
+   * behind the private-access gate on the campaign page. Used solely to
+   * decide whether the kudos button is clickable. */
+  viewerId: string | null;
 }) {
   const [newContent, setNewContent] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [kudosBusyId, setKudosBusyId] = useState<string | null>(null);
   const router = useRouter();
 
   async function post() {
@@ -64,6 +70,22 @@ export default function SessionLogPanel({
       method: "DELETE",
     });
     setSubmitting(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Something went wrong.");
+      return;
+    }
+    router.refresh();
+  }
+
+  async function toggleKudos(entryId: string) {
+    if (!viewerId || kudosBusyId) return;
+    setKudosBusyId(entryId);
+    setError(null);
+    const res = await fetch(`/api/campaigns/${campaignId}/log/${entryId}/kudos`, {
+      method: "POST",
+    });
+    setKudosBusyId(null);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Something went wrong.");
@@ -121,28 +143,43 @@ export default function SessionLogPanel({
             ) : (
               <>
                 <p className="whitespace-pre-wrap">{entry.content}</p>
-                <p className="mt-1 text-xs text-black/50 dark:text-white/50">
-                  {new Date(entry.created_at).toLocaleString()}
-                  {isDm && (
-                    <>
-                      {" "}
-                      &middot;{" "}
-                      <button
-                        onClick={() => {
-                          setEditingId(entry.id);
-                          setEditContent(entry.content);
-                        }}
-                        className="underline"
-                      >
-                        Edit
-                      </button>{" "}
-                      &middot;{" "}
-                      <button onClick={() => remove(entry.id)} className="underline">
-                        Delete
-                      </button>
-                    </>
-                  )}
-                </p>
+                <div className="mt-1 flex items-center gap-2 text-xs text-black/50 dark:text-white/50">
+                  <p>
+                    {new Date(entry.created_at).toLocaleString()}
+                    {isDm && (
+                      <>
+                        {" "}
+                        &middot;{" "}
+                        <button
+                          onClick={() => {
+                            setEditingId(entry.id);
+                            setEditContent(entry.content);
+                          }}
+                          className="underline"
+                        >
+                          Edit
+                        </button>{" "}
+                        &middot;{" "}
+                        <button onClick={() => remove(entry.id)} className="underline">
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </p>
+                  <button
+                    onClick={() => toggleKudos(entry.id)}
+                    disabled={!viewerId || kudosBusyId === entry.id}
+                    aria-pressed={entry.viewerGaveKudos}
+                    title={entry.viewerGaveKudos ? "Remove kudos" : "Give kudos"}
+                    className={`ml-auto rounded-full border px-2 py-0.5 disabled:opacity-50 ${
+                      entry.viewerGaveKudos
+                        ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
+                        : "border-black/20 dark:border-white/20"
+                    }`}
+                  >
+                    👏 {entry.kudosCount}
+                  </button>
+                </div>
               </>
             )}
           </li>

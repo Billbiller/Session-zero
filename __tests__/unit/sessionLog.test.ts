@@ -7,6 +7,8 @@ import {
   updateEntry,
   deleteEntry,
   listEntries,
+  listEntriesWithKudos,
+  toggleKudos,
   SessionLogError,
 } from "@/lib/sessionLog";
 import { listNotifications } from "@/lib/notifications";
@@ -69,5 +71,61 @@ describe("sessionLog", () => {
     createEntry(campaign.id, dm.id, "Second");
     const entries = listEntries(campaign.id);
     expect(entries[0].content).toBe("Second");
+  });
+
+  it("lets an active party member give and un-give kudos on an entry", () => {
+    const { dm, campaign, player } = setup("sl7");
+    const entry = createEntry(campaign.id, dm.id, "Session recap");
+
+    const given = toggleKudos(entry.id, player.id);
+    expect(given).toEqual({ count: 1, given: true });
+
+    const withKudos = listEntriesWithKudos(campaign.id, player.id);
+    expect(withKudos[0].kudosCount).toBe(1);
+    expect(withKudos[0].viewerGaveKudos).toBe(true);
+
+    const removed = toggleKudos(entry.id, player.id);
+    expect(removed).toEqual({ count: 0, given: false });
+    expect(listEntriesWithKudos(campaign.id, player.id)[0].kudosCount).toBe(0);
+  });
+
+  it("reports viewerGaveKudos as false for someone who hasn't reacted, without affecting the count", () => {
+    const { dm, campaign, player } = setup("sl8");
+    const entry = createEntry(campaign.id, dm.id, "Session recap");
+    toggleKudos(entry.id, dm.id);
+
+    const fromPlayer = listEntriesWithKudos(campaign.id, player.id);
+    expect(fromPlayer[0].kudosCount).toBe(1);
+    expect(fromPlayer[0].viewerGaveKudos).toBe(false);
+  });
+
+  it("notifies the entry's author when someone else gives kudos, but not on self-kudos or un-giving", () => {
+    const { dm, campaign, player } = setup("sl9");
+    const entry = createEntry(campaign.id, dm.id, "Session recap");
+
+    toggleKudos(entry.id, dm.id); // self-kudos: no notification
+    expect(
+      listNotifications(dm.id).items.some((n) => n.type === "session_log_kudos")
+    ).toBe(false);
+
+    toggleKudos(entry.id, player.id); // fresh kudos from someone else: notifies
+    expect(
+      listNotifications(dm.id).items.some((n) => n.type === "session_log_kudos")
+    ).toBe(true);
+
+    const notifCountAfterGiving = listNotifications(dm.id).items.filter(
+      (n) => n.type === "session_log_kudos"
+    ).length;
+    toggleKudos(entry.id, player.id); // un-giving: no new notification
+    expect(
+      listNotifications(dm.id).items.filter((n) => n.type === "session_log_kudos").length
+    ).toBe(notifCountAfterGiving);
+  });
+
+  it("rejects kudos from someone with no relationship to the campaign", () => {
+    const { dm, campaign } = setup("sl10");
+    const entry = createEntry(campaign.id, dm.id, "Session recap");
+    const stranger = signUp("Stranger", "sl10-stranger@example.com", "testpassword123");
+    expect(() => toggleKudos(entry.id, stranger.id)).toThrow(SessionLogError);
   });
 });

@@ -41,6 +41,7 @@ export const NOTIFICATION_TYPES = [
   "schedule_updated",
   "campaign_cancelled",
   "rating_prompt",
+  "session_log_kudos",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -56,6 +57,7 @@ export const NOTIFICATION_LABELS: Record<NotificationType, string> = {
   schedule_updated: "The next session date changes",
   campaign_cancelled: "A campaign you're in is cancelled",
   rating_prompt: "You're invited to rate a DM or player after leaving a campaign",
+  session_log_kudos: "Someone gives kudos to your session log entry",
 };
 
 export interface Notification {
@@ -75,6 +77,11 @@ export interface SessionLogEntry {
   content: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface SessionLogEntryWithKudos extends SessionLogEntry {
+  kudosCount: number;
+  viewerGaveKudos: boolean;
 }
 
 export interface PartyNotes {

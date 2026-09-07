@@ -89,6 +89,16 @@ CREATE TABLE IF NOT EXISTS session_log_entries (
 
 CREATE INDEX IF NOT EXISTS idx_session_log_campaign ON session_log_entries(campaign_id);
 
+CREATE TABLE IF NOT EXISTS session_log_kudos (
+  id TEXT PRIMARY KEY,
+  entry_id TEXT NOT NULL REFERENCES session_log_entries(id),
+  user_id TEXT NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL,
+  UNIQUE (entry_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_log_kudos_entry ON session_log_kudos(entry_id);
+
 CREATE TABLE IF NOT EXISTS party_notes (
   campaign_id TEXT PRIMARY KEY REFERENCES campaigns(id),
   content TEXT NOT NULL DEFAULT '',

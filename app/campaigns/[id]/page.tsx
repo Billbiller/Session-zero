@@ -6,7 +6,7 @@ import { getUserById } from "@/lib/auth";
 import { hasPrivateAccess } from "@/lib/access";
 import { listRequests } from "@/lib/memberships";
 import { getNotes } from "@/lib/partyNotes";
-import { listEntries } from "@/lib/sessionLog";
+import { listEntriesWithKudos } from "@/lib/sessionLog";
 import { computeScheduleStatus } from "@/lib/schedule";
 import { listCharactersForCampaign } from "@/lib/characters";
 import db from "@/lib/db";
@@ -142,7 +142,12 @@ export default async function CampaignDetailPage({
             status={computeScheduleStatus(campaign.next_session_at)}
           />
           <PartyNotesPanel campaignId={id} initialContent={getNotes(id).content} />
-          <SessionLogPanel campaignId={id} isDm={isDm} entries={listEntries(id)} />
+          <SessionLogPanel
+            campaignId={id}
+            isDm={isDm}
+            entries={listEntriesWithKudos(id, viewer?.id ?? null)}
+            viewerId={viewer?.id ?? null}
+          />
         </>
       )}
     </div>
