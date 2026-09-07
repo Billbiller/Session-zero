@@ -2,6 +2,7 @@ import db from "./db";
 import { getCampaign } from "./campaigns";
 import { notify } from "./notifications";
 import { activePartyUserIds } from "./access";
+import { clearRsvpsForCampaign } from "./sessionRsvps";
 import type { Campaign, ScheduleStatus } from "./types";
 
 export class ScheduleError extends Error {}
@@ -36,6 +37,14 @@ export function updateSchedule(
   db.prepare(
     "UPDATE campaigns SET next_session_at = ?, updated_at = ? WHERE id = ?"
   ).run(nextSessionAt, now, campaignId);
+
+  // Backlog #35: an RSVP for last week's date is meaningless once the
+  // date changes -- clear every existing RSVP the moment the scheduled
+  // date actually changes (including being cleared back to unscheduled).
+  // A no-op re-save of the same value doesn't wipe anyone's answer.
+  if (nextSessionAt !== campaign.next_session_at) {
+    clearRsvpsForCampaign(campaignId);
+  }
 
   const others = activePartyUserIds(campaignId).filter((id) => id !== dmId);
   for (const userId of others) {

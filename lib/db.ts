@@ -387,6 +387,42 @@ CREATE TABLE IF NOT EXISTS campaign_resources (
 );
 
 CREATE INDEX IF NOT EXISTS idx_campaign_resources_campaign ON campaign_resources(campaign_id);
+
+-- Backlog #35: session RSVP + reminders. A member's confirm/decline for
+-- the campaign's *current* next_session_at value -- there is no session_at
+-- column here on purpose. An RSVP has no independent identity of its own
+-- once the scheduled date it was answering has changed, so a reschedule
+-- clears every row for the campaign (see lib/schedule.ts's updateSchedule)
+-- rather than leaving stale answers attached to a date that no longer
+-- means anything. One row per (campaign, user); no row = no response yet.
+-- Access is the same hasPrivateAccess boundary as party notes/schedule/
+-- chat (DM + approved active members) -- see lib/sessionRsvps.ts.
+CREATE TABLE IF NOT EXISTS session_rsvps (
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id),
+  user_id TEXT NOT NULL REFERENCES users(id),
+  response TEXT NOT NULL CHECK (response IN ('confirmed','declined')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (campaign_id, user_id)
+);
+
+-- Backlog #35: tracks which (campaign, user, next_session_at value)
+-- combinations have already had a session_reminder notification fired,
+-- so the lazy check-on-activity trigger (see lib/sessionReminders.ts)
+-- never sends a duplicate for the same scheduled date. Keyed by
+-- session_at itself rather than relying on a reset-on-reschedule like
+-- session_rsvps above -- a reschedule naturally produces a new
+-- session_at value, so old rows for a since-changed date simply stop
+-- matching rather than needing to be cleared; they're left in place as
+-- a harmless audit trail (dead rows can't cause a duplicate reminder
+-- for the *current* date).
+CREATE TABLE IF NOT EXISTS session_reminders_sent (
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id),
+  user_id TEXT NOT NULL REFERENCES users(id),
+  session_at TEXT NOT NULL,
+  sent_at TEXT NOT NULL,
+  PRIMARY KEY (campaign_id, user_id, session_at)
+);
 `);
 
 // Lightweight migration for databases created before password_hash existed

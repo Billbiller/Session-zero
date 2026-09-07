@@ -73,6 +73,7 @@ export const NOTIFICATION_TYPES = [
   "message_received",
   "campaign_chat_message",
   "campaign_resource_uploaded",
+  "session_reminder",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -95,6 +96,7 @@ export const NOTIFICATION_LABELS: Record<NotificationType, string> = {
   message_received: "Someone sends you a direct message",
   campaign_chat_message: "Someone posts in your table's group chat",
   campaign_resource_uploaded: "A new file is added to your campaign's resource vault",
+  session_reminder: "A reminder as your next scheduled session approaches",
 };
 
 export interface Notification {
@@ -566,3 +568,35 @@ export interface CampaignResourceWithUploader extends CampaignResource {
   uploaderName: string;
 }
 
+
+/** Backlog #35: session RSVP. A member's confirm/decline for a
+ * campaign's *current* next_session_at value -- see lib/db.ts's
+ * session_rsvps table comment for why there's no stored session_at:
+ * a reschedule clears every row for the campaign (lib/schedule.ts),
+ * so any row that exists is always answering the campaign's present
+ * next_session_at. "confirmed"/"declined" rather than a three-way
+ * yes/no/maybe -- the backlog line's own wording is "confirm/decline",
+ * and a no-row-yet state already covers "haven't said either way". */
+export const RSVP_RESPONSES = ["confirmed", "declined"] as const;
+
+export type RsvpResponse = (typeof RSVP_RESPONSES)[number];
+
+export interface SessionRsvp {
+  campaign_id: string;
+  user_id: string;
+  response: RsvpResponse;
+  created_at: string;
+  updated_at: string;
+}
+
+/** One row per active party member (DM + approved members), enriched
+ * with display name and their current response (null = hasn't RSVPed
+ * yet) -- the shape lib/sessionRsvps.ts's listRsvps() returns so the
+ * "who's confirmed" summary can render directly, matching this file's
+ * existing client-safe-types convention (e.g. CampaignMessageWithSender). */
+export interface SessionRsvpSummary {
+  userId: string;
+  userName: string;
+  isDm: boolean;
+  response: RsvpResponse | null;
+}

@@ -8,6 +8,7 @@ import { listRequests } from "@/lib/memberships";
 import { getNotes } from "@/lib/partyNotes";
 import { listEntriesWithKudos } from "@/lib/sessionLog";
 import { computeScheduleStatus } from "@/lib/schedule";
+import { checkAndFireSessionReminder } from "@/lib/sessionReminders";
 import { listCharactersForCampaign, getCampaignChronicle } from "@/lib/characters";
 import db from "@/lib/db";
 import { DANGER_LEVEL_LABELS, type Membership, type User } from "@/lib/types";
@@ -19,6 +20,7 @@ import RosterPanel from "@/components/RosterPanel";
 import ScheduleForm from "@/components/ScheduleForm";
 import PartyNotesPanel from "@/components/PartyNotesPanel";
 import CampaignChatPanel from "@/components/CampaignChatPanel";
+import SessionRsvpPanel from "@/components/SessionRsvpPanel";
 import ResourceVaultPanel from "@/components/ResourceVaultPanel";
 import InitiativeTrackerPanel from "@/components/InitiativeTrackerPanel";
 import NpcNotesPanel from "@/components/NpcNotesPanel";
@@ -65,6 +67,16 @@ export default async function CampaignDetailPage({
   );
   const campaignCharacters = listCharactersForCampaign(id);
   const chronicle = getCampaignChronicle(id);
+
+  // Backlog #35: lazy reminder trigger #2 -- the campaign's own detail
+  // page is exactly the "real user activity" this app's no-worker
+  // reminder design piggybacks on (see checkAndFireSessionReminder's doc
+  // comment). Scoped to just this campaign + this viewer; the broader
+  // sweep across every campaign the user has access to lives on
+  // GET /api/notifications instead.
+  if (viewer && access) {
+    checkAndFireSessionReminder(id, viewer.id);
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -200,6 +212,7 @@ export default async function CampaignDetailPage({
             nextSessionAt={campaign.next_session_at}
             status={computeScheduleStatus(campaign.next_session_at)}
           />
+          {campaign.next_session_at && <SessionRsvpPanel campaignId={id} viewerId={viewer?.id ?? null} />}
           <CampaignChatPanel campaignId={id} viewerId={viewer?.id ?? null} />
           <ResourceVaultPanel campaignId={id} viewerId={viewer?.id ?? null} isDm={isDm} />
           <PartyNotesPanel campaignId={id} initialContent={getNotes(id).content} />
