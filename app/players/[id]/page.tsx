@@ -6,6 +6,7 @@ import { getProfile, splitPreferredSystems } from "@/lib/profiles";
 import { listCharactersForUser } from "@/lib/characters";
 import { getCampaign } from "@/lib/campaigns";
 import { getUserRatingSummary } from "@/lib/ratings";
+import { getAttendanceStats } from "@/lib/attendance";
 import { getUserStats } from "@/lib/stats";
 import { getAvailabilitySlots } from "@/lib/availability";
 import { isFollowing, followerCount, followingCount } from "@/lib/follows";
@@ -42,6 +43,36 @@ function reputationLine(label: string, summary: { average: number | null; count:
   );
 }
 
+/** Backlog #39: the "shows up" reliability signal, styled to match
+ * reputationLine() above -- "No attendance data yet" (not "0%") when
+ * recorded is 0, the same unrated-not-zero convention. See
+ * lib/attendance.ts for why this is derived only from explicit
+ * DM-recorded attendance, never from RSVP intent (backlog #35), and why
+ * it's deliberately player-only (a DM is never scored on attending their
+ * own table). */
+function attendanceLine(stats: { recorded: number; attended: number; rate: number | null }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-sm font-medium">Attendance (as player)</p>
+      {stats.recorded === 0 ? (
+        <p className="text-sm text-black/60 dark:text-white/60">No attendance data yet</p>
+      ) : (
+        <>
+          <p className="text-sm">
+            {Math.round((stats.rate ?? 0) * 100)}%{" "}
+            <span className="text-black/60 dark:text-white/60">
+              ({stats.attended}/{stats.recorded} logged session{stats.recorded === 1 ? "" : "s"})
+            </span>
+          </p>
+          <p className="text-xs text-black/60 dark:text-white/60">
+            DM-recorded attendance, not RSVP responses
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default async function PlayerProfilePage({
   params,
 }: {
@@ -58,6 +89,7 @@ export default async function PlayerProfilePage({
   const systems = splitPreferredSystems(profile.preferred_systems);
   const characters = listCharactersForUser(id);
   const ratingSummary = getUserRatingSummary(id);
+  const attendanceStats = getAttendanceStats(id);
   const stats = getUserStats(id);
   const availabilitySlots = getAvailabilitySlots(id);
   const followers = followerCount(id);
@@ -91,6 +123,7 @@ export default async function PlayerProfilePage({
       <div className="flex flex-col gap-3 rounded border border-black/10 p-3 dark:border-white/10 sm:flex-row sm:gap-6">
         {reputationLine("As DM", ratingSummary.asDm)}
         {reputationLine("As player", ratingSummary.asPlayer)}
+        {attendanceLine(attendanceStats)}
       </div>
 
       <StatsPanel stats={stats} />

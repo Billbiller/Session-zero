@@ -221,6 +221,7 @@ export default async function CampaignDetailPage({
             isDm={isDm}
             entries={listEntriesWithKudos(id, viewer?.id ?? null)}
             viewerId={viewer?.id ?? null}
+            partyMembers={approvedMembers.map((m) => ({ id: m.id, display_name: m.display_name }))}
           />
         </>
       )}

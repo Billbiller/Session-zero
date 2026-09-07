@@ -522,6 +522,32 @@ CREATE TABLE IF NOT EXISTS feed_events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_feed_events_actor ON feed_events(actor_id);
+
+-- Backlog #39: attendance-based reliability signal. Deliberately NOT
+-- derived from session_rsvps (backlog #35) -- an RSVP is intent to
+-- attend the *next* session, not a record that someone actually showed
+-- up, and isn't even durable history: every row for a campaign is wiped
+-- the moment next_session_at changes (see this file's session_rsvps
+-- comment above), so there is no persisted RSVP trail left to mine after
+-- the fact anyway. The only durable per-session record this app has is a
+-- session_log_entries row, so honest attendance hangs off that instead:
+-- the DM optionally marks, per log entry, which of the campaign's
+-- currently-active non-DM party members actually showed up. No row for
+-- a (entry, user) pair means "not recorded" -- never "recorded absent"
+-- -- so an entry the DM never marks attendance for doesn't silently
+-- count against anyone. See lib/attendance.ts for the full design and
+-- claude/progress.md for the data-honesty reasoning behind this over a
+-- "derive it from RSVP data" proxy.
+CREATE TABLE IF NOT EXISTS session_log_attendance (
+  entry_id TEXT NOT NULL REFERENCES session_log_entries(id),
+  user_id TEXT NOT NULL REFERENCES users(id),
+  attended INTEGER NOT NULL CHECK (attended IN (0,1)),
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (entry_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_log_attendance_entry ON session_log_attendance(entry_id);
+CREATE INDEX IF NOT EXISTS idx_session_log_attendance_user ON session_log_attendance(user_id);
 `);
 
 // Lightweight migration for databases created before password_hash existed

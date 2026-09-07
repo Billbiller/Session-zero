@@ -816,3 +816,49 @@ export interface FeedEvent {
 export interface FeedEventWithActor extends FeedEvent {
   actorName: string;
 }
+
+/** Backlog #39: attendance-based reliability signal. Judgment call,
+ * documented in full in lib/attendance.ts and claude/progress.md:
+ * backlog #35's session_rsvps records *intent* to attend the next
+ * session, not whether someone actually showed up, and isn't even a
+ * durable history (a reschedule wipes every row for the campaign -- see
+ * the session_rsvps comment in lib/db.ts). The only durable per-session
+ * record this app has is a session_log_entries row, so honest attendance
+ * has to hang off that instead of RSVP data. This table is a DM-attested
+ * record ("who actually showed up"), optionally populated when the DM
+ * posts or edits a session log entry -- no row for a (entry, user) pair
+ * means "not recorded", never "recorded as absent". */
+export interface SessionLogAttendance {
+  entry_id: string;
+  user_id: string;
+  attended: number; // 0 | 1
+  created_at: string;
+}
+
+/** One row per current attendance-marking candidate for a given entry --
+ * the campaign's active party minus the DM (see lib/attendance.ts) --
+ * enriched with display name and the DM's recorded attended value: null
+ * means nobody has recorded it yet, distinct from an explicit "did not
+ * attend". Matches this file's existing client-safe-types convention
+ * (e.g. SessionRsvpSummary). */
+export interface SessionLogAttendanceSummary {
+  userId: string;
+  userName: string;
+  attended: boolean | null;
+}
+
+/** A user's aggregate "shows up" signal, derived only from explicit
+ * DM-recorded attendance (never from RSVP intent -- see
+ * SessionLogAttendance above). `recorded` is how many session log
+ * entries someone actually has an attendance record for; `rate` is null
+ * (not 0%) when recorded is 0, matching this app's established
+ * unrated-not-zero convention (e.g. RatingSummary) rather than reading a
+ * brand-new or never-marked user as unreliable. Deliberately player-only
+ * -- attendance rows are never written for a campaign's own DM (a DM is
+ * presumed present for every entry they themselves post), so this never
+ * tracks a DM's own attendance. */
+export interface AttendanceStats {
+  recorded: number;
+  attended: number;
+  rate: number | null;
+}
