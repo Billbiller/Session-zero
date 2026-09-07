@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createCampaign, listCampaigns, type CampaignSort } from "@/lib/campaigns";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
+import { SESSION_FORMATS, type SessionFormat } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+function parseSessionFormat(value: string | null): SessionFormat | undefined {
+  return value && (SESSION_FORMATS as readonly string[]).includes(value)
+    ? (value as SessionFormat)
+    : undefined;
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -11,10 +18,20 @@ export async function GET(request: NextRequest) {
   const q = searchParams.get("q") || undefined;
   const location = searchParams.get("location") || undefined;
   const newPlayerFriendly = searchParams.get("newPlayerFriendly") === "true" || undefined;
+  const sessionFormat = parseSessionFormat(searchParams.get("sessionFormat"));
   const sort = (searchParams.get("sort") as CampaignSort) || undefined;
   const page = Number(searchParams.get("page") || "1");
   const pageSize = Number(searchParams.get("pageSize") || "10");
-  const result = listCampaigns({ system, q, location, newPlayerFriendly, sort, page, pageSize });
+  const result = listCampaigns({
+    system,
+    q,
+    location,
+    newPlayerFriendly,
+    sessionFormat,
+    sort,
+    page,
+    pageSize,
+  });
   return NextResponse.json(result);
 }
 
@@ -25,6 +42,7 @@ const createSchema = z.object({
   capacity: z.number().int().min(1),
   location: z.string().trim().max(200).optional(),
   newPlayerFriendly: z.boolean().optional(),
+  sessionFormat: z.enum(SESSION_FORMATS).optional(),
 });
 
 export async function POST(request: NextRequest) {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { SESSION_FORMATS, SESSION_FORMAT_LABELS, type SessionFormat } from "@/lib/types";
 
 export default function NewCampaignPage() {
   const [title, setTitle] = useState("");
@@ -10,6 +11,7 @@ export default function NewCampaignPage() {
   const [capacity, setCapacity] = useState(4);
   const [location, setLocation] = useState("");
   const [newPlayerFriendly, setNewPlayerFriendly] = useState(false);
+  const [sessionFormat, setSessionFormat] = useState<SessionFormat | "">("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
@@ -21,7 +23,15 @@ export default function NewCampaignPage() {
     const res = await fetch("/api/campaigns", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, system, capacity, location, newPlayerFriendly }),
+      body: JSON.stringify({
+        title,
+        description,
+        system,
+        capacity,
+        location,
+        newPlayerFriendly,
+        sessionFormat: sessionFormat || undefined,
+      }),
     });
     setSubmitting(false);
     const data = await res.json().catch(() => ({}));
@@ -88,6 +98,21 @@ export default function NewCampaignPage() {
             placeholder="e.g. Austin, TX or Online/Remote"
             className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
           />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Format
+          <select
+            value={sessionFormat}
+            onChange={(e) => setSessionFormat(e.target.value as SessionFormat | "")}
+            className="w-fit rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+          >
+            <option value="">Not set</option>
+            {SESSION_FORMATS.map((format) => (
+              <option key={format} value={format}>
+                {SESSION_FORMAT_LABELS[format]}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input

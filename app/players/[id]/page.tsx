@@ -14,6 +14,7 @@ import CharacterSummary from "@/components/CharacterSummary";
 import StatsPanel from "@/components/StatsPanel";
 import AvailabilityGrid from "@/components/AvailabilityGrid";
 import FollowButton from "@/components/FollowButton";
+import { SESSION_FORMAT_PREFERENCE_LABELS } from "@/lib/types";
 
 function reputationLine(label: string, summary: { average: number | null; count: number; tagCounts: Record<string, number> }) {
   const topTags = Object.entries(summary.tagCounts)
@@ -180,6 +181,15 @@ export default async function PlayerProfilePage({
         <div>
           <h2 className="text-sm font-medium">Location</h2>
           <p className="text-sm">{profile.location}</p>
+        </div>
+      )}
+
+      {profile.session_format_preference && (
+        <div>
+          <h2 className="text-sm font-medium">In-person or remote?</h2>
+          <p className="text-sm">
+            {SESSION_FORMAT_PREFERENCE_LABELS[profile.session_format_preference]}
+          </p>
         </div>
       )}
 

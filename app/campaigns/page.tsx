@@ -4,6 +4,7 @@ import { getUserById } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getProfile } from "@/lib/profiles";
 import DiscoverDeck, { type DiscoverCard } from "@/components/DiscoverDeck";
+import { SESSION_FORMATS, SESSION_FORMAT_LABELS, type SessionFormat } from "@/lib/types";
 
 const PAGE_SIZE = 10;
 // The deck shows every matching campaign one at a time rather than paging
@@ -20,6 +21,7 @@ export default async function CampaignsPage({
     q?: string;
     location?: string;
     newPlayerFriendly?: string;
+    sessionFormat?: string;
     sort?: string;
     page?: string;
     view?: string;
@@ -30,6 +32,10 @@ export default async function CampaignsPage({
   const q = params.q?.trim() || undefined;
   const location = params.location?.trim() || undefined;
   const newPlayerFriendly = params.newPlayerFriendly === "true" || undefined;
+  const sessionFormat =
+    params.sessionFormat && (SESSION_FORMATS as readonly string[]).includes(params.sessionFormat)
+      ? (params.sessionFormat as SessionFormat)
+      : undefined;
   const sort = (params.sort as CampaignSort) || "newest";
   const page = Number(params.page || "1");
   const view = params.view === "discover" ? "discover" : "list";
@@ -39,6 +45,7 @@ export default async function CampaignsPage({
     q,
     location,
     newPlayerFriendly,
+    sessionFormat,
     sort,
     page,
     pageSize: view === "discover" ? DISCOVER_BATCH_SIZE : PAGE_SIZE,
@@ -72,7 +79,7 @@ export default async function CampaignsPage({
             <Link
               href={{
                 pathname: "/campaigns",
-                query: { system, q, location, newPlayerFriendly, sort },
+                query: { system, q, location, newPlayerFriendly, sessionFormat, sort },
               }}
               className={`px-3 py-1.5 ${view === "list" ? "bg-black text-white dark:bg-white dark:text-black" : ""}`}
             >
@@ -81,7 +88,7 @@ export default async function CampaignsPage({
             <Link
               href={{
                 pathname: "/campaigns",
-                query: { system, q, location, newPlayerFriendly, sort, view: "discover" },
+                query: { system, q, location, newPlayerFriendly, sessionFormat, sort, view: "discover" },
               }}
               className={`px-3 py-1.5 ${view === "discover" ? "bg-black text-white dark:bg-white dark:text-black" : ""}`}
             >
@@ -126,6 +133,21 @@ export default async function CampaignsPage({
           />
         </label>
         <label className="flex flex-col gap-1">
+          Format
+          <select
+            name="sessionFormat"
+            defaultValue={sessionFormat ?? ""}
+            className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+          >
+            <option value="">Any</option>
+            {SESSION_FORMATS.map((format) => (
+              <option key={format} value={format}>
+                {SESSION_FORMAT_LABELS[format]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
           Sort
           <select
             name="sort"
@@ -160,7 +182,7 @@ export default async function CampaignsPage({
           <Link
             href={{
               pathname: "/campaigns",
-              query: { system, q, location, sort, newPlayerFriendly: "true" },
+              query: { system, q, location, sessionFormat, sort, newPlayerFriendly: "true" },
             }}
             className="underline"
           >
@@ -186,6 +208,7 @@ export default async function CampaignsPage({
               system: campaign.system,
               location: campaign.location,
               danger_level: campaign.danger_level,
+              session_format: campaign.session_format,
               new_player_friendly: campaign.new_player_friendly,
               accepting_requests: campaign.accepting_requests,
               cancelled: campaign.cancelled,
@@ -222,8 +245,13 @@ export default async function CampaignsPage({
                     {!campaign.accepting_requests && " (closed to new requests)"}
                     {campaign.location && <> &middot; {campaign.location}</>}
                   </p>
-                  {!!campaign.new_player_friendly && (
+                  {campaign.session_format && (
                     <span className="mt-1 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20">
+                      {SESSION_FORMAT_LABELS[campaign.session_format]}
+                    </span>
+                  )}
+                  {!!campaign.new_player_friendly && (
+                    <span className="mt-1 ml-2 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20">
                       New-player friendly
                     </span>
                   )}
@@ -242,7 +270,7 @@ export default async function CampaignsPage({
                   key={p}
                   href={{
                     pathname: "/campaigns",
-                    query: { system, q, location, newPlayerFriendly, sort, page: p },
+                    query: { system, q, location, newPlayerFriendly, sessionFormat, sort, page: p },
                   }}
                   className={
                     p === page

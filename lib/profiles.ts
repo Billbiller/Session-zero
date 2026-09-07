@@ -1,5 +1,5 @@
 import db from "./db";
-import type { Campaign, Profile } from "./types";
+import { SESSION_FORMAT_PREFERENCES, type Campaign, type Profile, type SessionFormatPreference } from "./types";
 
 export class ProfileError extends Error {}
 
@@ -7,6 +7,10 @@ const MAX_BIO = 2000;
 const MAX_PREFERRED_SYSTEMS = 300;
 const MAX_AVAILABILITY = 300;
 const MAX_LOCATION = 200;
+
+function isKnownSessionFormatPreference(value: string): value is SessionFormatPreference {
+  return (SESSION_FORMAT_PREFERENCES as readonly string[]).includes(value);
+}
 
 function defaultProfile(userId: string): Profile {
   return {
@@ -16,6 +20,7 @@ function defaultProfile(userId: string): Profile {
     availability: "",
     location: "",
     new_to_tabletop: 0,
+    session_format_preference: null,
     updated_at: null,
   };
 }
@@ -38,6 +43,12 @@ export function upsertProfile(
     location?: string;
     /** undefined = leave unchanged, matching every other field here. */
     newToTabletop?: boolean;
+    /** Backlog #41 phase 1: the player-side symmetric preference to a
+     * campaign's session_format -- undefined = leave unchanged, null =
+     * clear back to "no preference stated", a recognized value = set it.
+     * Purely informational for this phase (see the field's own doc
+     * comment on the Profile type) -- not wired into any ranking. */
+    sessionFormatPreference?: SessionFormatPreference | null;
   }
 ): Profile {
   const current = getProfile(userId);
@@ -47,6 +58,18 @@ export function upsertProfile(
   const location = (input.location ?? current.location).trim();
   const newToTabletop =
     input.newToTabletop !== undefined ? (input.newToTabletop ? 1 : 0) : current.new_to_tabletop;
+  const sessionFormatPreference =
+    input.sessionFormatPreference !== undefined
+      ? input.sessionFormatPreference
+      : current.session_format_preference;
+
+  if (
+    sessionFormatPreference !== null &&
+    sessionFormatPreference !== undefined &&
+    !isKnownSessionFormatPreference(sessionFormatPreference)
+  ) {
+    throw new ProfileError("Not a recognized session format preference.");
+  }
 
   if (bio.length > MAX_BIO) {
     throw new ProfileError(`Bio can't be longer than ${MAX_BIO} characters.`);
@@ -67,14 +90,15 @@ export function upsertProfile(
 
   const updated_at = new Date().toISOString();
   db.prepare(
-    `INSERT INTO profiles (user_id, bio, preferred_systems, availability, location, new_to_tabletop, updated_at)
-     VALUES (@user_id, @bio, @preferred_systems, @availability, @location, @new_to_tabletop, @updated_at)
+    `INSERT INTO profiles (user_id, bio, preferred_systems, availability, location, new_to_tabletop, session_format_preference, updated_at)
+     VALUES (@user_id, @bio, @preferred_systems, @availability, @location, @new_to_tabletop, @session_format_preference, @updated_at)
      ON CONFLICT (user_id) DO UPDATE SET
        bio = excluded.bio,
        preferred_systems = excluded.preferred_systems,
        availability = excluded.availability,
        location = excluded.location,
        new_to_tabletop = excluded.new_to_tabletop,
+       session_format_preference = excluded.session_format_preference,
        updated_at = excluded.updated_at`
   ).run({
     user_id: userId,
@@ -83,6 +107,7 @@ export function upsertProfile(
     availability,
     location,
     new_to_tabletop: newToTabletop,
+    session_format_preference: sessionFormatPreference,
     updated_at,
   });
   return getProfile(userId);

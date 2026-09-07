@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { DANGER_LEVELS, DANGER_LEVEL_LABELS, type Campaign, type DangerLevel } from "@/lib/types";
+import {
+  DANGER_LEVELS,
+  DANGER_LEVEL_LABELS,
+  SESSION_FORMATS,
+  SESSION_FORMAT_LABELS,
+  type Campaign,
+  type DangerLevel,
+  type SessionFormat,
+} from "@/lib/types";
 import Section from "@/components/Section";
 
 export default function DmControls({ campaign }: { campaign: Campaign }) {
@@ -14,6 +22,9 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
   const [location, setLocation] = useState(campaign.location);
   const [dangerLevel, setDangerLevel] = useState<DangerLevel | "">(campaign.danger_level ?? "");
   const [newPlayerFriendly, setNewPlayerFriendly] = useState(!!campaign.new_player_friendly);
+  const [sessionFormat, setSessionFormat] = useState<SessionFormat | "">(
+    campaign.session_format ?? ""
+  );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
@@ -33,6 +44,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
         location,
         dangerLevel: dangerLevel === "" ? null : dangerLevel,
         newPlayerFriendly,
+        sessionFormat: sessionFormat === "" ? null : sessionFormat,
       }),
     });
     setSubmitting(false);
@@ -168,6 +180,21 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
             <span className="text-xs text-black/60 dark:text-white/60">
               A heads-up for prospective players, not a scoreboard.
             </span>
+          </label>
+          <label className="flex flex-col gap-1">
+            Format
+            <select
+              value={sessionFormat}
+              onChange={(e) => setSessionFormat(e.target.value as SessionFormat | "")}
+              className="w-fit rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+            >
+              <option value="">Not set</option>
+              {SESSION_FORMATS.map((format) => (
+                <option key={format} value={format}>
+                  {SESSION_FORMAT_LABELS[format]}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="flex items-center gap-2">
             <input

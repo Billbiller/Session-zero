@@ -3,7 +3,15 @@
 import { useEffect, useState, useCallback, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Campaign, Profile, UserStats, AvailabilitySlot } from "@/lib/types";
+import {
+  SESSION_FORMAT_PREFERENCES,
+  SESSION_FORMAT_PREFERENCE_LABELS,
+  type Campaign,
+  type Profile,
+  type UserStats,
+  type AvailabilitySlot,
+  type SessionFormatPreference,
+} from "@/lib/types";
 import CharacterManager from "@/components/CharacterManager";
 import StatsPanel from "@/components/StatsPanel";
 import AvailabilityGrid from "@/components/AvailabilityGrid";
@@ -18,6 +26,9 @@ export default function ProfilePage() {
   const [availability, setAvailability] = useState("");
   const [location, setLocation] = useState("");
   const [newToTabletop, setNewToTabletop] = useState(false);
+  const [sessionFormatPreference, setSessionFormatPreference] = useState<
+    SessionFormatPreference | ""
+  >("");
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -39,6 +50,7 @@ export default function ProfilePage() {
       setAvailability(data.profile.availability);
       setLocation(data.profile.location);
       setNewToTabletop(!!data.profile.new_to_tabletop);
+      setSessionFormatPreference(data.profile.session_format_preference ?? "");
       setAvailabilitySlots(data.availabilitySlots ?? []);
       setDming(data.dming ?? []);
       setPlaying(data.playing ?? []);
@@ -69,6 +81,7 @@ export default function ProfilePage() {
         availability,
         location,
         newToTabletop,
+        sessionFormatPreference: sessionFormatPreference || null,
         availabilitySlots,
       }),
     });
@@ -151,6 +164,23 @@ export default function ProfilePage() {
               onChange={(e) => setNewToTabletop(e.target.checked)}
             />
             I&apos;m new to tabletop gaming
+          </label>
+          <label className="flex flex-col gap-1">
+            In-person or remote?
+            <select
+              value={sessionFormatPreference}
+              onChange={(e) =>
+                setSessionFormatPreference(e.target.value as SessionFormatPreference | "")
+              }
+              className="w-fit rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+            >
+              <option value="">Not set</option>
+              {SESSION_FORMAT_PREFERENCES.map((pref) => (
+                <option key={pref} value={pref}>
+                  {SESSION_FORMAT_PREFERENCE_LABELS[pref]}
+                </option>
+              ))}
+            </select>
           </label>
           <div className="flex flex-col gap-1">
             <span>Weekly availability (optional, in addition to the note above)</span>

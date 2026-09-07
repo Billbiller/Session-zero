@@ -410,4 +410,181 @@ describe("campaigns", () => {
     expect(friendlyOnly.total).toBe(1);
     expect(friendlyOnly.items[0].title).toBe("Friendly Game");
   });
+
+  // Backlog #41 phase 1: structural in-person/remote/hybrid field.
+  it("defaults a new campaign's session_format to null and lets it be set on create", () => {
+    const dm = makeDm("dm18@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(campaign.session_format).toBeNull();
+
+    const inPerson = createCampaign({
+      dmId: dm.id,
+      title: "T2",
+      description: "",
+      system: "S",
+      capacity: 4,
+      sessionFormat: "in_person",
+    });
+    expect(inPerson.session_format).toBe("in_person");
+  });
+
+  it("rejects an unrecognized session format on create", () => {
+    const dm = makeDm("dm19@example.com");
+    expect(() =>
+      createCampaign({
+        dmId: dm.id,
+        title: "T",
+        description: "",
+        system: "S",
+        capacity: 4,
+        // @ts-expect-error deliberately invalid for this test
+        sessionFormat: "spaceship",
+      })
+    ).toThrow(CampaignError);
+  });
+
+  it("lets the DM set, change, and clear session_format via update", () => {
+    const dm = makeDm("dm20@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+
+    const set = updateCampaign(campaign.id, dm.id, { sessionFormat: "remote" });
+    expect(set.session_format).toBe("remote");
+
+    const changed = updateCampaign(campaign.id, dm.id, { sessionFormat: "hybrid" });
+    expect(changed.session_format).toBe("hybrid");
+
+    const cleared = updateCampaign(campaign.id, dm.id, { sessionFormat: null });
+    expect(cleared.session_format).toBeNull();
+  });
+
+  it("rejects an unrecognized session format on update", () => {
+    const dm = makeDm("dm21@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(() =>
+      // @ts-expect-error deliberately invalid for this test
+      updateCampaign(campaign.id, dm.id, { sessionFormat: "spaceship" })
+    ).toThrow(CampaignError);
+  });
+
+  it("leaves session_format untouched when omitted from an update", () => {
+    const dm = makeDm("dm22@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      sessionFormat: "in_person",
+    });
+    const updated = updateCampaign(campaign.id, dm.id, { title: "New title" });
+    expect(updated.session_format).toBe("in_person");
+  });
+
+  it("filters listed campaigns by an exact session_format match without excluding other formats from the count", () => {
+    const dm = makeDm("dm23@example.com");
+    createCampaign({
+      dmId: dm.id,
+      title: "In Person Game",
+      description: "",
+      system: "Unique SF System A",
+      capacity: 4,
+      sessionFormat: "in_person",
+    });
+    createCampaign({
+      dmId: dm.id,
+      title: "Remote Game",
+      description: "",
+      system: "Unique SF System A",
+      capacity: 4,
+      sessionFormat: "remote",
+    });
+
+    const all = listCampaigns({ system: "Unique SF System A" });
+    expect(all.total).toBe(2);
+
+    const remoteOnly = listCampaigns({
+      system: "Unique SF System A",
+      sessionFormat: "remote",
+    });
+    expect(remoteOnly.total).toBe(1);
+    expect(remoteOnly.items[0].title).toBe("Remote Game");
+  });
+
+  it("ranks in-person campaigns ahead of remote/hybrid/unset ones by default, without excluding any of them", () => {
+    const dm = makeDm("dm24@example.com");
+    const sys = "Unique Ranking System B";
+    // Deliberately created in an order that would put "Remote" first under
+    // plain newest-first sort if the format ranking didn't apply.
+    createCampaign({
+      dmId: dm.id,
+      title: "Remote",
+      description: "",
+      system: sys,
+      capacity: 4,
+      sessionFormat: "remote",
+    });
+    createCampaign({
+      dmId: dm.id,
+      title: "Unset",
+      description: "",
+      system: sys,
+      capacity: 4,
+    });
+    createCampaign({
+      dmId: dm.id,
+      title: "Hybrid",
+      description: "",
+      system: sys,
+      capacity: 4,
+      sessionFormat: "hybrid",
+    });
+    createCampaign({
+      dmId: dm.id,
+      title: "In Person",
+      description: "",
+      system: sys,
+      capacity: 4,
+      sessionFormat: "in_person",
+    });
+
+    const { items, total } = listCampaigns({ system: sys, sort: "newest" });
+    // Ranking is a re-order, not a filter -- every campaign is still here.
+    // Within the tied "not in-person" bucket (Remote and Unset), the
+    // secondary newest-first sort still applies -- Unset was created
+    // after Remote, so it ranks first among the two.
+    expect(total).toBe(4);
+    expect(items.map((c) => c.title)).toEqual(["In Person", "Hybrid", "Unset", "Remote"]);
+  });
+
+  it("preserves the existing newest/oldest/title sort order when no campaign has a session_format set", () => {
+    const dm = makeDm("dm25@example.com");
+    const sys = "Unique Ranking System C";
+    createCampaign({ dmId: dm.id, title: "Zebra", description: "", system: sys, capacity: 4 });
+    createCampaign({ dmId: dm.id, title: "Apple", description: "", system: sys, capacity: 4 });
+    createCampaign({ dmId: dm.id, title: "Mango", description: "", system: sys, capacity: 4 });
+
+    const byTitle = listCampaigns({ system: sys, sort: "title" });
+    expect(byTitle.items.map((c) => c.title)).toEqual(["Apple", "Mango", "Zebra"]);
+
+    const newest = listCampaigns({ system: sys, sort: "newest" });
+    expect(newest.items.map((c) => c.title)).toEqual(["Mango", "Apple", "Zebra"]);
+  });
 });

@@ -11,7 +11,7 @@ import { computeScheduleStatus } from "@/lib/schedule";
 import { checkAndFireSessionReminder } from "@/lib/sessionReminders";
 import { listCharactersForCampaign, getCampaignChronicle } from "@/lib/characters";
 import db from "@/lib/db";
-import { DANGER_LEVEL_LABELS, type Membership, type User } from "@/lib/types";
+import { DANGER_LEVEL_LABELS, SESSION_FORMAT_LABELS, type Membership, type User } from "@/lib/types";
 
 import DmControls from "@/components/DmControls";
 import JoinLeaveControls from "@/components/JoinLeaveControls";
@@ -100,6 +100,15 @@ export default async function CampaignDetailPage({
           )}{" "}
           &middot; {headcount}/{campaign.capacity} players
           {campaign.location && <> &middot; {campaign.location}</>}
+          {campaign.session_format && (
+            <>
+              {" "}
+              &middot;{" "}
+              <span className="rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20">
+                {SESSION_FORMAT_LABELS[campaign.session_format]}
+              </span>
+            </>
+          )}
           {campaign.danger_level && (
             <>
               {" "}

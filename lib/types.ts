@@ -21,6 +21,29 @@ export const DANGER_LEVEL_LABELS: Record<DangerLevel, string> = {
   "deadly-osr": "Deadly (OSR-style)",
 };
 
+/** Backlog #41 phase 1: a *structural* in-person-vs-remote field, distinct
+ * from the existing free-text `location` (which today can hold a real
+ * place OR literally the string "Online/Remote" -- there's no way to
+ * query or rank on that distinction, only substring-match it). This is
+ * the field discovery ranking (see listCampaigns' formatRank below) and
+ * any future filter UI key off. Modeled as a three-value enum, not a
+ * boolean, because a real in-person table that also streams for a remote
+ * player is a genuinely distinct, common case, not a bug in either
+ * direction -- following the exact `DANGER_LEVELS` nullable-enum
+ * convention (a CHECK-constrained TEXT column, null meaning "the DM
+ * hasn't said"). Phase 2 (real geocoded distance search) remains
+ * explicitly blocked on a maps/geocoding API key -- see the backlog
+ * entry and progress.md's dated session log for the full reasoning. */
+export const SESSION_FORMATS = ["in_person", "remote", "hybrid"] as const;
+
+export type SessionFormat = (typeof SESSION_FORMATS)[number];
+
+export const SESSION_FORMAT_LABELS: Record<SessionFormat, string> = {
+  in_person: "In person",
+  remote: "Remote / online",
+  hybrid: "Hybrid (in person, with remote seats)",
+};
+
 export interface Campaign {
   id: string;
   dm_id: string;
@@ -47,6 +70,13 @@ export interface Campaign {
    * filterable field on the campaign, shown on the detail header and
    * browse cards. */
   new_player_friendly: number; // 0 | 1
+  /** Backlog #41 phase 1: structural in-person/remote/hybrid flag -- see
+   * SESSION_FORMATS' own doc comment above for why this exists alongside
+   * (not instead of) the free-text `location` field. Null means the DM
+   * hasn't set one; existing campaigns created before this column
+   * existed default to null via the ALTER TABLE migration in lib/db.ts,
+   * same as danger_level did. */
+  session_format: SessionFormat | null;
   created_at: string;
   updated_at: string;
 }
@@ -183,8 +213,29 @@ export interface Profile {
    * friendly" tag from the campaign side (see Campaign.new_player_friendly
    * above). Not enforced or verified in any way — a signal, not a gate. */
   new_to_tabletop: number; // 0 | 1
+  /** Backlog #41 phase 1: the symmetric preference on the player side of
+   * the table, parallel to a campaign's own `session_format` -- but a
+   * *preference* isn't the same shape as a campaign's actual format
+   * ("hybrid" doesn't describe what a person wants the way it describes
+   * what a table offers), so this is its own, smaller enum rather than
+   * reusing SessionFormat. Purely informational/display for this phase
+   * (shown on /players/[id], not wired into any ranking or matching
+   * logic) -- null means no preference stated, distinct from the
+   * explicit "either" value. */
+  session_format_preference: SessionFormatPreference | null;
   updated_at: string | null;
 }
+
+/** See Profile.session_format_preference's own doc comment above. */
+export const SESSION_FORMAT_PREFERENCES = ["in_person", "remote", "either"] as const;
+
+export type SessionFormatPreference = (typeof SESSION_FORMAT_PREFERENCES)[number];
+
+export const SESSION_FORMAT_PREFERENCE_LABELS: Record<SessionFormatPreference, string> = {
+  in_person: "In person only",
+  remote: "Remote only",
+  either: "Either is fine",
+};
 
 /** Day-of-week display order for the structured availability grid
  * (backlog #27, phase 1). Index 0 = Monday, 6 = Sunday — an app-level

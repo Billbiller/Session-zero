@@ -51,6 +51,11 @@ CREATE TABLE IF NOT EXISTS campaigns (
   -- rating of the table. See lib/types.ts's own doc comment on the
   -- Campaign type for the full framing.
   new_player_friendly INTEGER NOT NULL DEFAULT 0,
+  -- Backlog #41 phase 1: structural in-person/remote/hybrid flag, distinct
+  -- from the free-text location column above -- see lib/types.ts's
+  -- SESSION_FORMATS doc comment for the full reasoning. Null (unset) is
+  -- the default, same as danger_level.
+  session_format TEXT CHECK (session_format IS NULL OR session_format IN ('in_person','remote','hybrid')),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -131,6 +136,12 @@ CREATE TABLE IF NOT EXISTS profiles (
   -- brand-new player signal that on their own profile, distinct from
   -- campaigns.new_player_friendly (a DM's flag on their own campaign).
   new_to_tabletop INTEGER NOT NULL DEFAULT 0,
+  -- Backlog #41 phase 1: a player's own in-person/remote/either preference,
+  -- symmetric with campaigns.session_format above but a distinct, smaller
+  -- enum (see lib/types.ts's SessionFormatPreference doc comment) since a
+  -- preference isn't shaped like a table's actual format. Null (unset) is
+  -- the default.
+  session_format_preference TEXT CHECK (session_format_preference IS NULL OR session_format_preference IN ('in_person','remote','either')),
   updated_at TEXT
 );
 
@@ -639,6 +650,20 @@ if (!campaignColumns.some((c) => c.name === "new_player_friendly")) {
 }
 if (!profileColumns.some((c) => c.name === "new_to_tabletop")) {
   db.exec("ALTER TABLE profiles ADD COLUMN new_to_tabletop INTEGER NOT NULL DEFAULT 0");
+}
+
+// Lightweight migrations for databases created before structural
+// in-person/remote/hybrid discovery existed (backlog #41 phase 1). New
+// databases already get these columns from the CREATE TABLE statements
+// above. SQLite can't add a CHECK constraint via ALTER TABLE ADD COLUMN,
+// so these are left unconstrained at the schema level for migrated
+// databases -- same caveat as danger_level above; validation still
+// happens in lib/campaigns.ts/lib/profiles.ts before any write.
+if (!campaignColumns.some((c) => c.name === "session_format")) {
+  db.exec("ALTER TABLE campaigns ADD COLUMN session_format TEXT");
+}
+if (!profileColumns.some((c) => c.name === "session_format_preference")) {
+  db.exec("ALTER TABLE profiles ADD COLUMN session_format_preference TEXT");
 }
 
 export default db;

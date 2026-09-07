@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { DANGER_LEVEL_LABELS, type DangerLevel } from "@/lib/types";
+import { DANGER_LEVEL_LABELS, SESSION_FORMAT_LABELS, type DangerLevel, type SessionFormat } from "@/lib/types";
 
 export interface DiscoverCard {
   id: string;
@@ -11,6 +11,7 @@ export interface DiscoverCard {
   system: string;
   location: string;
   danger_level: DangerLevel | null;
+  session_format: SessionFormat | null;
   new_player_friendly: number;
   accepting_requests: number;
   cancelled: number;
@@ -72,8 +73,13 @@ export default function DiscoverDeck({ cards }: { cards: DiscoverCard[] }) {
           {card.capacity} players
           {card.location && <> &middot; {card.location}</>}
         </p>
-        {card.danger_level && (
+        {card.session_format && (
           <span className="mt-2 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20">
+            {SESSION_FORMAT_LABELS[card.session_format]}
+          </span>
+        )}
+        {card.danger_level && (
+          <span className="mt-2 ml-2 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20">
             {DANGER_LEVEL_LABELS[card.danger_level]}
           </span>
         )}

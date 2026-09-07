@@ -1,12 +1,22 @@
 import { v4 as uuidv4 } from "uuid";
 import db from "./db";
 import { notify } from "./notifications";
-import { DANGER_LEVELS, type Campaign, type DangerLevel } from "./types";
+import {
+  DANGER_LEVELS,
+  SESSION_FORMATS,
+  type Campaign,
+  type DangerLevel,
+  type SessionFormat,
+} from "./types";
 
 export class CampaignError extends Error {}
 
 function isKnownDangerLevel(value: string): value is DangerLevel {
   return (DANGER_LEVELS as readonly string[]).includes(value);
+}
+
+function isKnownSessionFormat(value: string): value is SessionFormat {
+  return (SESSION_FORMATS as readonly string[]).includes(value);
 }
 
 export function approvedHeadcount(campaignId: string): number {
@@ -29,9 +39,16 @@ export function createCampaign(input: {
    * to tabletop gaming, following the exact danger_level convention
    * (a heads-up filter field, not a scoreboard). Defaults to false. */
   newPlayerFriendly?: boolean;
+  /** Backlog #41 phase 1: structural in-person/remote/hybrid flag -- see
+   * SESSION_FORMATS' doc comment in lib/types.ts. Defaults to null
+   * (unset), same as danger_level. */
+  sessionFormat?: SessionFormat;
 }): Campaign {
   if (!Number.isInteger(input.capacity) || input.capacity < 1) {
     throw new CampaignError("Capacity must be a positive integer.");
+  }
+  if (input.sessionFormat !== undefined && !isKnownSessionFormat(input.sessionFormat)) {
+    throw new CampaignError("Not a recognized session format.");
   }
   const now = new Date().toISOString();
   const campaign: Campaign = {
@@ -47,14 +64,15 @@ export function createCampaign(input: {
     danger_level: null,
     location: (input.location ?? "").trim(),
     new_player_friendly: input.newPlayerFriendly ? 1 : 0,
+    session_format: input.sessionFormat ?? null,
     created_at: now,
     updated_at: now,
   };
   db.prepare(
     `INSERT INTO campaigns
-      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, new_player_friendly, created_at, updated_at)
+      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, new_player_friendly, session_format, created_at, updated_at)
      VALUES
-      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @new_player_friendly, @created_at, @updated_at)`
+      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @new_player_friendly, @session_format, @created_at, @updated_at)`
   ).run(campaign);
   return campaign;
 }
@@ -81,6 +99,9 @@ export function updateCampaign(
     location: string;
     /** undefined = leave unchanged, matching every other field here. */
     newPlayerFriendly: boolean;
+    /** undefined = leave unchanged; null = clear; a SessionFormat = set
+     * it -- same three-state convention as dangerLevel above. */
+    sessionFormat: SessionFormat | null;
   }>
 ): Campaign {
   const campaign = getCampaign(id);
@@ -102,6 +123,13 @@ export function updateCampaign(
   if (updates.dangerLevel !== undefined && updates.dangerLevel !== null && !isKnownDangerLevel(updates.dangerLevel)) {
     throw new CampaignError("Not a recognized danger level.");
   }
+  if (
+    updates.sessionFormat !== undefined &&
+    updates.sessionFormat !== null &&
+    !isKnownSessionFormat(updates.sessionFormat)
+  ) {
+    throw new CampaignError("Not a recognized session format.");
+  }
   const next: Campaign = {
     ...campaign,
     title: updates.title !== undefined ? updates.title.trim() : campaign.title,
@@ -117,12 +145,15 @@ export function updateCampaign(
       updates.newPlayerFriendly !== undefined
         ? (updates.newPlayerFriendly ? 1 : 0)
         : campaign.new_player_friendly,
+    session_format:
+      updates.sessionFormat !== undefined ? updates.sessionFormat : campaign.session_format,
     updated_at: new Date().toISOString(),
   };
   db.prepare(
     `UPDATE campaigns SET title=@title, description=@description, system=@system,
      capacity=@capacity, danger_level=@danger_level, location=@location,
-     new_player_friendly=@new_player_friendly, updated_at=@updated_at WHERE id=@id`
+     new_player_friendly=@new_player_friendly, session_format=@session_format,
+     updated_at=@updated_at WHERE id=@id`
   ).run(next);
   return next;
 }
@@ -203,6 +234,13 @@ export function listCampaigns(opts: {
    * field at all (not "only non-friendly campaigns") -- same
    * opt-in-only shape as every other filter here. */
   newPlayerFriendly?: boolean;
+  /** Backlog #41 phase 1: exact-match filter on the structural
+   * in-person/remote/hybrid field -- lets a viewer deliberately search
+   * for (e.g.) only remote games, same opt-in-only shape as
+   * newPlayerFriendly above. Independent of, and not to be confused
+   * with, the default in-person-favoring *ranking* below (which never
+   * excludes anything -- this filter is the only thing here that does). */
+  sessionFormat?: SessionFormat;
   sort?: CampaignSort;
   page?: number;
   pageSize?: number;
@@ -242,16 +280,37 @@ export function listCampaigns(opts: {
   if (opts.newPlayerFriendly) {
     where.push("new_player_friendly = 1");
   }
+  if (opts.sessionFormat) {
+    where.push("session_format = @sessionFormat");
+    params.sessionFormat = opts.sessionFormat;
+  }
   if (!opts.includeCancelled) {
     where.push("cancelled = 0");
   }
   const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
-  const orderBy =
+  const secondaryOrderBy =
     opts.sort === "oldest"
       ? "created_at ASC, rowid ASC"
       : opts.sort === "title"
         ? "title ASC, rowid ASC"
         : "created_at DESC, rowid DESC";
+  // Backlog #41 phase 1: in-person-first discovery ranking, per the
+  // owner's explicit in-person-first product direction (see the dated
+  // 2026-09-07 entry in progress.md). A stable sort, not a filter -- this
+  // ranks in-person campaigns ahead of remote/unset ones *within*
+  // whatever secondary order the caller already asked for (newest/
+  // oldest/title), so a remote campaign is never excluded, only ranked
+  // after in-person ones of the same tier. Hybrid tables land in
+  // between. A campaign with no session_format set (null -- the common
+  // case for every campaign that predates this column) ranks alongside
+  // explicitly-remote ones rather than being promoted: only an explicit
+  // in-person flag earns the boost, so this can't be gamed by silence.
+  // Unconditional (not opt-in) since this is meant to be the new default
+  // everywhere listCampaigns is used -- /campaigns' list view, its
+  // Discover deck, and the curated system hubs (lib/systems.ts) all get
+  // it automatically with no call-site changes.
+  const formatRank = "CASE session_format WHEN 'in_person' THEN 0 WHEN 'hybrid' THEN 1 ELSE 2 END";
+  const orderBy = `${formatRank} ASC, ${secondaryOrderBy}`;
 
   const total = (
     db

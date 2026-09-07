@@ -19,6 +19,7 @@ describe("profiles", () => {
     expect(profile.availability).toBe("");
     expect(profile.location).toBe("");
     expect(profile.new_to_tabletop).toBe(0);
+    expect(profile.session_format_preference).toBeNull();
     expect(profile.updated_at).toBeNull();
   });
 
@@ -92,6 +93,42 @@ describe("profiles", () => {
     upsertProfile(user.id, { newToTabletop: true });
     const updated = upsertProfile(user.id, { bio: "New bio" });
     expect(updated.new_to_tabletop).toBe(1);
+  });
+
+  // Backlog #41 phase 1: the player-side session-format preference,
+  // symmetric with a campaign's own session_format.
+  it("lets session_format_preference be set, changed, and cleared independently of other fields", () => {
+    const user = signUp("Format Fiona", "profile5e@example.com", "testpassword123");
+    upsertProfile(user.id, { bio: "Some bio" });
+
+    const set = upsertProfile(user.id, { sessionFormatPreference: "in_person" });
+    expect(set.session_format_preference).toBe("in_person");
+    expect(set.bio).toBe("Some bio");
+
+    const changed = upsertProfile(user.id, { sessionFormatPreference: "either" });
+    expect(changed.session_format_preference).toBe("either");
+    expect(changed.bio).toBe("Some bio");
+
+    const cleared = upsertProfile(user.id, { sessionFormatPreference: null });
+    expect(cleared.session_format_preference).toBeNull();
+    expect(cleared.bio).toBe("Some bio");
+  });
+
+  it("leaves session_format_preference untouched when omitted from an update", () => {
+    const user = signUp("Format Gustav", "profile5f@example.com", "testpassword123");
+    upsertProfile(user.id, { sessionFormatPreference: "remote" });
+    const updated = upsertProfile(user.id, { bio: "New bio" });
+    expect(updated.session_format_preference).toBe("remote");
+  });
+
+  it("rejects an unrecognized session_format_preference value", () => {
+    const user = signUp("Format Helga", "profile5g@example.com", "testpassword123");
+    expect(() =>
+      upsertProfile(user.id, {
+        // @ts-expect-error deliberately invalid for this test
+        sessionFormatPreference: "spaceship",
+      })
+    ).toThrow(ProfileError);
   });
 
   it("does not affect another user's profile", () => {
