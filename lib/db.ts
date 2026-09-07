@@ -313,6 +313,55 @@ CREATE TABLE IF NOT EXISTS campaign_message_reads (
   last_read_at TEXT NOT NULL,
   PRIMARY KEY (campaign_id, user_id)
 );
+
+-- Backlog #33: DM dashboard basics -- initiative tracker. A per-campaign
+-- ordered list of combatant entries the DM adds/reorders/removes during
+-- a session. This is session-local *working* state, not a permanent
+-- historical record -- like party_notes, it persists as "current state"
+-- between requests/sessions until the DM explicitly clears it (there's
+-- no automatic reset tied to a session boundary, since this app has no
+-- discrete "session" entity to reset against). order_index is
+-- maintained by the app itself via explicit move-up/move-down actions,
+-- independent of the initiative value on each entry -- the DM decides
+-- the actual running order by hand (useful for tie-breaking or
+-- reflecting an on-the-fly reorder mid-combat); initiative is just a
+-- number recorded on each entry, not an auto-sort key. hp is a free-text
+-- field (e.g. "18/24") rather than a bare integer, matching how loosely
+-- this app already treats similar "current status" free text elsewhere
+-- (e.g. Character.epilogue) -- some tables track temp HP/conditions
+-- inline as text rather than a bare number. DM-only access (see
+-- lib/initiativeTracker.ts) -- a prep/running tool for the DM's eyes,
+-- explicitly NOT shared with players, unlike party notes/session log.
+CREATE TABLE IF NOT EXISTS initiative_entries (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id),
+  name TEXT NOT NULL,
+  initiative REAL NOT NULL,
+  hp TEXT,
+  notes TEXT NOT NULL DEFAULT '',
+  order_index INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_initiative_entries_campaign ON initiative_entries(campaign_id);
+
+-- Backlog #33: DM dashboard basics -- NPC quick-notes. A lightweight
+-- per-campaign list of NPC name + free-text notes -- the exact
+-- name+notes-pair shape the backlog line itself called for, rather than
+-- inventing a separate "quick notes" concept on top of it. DM-only
+-- access (see lib/npcNotes.ts), same "prep tool, not party-visible"
+-- reasoning as initiative_entries above.
+CREATE TABLE IF NOT EXISTS npc_notes (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id),
+  name TEXT NOT NULL,
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_npc_notes_campaign ON npc_notes(campaign_id);
 `);
 
 // Lightweight migration for databases created before password_hash existed

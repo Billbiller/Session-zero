@@ -19,6 +19,8 @@ import RosterPanel from "@/components/RosterPanel";
 import ScheduleForm from "@/components/ScheduleForm";
 import PartyNotesPanel from "@/components/PartyNotesPanel";
 import CampaignChatPanel from "@/components/CampaignChatPanel";
+import InitiativeTrackerPanel from "@/components/InitiativeTrackerPanel";
+import NpcNotesPanel from "@/components/NpcNotesPanel";
 import SessionLogPanel from "@/components/SessionLogPanel";
 import CharacterSummary from "@/components/CharacterSummary";
 import RatingsPanel from "@/components/RatingsPanel";
@@ -113,6 +115,13 @@ export default async function CampaignDetailPage({
       />
 
       {isDm && <DmControls campaign={campaign} />}
+
+      {isDm && (
+        <>
+          <InitiativeTrackerPanel campaignId={id} />
+          <NpcNotesPanel campaignId={id} />
+        </>
+      )}
 
       {isDm && (
         <RequestsPanel

@@ -20,6 +20,22 @@ export function hasPrivateAccess(userId: string | null, campaignId: string): boo
   return !!row;
 }
 
+/** Backlog #33 (initiative tracker, NPC quick-notes): a narrower
+ * boundary than hasPrivateAccess -- these two DM-dashboard tools are
+ * explicitly DM-only prep/running tools, not shared with the rest of
+ * the party the way session log/party notes/schedule are. Kept as its
+ * own small predicate (rather than inline `campaign.dm_id === userId`
+ * checks scattered across lib/initiativeTracker.ts and lib/npcNotes.ts)
+ * so the "who can see this" boundary is named and testable in one
+ * place, mirroring how hasPrivateAccess itself works for the wider
+ * private-side boundary. */
+export function isDm(userId: string | null, campaignId: string): boolean {
+  if (!userId) return false;
+  const campaign = getCampaign(campaignId);
+  if (!campaign) return false;
+  return campaign.dm_id === userId;
+}
+
 /** DM + every approved/active member, used for fanning notifications out to "the party". */
 export function activePartyUserIds(campaignId: string): string[] {
   const campaign = getCampaign(campaignId);

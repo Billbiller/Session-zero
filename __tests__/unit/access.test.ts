@@ -7,7 +7,7 @@ import {
   declineRequest,
   leaveCampaign,
 } from "@/lib/memberships";
-import { hasPrivateAccess, activePartyUserIds } from "@/lib/access";
+import { hasPrivateAccess, activePartyUserIds, isDm } from "@/lib/access";
 
 function setup(emailPrefix: string) {
   const dm = signUp("DM", `${emailPrefix}-dm@example.com`, "testpassword123");
@@ -69,6 +69,30 @@ describe("hasPrivateAccess", () => {
   it("denies a signed-out visitor (null user id)", () => {
     const { campaign } = setup("ha7");
     expect(hasPrivateAccess(null, campaign.id)).toBe(false);
+  });
+});
+
+describe("isDm", () => {
+  it("is true only for the campaign's DM", () => {
+    const { dm, campaign } = setup("id1");
+    const player = signUp("Player", "id1-p@example.com", "testpassword123");
+    const m = requestJoin(campaign.id, player.id);
+    approveRequest(m.id, dm.id);
+
+    expect(isDm(dm.id, campaign.id)).toBe(true);
+    expect(isDm(player.id, campaign.id)).toBe(false);
+  });
+
+  it("is false for a stranger and for a signed-out visitor (null user id)", () => {
+    const { campaign } = setup("id2");
+    const stranger = signUp("Stranger", "id2-s@example.com", "testpassword123");
+    expect(isDm(stranger.id, campaign.id)).toBe(false);
+    expect(isDm(null, campaign.id)).toBe(false);
+  });
+
+  it("is false for an unknown campaign id", () => {
+    const { dm } = setup("id3");
+    expect(isDm(dm.id, "nonexistent")).toBe(false);
   });
 });
 

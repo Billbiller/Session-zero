@@ -495,3 +495,41 @@ export interface CampaignMessage {
 export interface CampaignMessageWithSender extends CampaignMessage {
   senderName: string;
 }
+
+/** Backlog #33: DM dashboard basics -- an initiative tracker. A
+ * per-campaign, DM-managed ordered list of combatant entries -- session-
+ * local *working* state (like PartyNotes, it persists as "current
+ * state" until the DM explicitly clears it, rather than resetting
+ * automatically -- this app has no discrete "session" entity to reset
+ * against). order_index is maintained by the app via explicit
+ * move-up/move-down actions, independent of the `initiative` value
+ * itself -- see lib/initiativeTracker.ts for the full reasoning. hp is
+ * free text (e.g. "18/24") rather than a bare number, and notes is a
+ * short free-text field for conditions/reminders. DM-only -- not shown
+ * to players, unlike the rest of a campaign's private side. */
+export interface InitiativeEntry {
+  id: string;
+  campaign_id: string;
+  name: string;
+  initiative: number;
+  hp: string | null;
+  notes: string;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Backlog #33: DM dashboard basics -- NPC quick-notes. A lightweight
+ * per-campaign list of NPC name + free-text notes, the same shape the
+ * backlog line itself described rather than a separate "quick notes"
+ * concept. DM-only -- a prep/running tool for the DM's eyes, not shown
+ * to players. See lib/npcNotes.ts. */
+export interface NpcNote {
+  id: string;
+  campaign_id: string;
+  name: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
