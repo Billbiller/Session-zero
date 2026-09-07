@@ -68,6 +68,8 @@ export const NOTIFICATION_TYPES = [
   "rating_prompt",
   "session_log_kudos",
   "sub_volunteer",
+  "sub_placement_pending",
+  "sub_placement_resolved",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -85,6 +87,8 @@ export const NOTIFICATION_LABELS: Record<NotificationType, string> = {
   rating_prompt: "You're invited to rate a DM or player after leaving a campaign",
   session_log_kudos: "Someone gives kudos to your session log entry",
   sub_volunteer: "Someone volunteers to sub in for your campaign",
+  sub_placement_pending: "A sub placement needs your review (owner or DM approval)",
+  sub_placement_resolved: "A sub placement is confirmed, declined, or cancelled",
 };
 
 export interface Notification {
@@ -182,11 +186,12 @@ export interface AvailabilitySlot {
   block: AvailabilityBlock;
 }
 
-/** Phase 1 of backlog #20 (substitute player workflow) -- just the
- * request + volunteer pool, no approval state machine or character
- * custody yet. A request starts "open" and moves to a terminal state
- * ("filled" or "cancelled") once the requester or DM picks someone,
- * which for this phase is a manual decision made outside this system. */
+/** Phase 1 of backlog #20 (substitute player workflow) -- the request +
+ * volunteer pool. A request starts "open" and moves to a terminal state
+ * ("filled" or "cancelled"). Phase 2 (owner/DM approval + temporary
+ * custody, see SubPlacement below) only applies to a request that names
+ * a character -- a characterless request stays phase-1-only, marked
+ * filled/cancelled directly with no owner or custody to hand off. */
 export const SUB_REQUEST_STATUSES = ["open", "filled", "cancelled"] as const;
 
 export type SubRequestStatus = (typeof SUB_REQUEST_STATUSES)[number];
@@ -195,6 +200,9 @@ export interface SubRequest {
   id: string;
   campaign_id: string;
   requester_id: string;
+  /** null for a characterless request, which can only ever be resolved
+   * directly (phase 1) -- it never enters the phase-2 approval flow. */
+  character_id: string | null;
   note: string;
   status: SubRequestStatus;
   created_at: string;
@@ -217,12 +225,55 @@ export interface SubRequestSummary extends SubRequest {
   campaignTitle: string;
   campaignSystem: string;
   requesterName: string;
+  characterName: string | null;
   volunteerCount: number;
   viewerHasVolunteered: boolean;
 }
 
 export interface SubVolunteerWithName extends SubVolunteer {
   volunteerName: string;
+}
+
+/** Phase 2 of backlog #20: once a character-linked request has
+ * volunteers, the requester (always the character's owner -- see
+ * lib/subRequests.ts's validation) or the campaign's DM picks one to
+ * move forward as a "placement". Needs both the owner and DM to approve
+ * before it's "confirmed" and temporary custody transfers. Per an
+ * explicit product decision (2026-09-06), the rest of the active party
+ * is notified but isn't a blocking approval gate -- informational only,
+ * to keep this state machine bounded to two approvers, not an
+ * open-ended group vote. Either approver declining, or the requester/DM
+ * cancelling outright, ends the placement without confirming it; the
+ * parent request stays "open" so a new placement can be created. */
+export const SUB_PLACEMENT_STATUSES = ["pending", "confirmed", "declined", "cancelled"] as const;
+
+export type SubPlacementStatus = (typeof SUB_PLACEMENT_STATUSES)[number];
+
+export interface SubPlacement {
+  id: string;
+  request_id: string;
+  volunteer_id: string;
+  /** Free-text guardrails the character owner attaches when reviewing --
+   * e.g. "no permanent character death, ask before spending our one rare
+   * potion." Informational for the volunteer and DM, not programmatically
+   * enforced (this app has no gameplay to enforce it during). */
+  guardrails_note: string;
+  owner_approved: number; // 0 | 1
+  dm_approved: number; // 0 | 1
+  status: SubPlacementStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A placement enriched with display context -- computed server-side,
+ * same reasoning as SubRequestSummary above. */
+export interface SubPlacementSummary extends SubPlacement {
+  volunteerName: string;
+  characterName: string;
+  ownerId: string;
+  ownerName: string;
+  dmId: string;
+  dmName: string;
 }
 
 export const CHARACTER_AVATARS = [
@@ -279,6 +330,12 @@ export interface Character {
    * bloat. null means no upload; avatar_emoji is shown instead. Revisit
    * with real object storage once a deployment target is chosen. */
   portrait_data_url: string | null;
+  /** Set when a sub-placement is confirmed for this character (backlog
+   * #20 phase 2) -- the user id of whoever is currently piloting it for a
+   * session in the owner's place. null the rest of the time. A pure
+   * display marker, cleared by an explicit "end sub" action; this app has
+   * no session-duration tracking to clear it automatically. */
+  temp_pilot_user_id: string | null;
   created_at: string;
   updated_at: string;
 }

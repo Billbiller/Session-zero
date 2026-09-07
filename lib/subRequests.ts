@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import db from "./db";
 import { getCampaign } from "./campaigns";
+import { getCharacter } from "./characters";
 import { hasPrivateAccess } from "./access";
 import { notify } from "./notifications";
 import type {
@@ -16,7 +17,7 @@ export class SubRequestError extends Error {}
 const MAX_NOTE = 500;
 const MAX_MESSAGE = 500;
 
-function isRequesterOrDm(request: SubRequest, userId: string): boolean {
+export function isRequesterOrDm(request: SubRequest, userId: string): boolean {
   if (request.requester_id === userId) return true;
   const campaign = getCampaign(request.campaign_id);
   return campaign?.dm_id === userId;
@@ -32,11 +33,20 @@ export function getSubRequest(id: string): SubRequest | null {
 /** Posts a "looking for a sub" request for an upcoming session. Restricted
  * to the DM or an active member of the campaign -- the same boundary as
  * the private-side features (session log, party notes), since only
- * someone actually at the table has a session to fill. */
+ * someone actually at the table has a session to fill.
+ *
+ * characterId is optional, but when given it must be a character the
+ * requester themselves owns AND that's currently linked to this same
+ * campaign -- this is what lets phase 2 treat "the requester" and "the
+ * character owner" as always the same person (see isRequesterOrDm and
+ * lib/subPlacements.ts), rather than needing a separate owner concept. A
+ * request with no character stays phase-1-only: it can be marked
+ * filled/cancelled directly, but never enters the approval workflow. */
 export function createSubRequest(
   campaignId: string,
   requesterId: string,
-  note: string
+  note: string,
+  characterId?: string | null
 ): SubRequest {
   const campaign = getCampaign(campaignId);
   if (!campaign) throw new SubRequestError("Campaign not found.");
@@ -49,19 +59,32 @@ export function createSubRequest(
   if (trimmed.length > MAX_NOTE) {
     throw new SubRequestError(`Note can't be longer than ${MAX_NOTE} characters.`);
   }
+  let resolvedCharacterId: string | null = null;
+  if (characterId) {
+    const character = getCharacter(characterId);
+    if (!character) throw new SubRequestError("Character not found.");
+    if (character.user_id !== requesterId) {
+      throw new SubRequestError("You can only post a sub request for your own character.");
+    }
+    if (character.campaign_id !== campaignId) {
+      throw new SubRequestError("That character isn't currently linked to this campaign.");
+    }
+    resolvedCharacterId = characterId;
+  }
   const now = new Date().toISOString();
   const request: SubRequest = {
     id: uuidv4(),
     campaign_id: campaignId,
     requester_id: requesterId,
+    character_id: resolvedCharacterId,
     note: trimmed,
     status: "open",
     created_at: now,
     updated_at: now,
   };
   db.prepare(
-    `INSERT INTO sub_requests (id, campaign_id, requester_id, note, status, created_at, updated_at)
-     VALUES (@id, @campaign_id, @requester_id, @note, @status, @created_at, @updated_at)`
+    `INSERT INTO sub_requests (id, campaign_id, requester_id, character_id, note, status, created_at, updated_at)
+     VALUES (@id, @campaign_id, @requester_id, @character_id, @note, @status, @created_at, @updated_at)`
   ).run(request);
   return request;
 }
@@ -91,11 +114,13 @@ function withContext(rows: SubRequest[], viewerId: string | null): SubRequestSum
           .prepare("SELECT 1 FROM sub_volunteers WHERE request_id = ? AND volunteer_id = ?")
           .get(row.id, viewerId)
       : false;
+    const character = row.character_id ? getCharacter(row.character_id) : null;
     return {
       ...row,
       campaignTitle: campaign?.title ?? "Unknown campaign",
       campaignSystem: campaign?.system ?? "",
       requesterName: requester?.display_name ?? "Unknown",
+      characterName: character?.name ?? null,
       volunteerCount: volunteerCountFor(row.id),
       viewerHasVolunteered,
     };

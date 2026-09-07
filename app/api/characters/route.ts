@@ -8,6 +8,7 @@ import {
   CHARACTER_STATUSES,
 } from "@/lib/characters";
 import { getCampaign } from "@/lib/campaigns";
+import { getUserById } from "@/lib/auth";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,12 @@ export async function GET() {
   const characters = listCharactersForUser(auth.user.id).map((c) => ({
     ...c,
     campaignTitle: c.campaign_id ? (getCampaign(c.campaign_id)?.title ?? null) : null,
+    // Who's currently piloting this character in the owner's place, if
+    // anyone (backlog #20 phase 2) -- resolved here for the same reason
+    // campaignTitle is: the profile page shouldn't need a separate lookup.
+    pilotName: c.temp_pilot_user_id
+      ? (getUserById(c.temp_pilot_user_id)?.display_name ?? null)
+      : null,
   }));
   return NextResponse.json({ characters });
 }

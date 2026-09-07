@@ -142,11 +142,18 @@ export default async function CampaignDetailPage({
           </p>
         )}
         <ul className="flex flex-col gap-3 text-sm">
-          {campaignCharacters.map((c) => (
-            <li key={c.id} className="border-t border-black/10 pt-3 first:border-t-0 first:pt-0 dark:border-white/10">
-              <CharacterSummary character={c} />
-            </li>
-          ))}
+          {campaignCharacters.map((c) => {
+            const pilot = c.temp_pilot_user_id ? getUserById(c.temp_pilot_user_id) : null;
+            return (
+              <li key={c.id} className="border-t border-black/10 pt-3 first:border-t-0 first:pt-0 dark:border-white/10">
+                <CharacterSummary
+                  character={c}
+                  pilotName={pilot?.display_name ?? null}
+                  canEndSub={isDm || c.user_id === viewer?.id}
+                />
+              </li>
+            );
+          })}
           {campaignCharacters.length === 0 && (
             <li className="text-black/60 dark:text-white/60">
               No characters linked to this campaign yet.
@@ -162,6 +169,13 @@ export default async function CampaignDetailPage({
         viewerId={viewer?.id ?? null}
         isDm={isDm}
         canPost={access}
+        myCharacters={
+          viewer
+            ? campaignCharacters
+                .filter((c) => c.user_id === viewer.id)
+                .map((c) => ({ id: c.id, name: c.name }))
+            : []
+        }
       />
 
       {access && (

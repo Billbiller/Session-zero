@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CHARACTER_STATUS_LABELS, type Character } from "@/lib/types";
+import EndSubButton from "./EndSubButton";
 
 /** Presentational-only display of a character's public fields — shared by
  * the editable "My characters" list on /profile, the read-only list on
@@ -13,9 +14,29 @@ import { CHARACTER_STATUS_LABELS, type Character } from "@/lib/types";
 export default function CharacterSummary({
   character,
   linkedCampaign,
+  pilotName,
+  canEndSub,
+  onEndSubDone,
 }: {
   character: Character;
   linkedCampaign?: { id: string; title: string } | null;
+  /** Display name of whoever is currently piloting this character in the
+   * owner's place (backlog #20 phase 2), if the caller has resolved one.
+   * Omitted/undefined when the caller doesn't track this (e.g. contexts
+   * that pre-date phase 2); character.temp_pilot_user_id is still checked
+   * on its own so the badge still shows even without a resolved name. */
+  pilotName?: string | null;
+  /** Shows an "End sub" button next to the pilot badge when true -- the
+   * caller decides this (the character's owner or the campaign's DM), not
+   * this component. Rendered via a dedicated client component
+   * (EndSubButton) rather than a callback prop, since this component is
+   * used directly from Server Components (the campaign page, the public
+   * player page) that can't pass event-handler functions as props. */
+  canEndSub?: boolean;
+  /** Passed through to EndSubButton for a client-side caller
+   * (CharacterManager) that wants to re-load its own state instead of a
+   * full router.refresh(). */
+  onEndSubDone?: () => void;
 }) {
   return (
     <div className="flex gap-3">
@@ -51,6 +72,14 @@ export default function CharacterSummary({
             </span>
           )}
         </p>
+        {character.temp_pilot_user_id && (
+          <p className="text-xs text-black/60 dark:text-white/60">
+            Currently piloted by {pilotName ?? "someone"} for a session
+            {canEndSub && (
+              <EndSubButton characterId={character.id} onDone={onEndSubDone} />
+            )}
+          </p>
+        )}
         {linkedCampaign && (
           <p className="text-xs text-black/60 dark:text-white/60">
             Playing in{" "}

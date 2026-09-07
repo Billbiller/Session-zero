@@ -18,7 +18,10 @@ export async function GET(
   return NextResponse.json({ requests: listSubRequestsForCampaign(id, viewer?.id ?? null) });
 }
 
-const bodySchema = z.object({ note: z.string().trim().max(500).default("") });
+const bodySchema = z.object({
+  note: z.string().trim().max(500).default(""),
+  characterId: z.string().trim().min(1).optional(),
+});
 
 export async function POST(
   request: NextRequest,
@@ -37,7 +40,7 @@ export async function POST(
     );
   }
   try {
-    const subRequest = createSubRequest(id, auth.user.id, parsed.data.note);
+    const subRequest = createSubRequest(id, auth.user.id, parsed.data.note, parsed.data.characterId);
     return NextResponse.json({ request: subRequest }, { status: 201 });
   } catch (err) {
     if (err instanceof SubRequestError) return errorResponse(err, 403);

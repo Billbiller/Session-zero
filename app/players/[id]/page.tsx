@@ -116,11 +116,13 @@ export default async function PlayerProfilePage({
           <ul className="mt-2 flex flex-col gap-3">
             {characters.map((c) => {
               const campaign = c.campaign_id ? getCampaign(c.campaign_id) : null;
+              const pilot = c.temp_pilot_user_id ? getUserById(c.temp_pilot_user_id) : null;
               return (
                 <li key={c.id} className="border-t border-black/10 pt-3 dark:border-white/10">
                   <CharacterSummary
                     character={c}
                     linkedCampaign={campaign ? { id: campaign.id, title: campaign.title } : null}
+                    pilotName={pilot?.display_name ?? null}
                   />
                 </li>
               );

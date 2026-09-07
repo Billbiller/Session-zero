@@ -204,6 +204,9 @@ export function createCharacter(userId: string, input: CharacterCreateInput): Ch
     status,
     epilogue,
     portrait_data_url,
+    // Always null on creation -- only a confirmed sub placement (backlog
+    // #20 phase 2, lib/subPlacements.ts) ever sets this.
+    temp_pilot_user_id: null,
     created_at: now,
     updated_at: now,
   };

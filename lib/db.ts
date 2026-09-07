@@ -180,6 +180,12 @@ CREATE TABLE IF NOT EXISTS sub_requests (
   id TEXT PRIMARY KEY,
   campaign_id TEXT NOT NULL REFERENCES campaigns(id),
   requester_id TEXT NOT NULL REFERENCES users(id),
+  -- Nullable: a request only enters the phase-2 approval workflow
+  -- (owner/DM sign-off, temporary custody) when it names the specific
+  -- character that needs a sub. A characterless request (e.g. "need
+  -- help running NPCs") stays a phase-1-only request, marked
+  -- filled/cancelled directly with no owner or custody to hand off.
+  character_id TEXT REFERENCES characters(id),
   note TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','filled','cancelled')),
   created_at TEXT NOT NULL,
@@ -199,6 +205,33 @@ CREATE TABLE IF NOT EXISTS sub_volunteers (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sub_volunteers_request ON sub_volunteers(request_id);
+
+-- Phase 2 of backlog #20: once a request (that names a character) has
+-- volunteers, the requester or DM picks one to move forward as a
+-- "placement". A placement needs both the character owner (always the
+-- request's own requester, since a request can only name a character
+-- the requester owns -- see lib/subRequests.ts) and the campaign's DM to
+-- approve before it's "confirmed" and temporary custody transfers (see
+-- characters.temp_pilot_user_id below). Per an explicit product decision
+-- (2026-09-06), the rest of the active party is notified but is NOT a
+-- blocking approval gate -- "the table" is informational only, not a
+-- third vote, to keep this state machine bounded. Either approver can
+-- decline, which ends the placement (the request stays open for a new
+-- placement to be created); the requester/DM can also cancel a pending
+-- placement outright (e.g. the volunteer backed out).
+CREATE TABLE IF NOT EXISTS sub_placements (
+  id TEXT PRIMARY KEY,
+  request_id TEXT NOT NULL REFERENCES sub_requests(id),
+  volunteer_id TEXT NOT NULL REFERENCES users(id),
+  guardrails_note TEXT NOT NULL DEFAULT '',
+  owner_approved INTEGER NOT NULL DEFAULT 0,
+  dm_approved INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','confirmed','declined','cancelled')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sub_placements_request ON sub_placements(request_id);
 `);
 
 // Lightweight migration for databases created before password_hash existed
@@ -247,6 +280,20 @@ if (!profileColumns.some((c) => c.name === "location")) {
 // in this file runs, so it correctly never contains this column either).
 if (!characterColumns.some((c) => c.name === "portrait_data_url")) {
   db.exec("ALTER TABLE characters ADD COLUMN portrait_data_url TEXT");
+}
+
+// Lightweight migrations for databases created before the phase-2 sub
+// workflow existed (backlog #20 phase 2). New databases already get these
+// columns from the CREATE TABLE statements above. temp_pilot_user_id is a
+// pure display marker ("currently piloted by X for a session") set when a
+// placement is confirmed and cleared by an explicit "end sub" action --
+// this app has no session-duration tracking to clear it automatically.
+if (!characterColumns.some((c) => c.name === "temp_pilot_user_id")) {
+  db.exec("ALTER TABLE characters ADD COLUMN temp_pilot_user_id TEXT");
+}
+const subRequestColumns = db.prepare("PRAGMA table_info(sub_requests)").all() as { name: string }[];
+if (!subRequestColumns.some((c) => c.name === "character_id")) {
+  db.exec("ALTER TABLE sub_requests ADD COLUMN character_id TEXT");
 }
 
 export default db;

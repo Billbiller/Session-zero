@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { signUp } from "@/lib/auth";
 import { createCampaign } from "@/lib/campaigns";
 import { requestJoin, approveRequest } from "@/lib/memberships";
+import { createCharacter } from "@/lib/characters";
 import { listNotifications } from "@/lib/notifications";
 import {
   createSubRequest,
@@ -199,6 +200,49 @@ describe("sub requests (backlog #20 phase 1)", () => {
     const updated = setSubRequestStatus(request.id, dm.id, "filled");
     expect(updated.status).toBe("filled");
     expect(() => setSubRequestStatus(request.id, dm.id, "cancelled")).toThrow(SubRequestError);
+  });
+
+  it("accepts an optional characterId, and includes characterName in listings", () => {
+    const { dm, campaign } = setUpCampaignWithPlayer(
+      "sub-dm15@example.com",
+      "sub-player15@example.com"
+    );
+    const character = createCharacter(dm.id, { name: "Grog", campaignId: campaign.id });
+    const request = createSubRequest(campaign.id, dm.id, "note", character.id);
+    expect(request.character_id).toBe(character.id);
+    const [summary] = listOpenSubRequests(null);
+    expect(summary.characterName).toBe("Grog");
+  });
+
+  it("rejects a characterId for a character the requester doesn't own", () => {
+    const { dm, player, campaign } = setUpCampaignWithPlayer(
+      "sub-dm16@example.com",
+      "sub-player16@example.com"
+    );
+    const character = createCharacter(dm.id, { name: "Grog", campaignId: campaign.id });
+    expect(() => createSubRequest(campaign.id, player.id, "note", character.id)).toThrow(
+      SubRequestError
+    );
+  });
+
+  it("rejects a characterId for a character not linked to this campaign", () => {
+    const { dm, campaign } = setUpCampaignWithPlayer(
+      "sub-dm17@example.com",
+      "sub-player17@example.com"
+    );
+    const character = createCharacter(dm.id, { name: "Grog" }); // unlinked
+    expect(() => createSubRequest(campaign.id, dm.id, "note", character.id)).toThrow(
+      SubRequestError
+    );
+  });
+
+  it("defaults character_id to null when omitted", () => {
+    const { dm, campaign } = setUpCampaignWithPlayer(
+      "sub-dm18@example.com",
+      "sub-player18@example.com"
+    );
+    const request = createSubRequest(campaign.id, dm.id, "note");
+    expect(request.character_id).toBeNull();
   });
 
   it("rejects a status change from someone who isn't the requester or DM", () => {

@@ -5,7 +5,7 @@ import type { Character, CharacterStatus } from "@/lib/types";
 import { CHARACTER_AVATARS, CHARACTER_STATUSES, CHARACTER_STATUS_LABELS } from "@/lib/types";
 import CharacterSummary from "./CharacterSummary";
 
-type CharacterWithCampaignTitle = Character & { campaignTitle: string | null };
+type CharacterWithCampaignTitle = Character & { campaignTitle: string | null; pilotName: string | null };
 
 interface AssignableCampaign {
   id: string;
@@ -202,6 +202,7 @@ export default function CharacterManager({
     setConfirmingDeleteId(null);
     await load();
   }
+
 
   function characterForm(
     form: FormState,
@@ -407,6 +408,9 @@ export default function CharacterManager({
                   linkedCampaign={
                     c.campaign_id ? { id: c.campaign_id, title: c.campaignTitle ?? "" } : null
                   }
+                  pilotName={c.pilotName}
+                  canEndSub
+                  onEndSubDone={load}
                 />
                 <div className="flex shrink-0 flex-col items-end gap-1 text-xs">
                   <button
