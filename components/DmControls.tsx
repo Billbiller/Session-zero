@@ -13,6 +13,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
   const [capacity, setCapacity] = useState(campaign.capacity);
   const [location, setLocation] = useState(campaign.location);
   const [dangerLevel, setDangerLevel] = useState<DangerLevel | "">(campaign.danger_level ?? "");
+  const [newPlayerFriendly, setNewPlayerFriendly] = useState(!!campaign.new_player_friendly);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
@@ -31,6 +32,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
         capacity,
         location,
         dangerLevel: dangerLevel === "" ? null : dangerLevel,
+        newPlayerFriendly,
       }),
     });
     setSubmitting(false);
@@ -166,6 +168,14 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
             <span className="text-xs text-black/60 dark:text-white/60">
               A heads-up for prospective players, not a scoreboard.
             </span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={newPlayerFriendly}
+              onChange={(e) => setNewPlayerFriendly(e.target.checked)}
+            />
+            New-player friendly
           </label>
           <div className="flex gap-2">
             <button

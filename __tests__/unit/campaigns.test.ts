@@ -328,4 +328,86 @@ describe("campaigns", () => {
     const none = listCampaigns({ system: "Unique Location System A", location: "nowhere" });
     expect(none.total).toBe(0);
   });
+
+  it("defaults a new campaign's new_player_friendly flag to false and lets it be set on create", () => {
+    const dm = makeDm("dm14@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(campaign.new_player_friendly).toBe(0);
+
+    const friendly = createCampaign({
+      dmId: dm.id,
+      title: "T2",
+      description: "",
+      system: "S",
+      capacity: 4,
+      newPlayerFriendly: true,
+    });
+    expect(friendly.new_player_friendly).toBe(1);
+  });
+
+  it("lets the DM set and clear the new_player_friendly flag via update", () => {
+    const dm = makeDm("dm15@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+
+    const set = updateCampaign(campaign.id, dm.id, { newPlayerFriendly: true });
+    expect(set.new_player_friendly).toBe(1);
+
+    const cleared = updateCampaign(campaign.id, dm.id, { newPlayerFriendly: false });
+    expect(cleared.new_player_friendly).toBe(0);
+  });
+
+  it("leaves new_player_friendly untouched when omitted from an update", () => {
+    const dm = makeDm("dm16@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      newPlayerFriendly: true,
+    });
+    const updated = updateCampaign(campaign.id, dm.id, { title: "New title" });
+    expect(updated.new_player_friendly).toBe(1);
+  });
+
+  it("filters listed campaigns to only those flagged new-player-friendly", () => {
+    const dm = makeDm("dm17@example.com");
+    createCampaign({
+      dmId: dm.id,
+      title: "Friendly Game",
+      description: "",
+      system: "Unique NPF System A",
+      capacity: 4,
+      newPlayerFriendly: true,
+    });
+    createCampaign({
+      dmId: dm.id,
+      title: "Regular Game",
+      description: "",
+      system: "Unique NPF System A",
+      capacity: 4,
+    });
+
+    const all = listCampaigns({ system: "Unique NPF System A" });
+    expect(all.total).toBe(2);
+
+    const friendlyOnly = listCampaigns({
+      system: "Unique NPF System A",
+      newPlayerFriendly: true,
+    });
+    expect(friendlyOnly.total).toBe(1);
+    expect(friendlyOnly.items[0].title).toBe("Friendly Game");
+  });
 });

@@ -112,6 +112,18 @@ export default async function CampaignDetailPage({
               </span>
             </>
           )}
+          {!!campaign.new_player_friendly && (
+            <>
+              {" "}
+              &middot;{" "}
+              <span
+                className="rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20"
+                title="The DM has flagged this table as welcoming to someone new to tabletop gaming."
+              >
+                New-player friendly
+              </span>
+            </>
+          )}
         </p>
         {campaign.description && <p className="mt-2 text-sm">{campaign.description}</p>}
       </div>

@@ -45,6 +45,12 @@ CREATE TABLE IF NOT EXISTS campaigns (
   next_session_at TEXT,
   danger_level TEXT CHECK (danger_level IS NULL OR danger_level IN ('low-lethality','moderate','high-lethality','deadly-osr')),
   location TEXT NOT NULL DEFAULT '',
+  -- Backlog #40: DM-set, player-visible flag echoing the prototype's "New
+  -- player friendly" tag -- a heads-up filter in the same spirit as
+  -- danger_level (a heads-up, not a scoreboard), not an authoritative
+  -- rating of the table. See lib/types.ts's own doc comment on the
+  -- Campaign type for the full framing.
+  new_player_friendly INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -120,6 +126,11 @@ CREATE TABLE IF NOT EXISTS profiles (
   preferred_systems TEXT NOT NULL DEFAULT '',
   availability TEXT NOT NULL DEFAULT '',
   location TEXT NOT NULL DEFAULT '',
+  -- Backlog #40: a "new to tabletop" self-flag, echoing the prototype's
+  -- "New player friendly" tag from the other side of the table -- lets a
+  -- brand-new player signal that on their own profile, distinct from
+  -- campaigns.new_player_friendly (a DM's flag on their own campaign).
+  new_to_tabletop INTEGER NOT NULL DEFAULT 0,
   updated_at TEXT
 );
 
@@ -618,6 +629,16 @@ if (!subRequestColumns.some((c) => c.name === "character_id")) {
 const notificationColumns = db.prepare("PRAGMA table_info(notifications)").all() as { name: string }[];
 if (!notificationColumns.some((c) => c.name === "related_user_id")) {
   db.exec("ALTER TABLE notifications ADD COLUMN related_user_id TEXT");
+}
+
+// Lightweight migrations for databases created before new-player
+// onboarding existed (backlog #40). New databases already get these
+// columns from the CREATE TABLE statements above.
+if (!campaignColumns.some((c) => c.name === "new_player_friendly")) {
+  db.exec("ALTER TABLE campaigns ADD COLUMN new_player_friendly INTEGER NOT NULL DEFAULT 0");
+}
+if (!profileColumns.some((c) => c.name === "new_to_tabletop")) {
+  db.exec("ALTER TABLE profiles ADD COLUMN new_to_tabletop INTEGER NOT NULL DEFAULT 0");
 }
 
 export default db;

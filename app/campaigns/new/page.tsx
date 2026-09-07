@@ -9,6 +9,7 @@ export default function NewCampaignPage() {
   const [system, setSystem] = useState("");
   const [capacity, setCapacity] = useState(4);
   const [location, setLocation] = useState("");
+  const [newPlayerFriendly, setNewPlayerFriendly] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function NewCampaignPage() {
     const res = await fetch("/api/campaigns", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, system, capacity, location }),
+      body: JSON.stringify({ title, description, system, capacity, location, newPlayerFriendly }),
     });
     setSubmitting(false);
     const data = await res.json().catch(() => ({}));
@@ -87,6 +88,14 @@ export default function NewCampaignPage() {
             placeholder="e.g. Austin, TX or Online/Remote"
             className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
           />
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={newPlayerFriendly}
+            onChange={(e) => setNewPlayerFriendly(e.target.checked)}
+          />
+          New-player friendly (welcoming to someone new to tabletop gaming)
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button

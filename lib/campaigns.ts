@@ -25,6 +25,10 @@ export function createCampaign(input: {
   system: string;
   capacity: number;
   location?: string;
+  /** Backlog #40: DM self-flags this table as welcoming to someone new
+   * to tabletop gaming, following the exact danger_level convention
+   * (a heads-up filter field, not a scoreboard). Defaults to false. */
+  newPlayerFriendly?: boolean;
 }): Campaign {
   if (!Number.isInteger(input.capacity) || input.capacity < 1) {
     throw new CampaignError("Capacity must be a positive integer.");
@@ -42,14 +46,15 @@ export function createCampaign(input: {
     next_session_at: null,
     danger_level: null,
     location: (input.location ?? "").trim(),
+    new_player_friendly: input.newPlayerFriendly ? 1 : 0,
     created_at: now,
     updated_at: now,
   };
   db.prepare(
     `INSERT INTO campaigns
-      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, created_at, updated_at)
+      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, new_player_friendly, created_at, updated_at)
      VALUES
-      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @created_at, @updated_at)`
+      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @new_player_friendly, @created_at, @updated_at)`
   ).run(campaign);
   return campaign;
 }
@@ -74,6 +79,8 @@ export function updateCampaign(
      * comment on the Campaign type for the "not a scoreboard" framing. */
     dangerLevel: DangerLevel | null;
     location: string;
+    /** undefined = leave unchanged, matching every other field here. */
+    newPlayerFriendly: boolean;
   }>
 ): Campaign {
   const campaign = getCampaign(id);
@@ -106,11 +113,16 @@ export function updateCampaign(
     capacity: updates.capacity ?? campaign.capacity,
     danger_level: updates.dangerLevel !== undefined ? updates.dangerLevel : campaign.danger_level,
     location: updates.location !== undefined ? updates.location.trim() : campaign.location,
+    new_player_friendly:
+      updates.newPlayerFriendly !== undefined
+        ? (updates.newPlayerFriendly ? 1 : 0)
+        : campaign.new_player_friendly,
     updated_at: new Date().toISOString(),
   };
   db.prepare(
     `UPDATE campaigns SET title=@title, description=@description, system=@system,
-     capacity=@capacity, danger_level=@danger_level, location=@location, updated_at=@updated_at WHERE id=@id`
+     capacity=@capacity, danger_level=@danger_level, location=@location,
+     new_player_friendly=@new_player_friendly, updated_at=@updated_at WHERE id=@id`
   ).run(next);
   return next;
 }
@@ -186,6 +198,11 @@ export function listCampaigns(opts: {
    * from a curated system's own name + aliases -- but escaped via
    * escapeLikePattern the same defensive way regardless. */
   systemAliases?: string[];
+  /** Backlog #40: when true, only campaigns the DM has flagged
+   * new-player-friendly. Undefined/false means no filtering by this
+   * field at all (not "only non-friendly campaigns") -- same
+   * opt-in-only shape as every other filter here. */
+  newPlayerFriendly?: boolean;
   sort?: CampaignSort;
   page?: number;
   pageSize?: number;
@@ -221,6 +238,9 @@ export function listCampaigns(opts: {
       return `LOWER(system) LIKE @${key} ESCAPE '\\'`;
     });
     where.push(`(${clauses.join(" OR ")})`);
+  }
+  if (opts.newPlayerFriendly) {
+    where.push("new_player_friendly = 1");
   }
   if (!opts.includeCancelled) {
     where.push("cancelled = 0");

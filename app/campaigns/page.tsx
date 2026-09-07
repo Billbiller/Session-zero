@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { listCampaigns, approvedHeadcount, type CampaignSort } from "@/lib/campaigns";
 import { getUserById } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/currentUser";
+import { getProfile } from "@/lib/profiles";
 import DiscoverDeck, { type DiscoverCard } from "@/components/DiscoverDeck";
 
 const PAGE_SIZE = 10;
@@ -17,6 +19,7 @@ export default async function CampaignsPage({
     system?: string;
     q?: string;
     location?: string;
+    newPlayerFriendly?: string;
     sort?: string;
     page?: string;
     view?: string;
@@ -26,6 +29,7 @@ export default async function CampaignsPage({
   const system = params.system?.trim() || undefined;
   const q = params.q?.trim() || undefined;
   const location = params.location?.trim() || undefined;
+  const newPlayerFriendly = params.newPlayerFriendly === "true" || undefined;
   const sort = (params.sort as CampaignSort) || "newest";
   const page = Number(params.page || "1");
   const view = params.view === "discover" ? "discover" : "list";
@@ -34,11 +38,22 @@ export default async function CampaignsPage({
     system,
     q,
     location,
+    newPlayerFriendly,
     sort,
     page,
     pageSize: view === "discover" ? DISCOVER_BATCH_SIZE : PAGE_SIZE,
   });
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // Backlog #40: a subtle, opt-in nudge for a signed-in user who's flagged
+  // themselves "new to tabletop" on their profile -- suggest the
+  // new-player-friendly filter rather than silently pre-applying it (a
+  // returning new-to-tabletop user browsing for something else shouldn't
+  // have their filters overridden every visit). Only shown when the
+  // filter isn't already on.
+  const viewer = await getCurrentUser();
+  const showNewPlayerPrompt =
+    !newPlayerFriendly && !!viewer && !!getProfile(viewer.id).new_to_tabletop;
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,13 +70,19 @@ export default async function CampaignsPage({
         <div className="flex items-center gap-3">
           <div className="flex rounded border border-black/20 text-sm dark:border-white/20">
             <Link
-              href={{ pathname: "/campaigns", query: { system, q, location, sort } }}
+              href={{
+                pathname: "/campaigns",
+                query: { system, q, location, newPlayerFriendly, sort },
+              }}
               className={`px-3 py-1.5 ${view === "list" ? "bg-black text-white dark:bg-white dark:text-black" : ""}`}
             >
               List
             </Link>
             <Link
-              href={{ pathname: "/campaigns", query: { system, q, location, sort, view: "discover" } }}
+              href={{
+                pathname: "/campaigns",
+                query: { system, q, location, newPlayerFriendly, sort, view: "discover" },
+              }}
               className={`px-3 py-1.5 ${view === "discover" ? "bg-black text-white dark:bg-white dark:text-black" : ""}`}
             >
               Discover
@@ -116,6 +137,15 @@ export default async function CampaignsPage({
             <option value="title">Title (A-Z)</option>
           </select>
         </label>
+        <label className="flex items-center gap-2 pb-2">
+          <input
+            type="checkbox"
+            name="newPlayerFriendly"
+            value="true"
+            defaultChecked={!!newPlayerFriendly}
+          />
+          New-player friendly only
+        </label>
         <button
           type="submit"
           className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20"
@@ -123,6 +153,22 @@ export default async function CampaignsPage({
           Apply
         </button>
       </form>
+
+      {showNewPlayerPrompt && (
+        <p className="text-sm text-black/60 dark:text-white/60">
+          New to tabletop? Try{" "}
+          <Link
+            href={{
+              pathname: "/campaigns",
+              query: { system, q, location, sort, newPlayerFriendly: "true" },
+            }}
+            className="underline"
+          >
+            campaigns flagged new-player-friendly
+          </Link>
+          .
+        </p>
+      )}
 
       {items.length === 0 && (
         <p className="text-sm text-black/60 dark:text-white/60">
@@ -140,6 +186,7 @@ export default async function CampaignsPage({
               system: campaign.system,
               location: campaign.location,
               danger_level: campaign.danger_level,
+              new_player_friendly: campaign.new_player_friendly,
               accepting_requests: campaign.accepting_requests,
               cancelled: campaign.cancelled,
               capacity: campaign.capacity,
@@ -175,6 +222,11 @@ export default async function CampaignsPage({
                     {!campaign.accepting_requests && " (closed to new requests)"}
                     {campaign.location && <> &middot; {campaign.location}</>}
                   </p>
+                  {!!campaign.new_player_friendly && (
+                    <span className="mt-1 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20">
+                      New-player friendly
+                    </span>
+                  )}
                   {campaign.description && (
                     <p className="mt-1 text-sm">{campaign.description}</p>
                   )}
@@ -190,7 +242,7 @@ export default async function CampaignsPage({
                   key={p}
                   href={{
                     pathname: "/campaigns",
-                    query: { system, q, location, sort, page: p },
+                    query: { system, q, location, newPlayerFriendly, sort, page: p },
                   }}
                   className={
                     p === page

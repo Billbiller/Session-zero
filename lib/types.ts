@@ -40,6 +40,13 @@ export interface Campaign {
    * deliberately not a precise geocoded address. A lighter-weight first
    * step toward "near me" discovery; empty string means unset. */
   location: string;
+  /** DM-set, player-visible heads-up flag (backlog #40) echoing the
+   * prototype's "New player friendly" tag — signals a table that's
+   * deliberately welcoming to someone new to tabletop gaming, not a
+   * quality rating. Follows the exact danger_level convention: a simple
+   * filterable field on the campaign, shown on the detail header and
+   * browse cards. */
+  new_player_friendly: number; // 0 | 1
   created_at: string;
   updated_at: string;
 }
@@ -171,6 +178,11 @@ export interface Profile {
   /** Free-text, coarse location (e.g. "Austin, TX" or "Online/Remote") —
    * same deliberately-imprecise scope as a campaign's own location field. */
   location: string;
+  /** Backlog #40: a self-flag a brand-new player can set on their own
+   * profile — "new to tabletop," echoing the prototype's "New player
+   * friendly" tag from the campaign side (see Campaign.new_player_friendly
+   * above). Not enforced or verified in any way — a signal, not a gate. */
+  new_to_tabletop: number; // 0 | 1
   updated_at: string | null;
 }
 

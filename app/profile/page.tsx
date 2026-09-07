@@ -17,6 +17,7 @@ export default function ProfilePage() {
   const [preferredSystems, setPreferredSystems] = useState("");
   const [availability, setAvailability] = useState("");
   const [location, setLocation] = useState("");
+  const [newToTabletop, setNewToTabletop] = useState(false);
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -37,6 +38,7 @@ export default function ProfilePage() {
       setPreferredSystems(data.profile.preferred_systems);
       setAvailability(data.profile.availability);
       setLocation(data.profile.location);
+      setNewToTabletop(!!data.profile.new_to_tabletop);
       setAvailabilitySlots(data.availabilitySlots ?? []);
       setDming(data.dming ?? []);
       setPlaying(data.playing ?? []);
@@ -61,7 +63,14 @@ export default function ProfilePage() {
     const res = await fetch("/api/profile", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bio, preferredSystems, availability, location, availabilitySlots }),
+      body: JSON.stringify({
+        bio,
+        preferredSystems,
+        availability,
+        location,
+        newToTabletop,
+        availabilitySlots,
+      }),
     });
     setSaving(false);
     const data = await res.json().catch(() => ({}));
@@ -134,6 +143,14 @@ export default function ProfilePage() {
               placeholder="e.g. Austin, TX or Online/Remote"
               className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={newToTabletop}
+              onChange={(e) => setNewToTabletop(e.target.checked)}
+            />
+            I&apos;m new to tabletop gaming
           </label>
           <div className="flex flex-col gap-1">
             <span>Weekly availability (optional, in addition to the note above)</span>

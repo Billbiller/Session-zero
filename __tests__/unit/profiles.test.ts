@@ -18,6 +18,7 @@ describe("profiles", () => {
     expect(profile.preferred_systems).toBe("");
     expect(profile.availability).toBe("");
     expect(profile.location).toBe("");
+    expect(profile.new_to_tabletop).toBe(0);
     expect(profile.updated_at).toBeNull();
   });
 
@@ -28,11 +29,13 @@ describe("profiles", () => {
       preferredSystems: "  D&D 5e, Pathfinder 2e  ",
       availability: "  Weeknights after 7pm ET  ",
       location: "  Austin, TX  ",
+      newToTabletop: true,
     });
     expect(saved.bio).toBe("Loves gothic horror campaigns.");
     expect(saved.preferred_systems).toBe("D&D 5e, Pathfinder 2e");
     expect(saved.availability).toBe("Weeknights after 7pm ET");
     expect(saved.location).toBe("Austin, TX");
+    expect(saved.new_to_tabletop).toBe(1);
     expect(saved.updated_at).not.toBeNull();
 
     const reread = getProfile(user.id);
@@ -70,6 +73,25 @@ describe("profiles", () => {
   it("rejects a location over its length limit", () => {
     const user = signUp("Location Eve", "profile5b@example.com", "testpassword123");
     expect(() => upsertProfile(user.id, { location: "x".repeat(201) })).toThrow(ProfileError);
+  });
+
+  it("lets new_to_tabletop be set and cleared independently of other fields", () => {
+    const user = signUp("Flagged Frank", "profile5c@example.com", "testpassword123");
+    upsertProfile(user.id, { bio: "Some bio" });
+    const flagged = upsertProfile(user.id, { newToTabletop: true });
+    expect(flagged.new_to_tabletop).toBe(1);
+    expect(flagged.bio).toBe("Some bio");
+
+    const cleared = upsertProfile(user.id, { newToTabletop: false });
+    expect(cleared.new_to_tabletop).toBe(0);
+    expect(cleared.bio).toBe("Some bio");
+  });
+
+  it("leaves new_to_tabletop untouched when omitted from an update", () => {
+    const user = signUp("Untouched Uma", "profile5d@example.com", "testpassword123");
+    upsertProfile(user.id, { newToTabletop: true });
+    const updated = upsertProfile(user.id, { bio: "New bio" });
+    expect(updated.new_to_tabletop).toBe(1);
   });
 
   it("does not affect another user's profile", () => {

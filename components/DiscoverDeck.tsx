@@ -11,6 +11,7 @@ export interface DiscoverCard {
   system: string;
   location: string;
   danger_level: DangerLevel | null;
+  new_player_friendly: number;
   accepting_requests: number;
   cancelled: number;
   capacity: number;
@@ -74,6 +75,11 @@ export default function DiscoverDeck({ cards }: { cards: DiscoverCard[] }) {
         {card.danger_level && (
           <span className="mt-2 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20">
             {DANGER_LEVEL_LABELS[card.danger_level]}
+          </span>
+        )}
+        {!!card.new_player_friendly && (
+          <span className="mt-2 ml-2 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20">
+            New-player friendly
           </span>
         )}
         {card.description && <p className="mt-3 text-sm">{card.description}</p>}

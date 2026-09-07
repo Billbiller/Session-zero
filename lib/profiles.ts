@@ -15,6 +15,7 @@ function defaultProfile(userId: string): Profile {
     preferred_systems: "",
     availability: "",
     location: "",
+    new_to_tabletop: 0,
     updated_at: null,
   };
 }
@@ -30,13 +31,22 @@ export function getProfile(userId: string): Profile {
 
 export function upsertProfile(
   userId: string,
-  input: { bio?: string; preferredSystems?: string; availability?: string; location?: string }
+  input: {
+    bio?: string;
+    preferredSystems?: string;
+    availability?: string;
+    location?: string;
+    /** undefined = leave unchanged, matching every other field here. */
+    newToTabletop?: boolean;
+  }
 ): Profile {
   const current = getProfile(userId);
   const bio = (input.bio ?? current.bio).trim();
   const preferredSystems = (input.preferredSystems ?? current.preferred_systems).trim();
   const availability = (input.availability ?? current.availability).trim();
   const location = (input.location ?? current.location).trim();
+  const newToTabletop =
+    input.newToTabletop !== undefined ? (input.newToTabletop ? 1 : 0) : current.new_to_tabletop;
 
   if (bio.length > MAX_BIO) {
     throw new ProfileError(`Bio can't be longer than ${MAX_BIO} characters.`);
@@ -57,13 +67,14 @@ export function upsertProfile(
 
   const updated_at = new Date().toISOString();
   db.prepare(
-    `INSERT INTO profiles (user_id, bio, preferred_systems, availability, location, updated_at)
-     VALUES (@user_id, @bio, @preferred_systems, @availability, @location, @updated_at)
+    `INSERT INTO profiles (user_id, bio, preferred_systems, availability, location, new_to_tabletop, updated_at)
+     VALUES (@user_id, @bio, @preferred_systems, @availability, @location, @new_to_tabletop, @updated_at)
      ON CONFLICT (user_id) DO UPDATE SET
        bio = excluded.bio,
        preferred_systems = excluded.preferred_systems,
        availability = excluded.availability,
        location = excluded.location,
+       new_to_tabletop = excluded.new_to_tabletop,
        updated_at = excluded.updated_at`
   ).run({
     user_id: userId,
@@ -71,6 +82,7 @@ export function upsertProfile(
     preferred_systems: preferredSystems,
     availability,
     location,
+    new_to_tabletop: newToTabletop,
     updated_at,
   });
   return getProfile(userId);

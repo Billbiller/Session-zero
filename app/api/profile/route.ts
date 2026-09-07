@@ -30,6 +30,7 @@ const bodySchema = z.object({
   preferredSystems: z.string().max(300).optional(),
   availability: z.string().max(300).optional(),
   location: z.string().max(200).optional(),
+  newToTabletop: z.boolean().optional(),
   // Full-replace list of weekly availability cells (backlog #27 phase 1).
   // Omitted entirely leaves the stored grid untouched; an empty array
   // clears it, same partial-update convention as the rest of this route.

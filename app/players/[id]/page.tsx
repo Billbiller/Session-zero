@@ -100,7 +100,17 @@ export default async function PlayerProfilePage({
     <div className="flex max-w-lg flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">{user.display_name}</h1>
+          <h1 className="text-2xl font-semibold">
+            {user.display_name}
+            {!!profile.new_to_tabletop && (
+              <span
+                className="ml-2 rounded-full border border-black/20 px-2 py-0.5 text-xs font-normal dark:border-white/20"
+                title="New to tabletop gaming"
+              >
+                New to tabletop
+              </span>
+            )}
+          </h1>
           <p className="mt-0.5 text-xs text-black/60 dark:text-white/60">
             {followers} follower{followers === 1 ? "" : "s"} &middot; following {followees}
           </p>

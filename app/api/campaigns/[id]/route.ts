@@ -50,6 +50,7 @@ const updateSchema = z.object({
   // undefined = leave unchanged; null = clear; a recognized level = set it.
   dangerLevel: z.enum(DANGER_LEVELS).nullable().optional(),
   location: z.string().trim().max(200).optional(),
+  newPlayerFriendly: z.boolean().optional(),
 });
 
 export async function PATCH(
