@@ -17,6 +17,14 @@ const MAX_ARCHETYPE = 150;
 const MAX_BIO = 1000;
 const MAX_BACKSTORY = 4000;
 const MAX_EPILOGUE = 2000;
+// Portraits are stored as base64 data: URLs directly in SQLite (the
+// simplest no-new-infrastructure option — see the backlog's own writeup).
+// Base64 inflates size by ~33%, so this caps the *encoded string* length
+// rather than the original file size; ~280,000 chars works out to roughly
+// a 200KB source image, small enough to not meaningfully bloat the DB file
+// while still allowing a reasonably-compressed photo or drawing.
+const MAX_PORTRAIT_DATA_URL_LENGTH = 280_000;
+const PORTRAIT_DATA_URL_PATTERN = /^data:image\/(png|jpeg|jpg|webp|gif);base64,/;
 
 // Re-exported for the same reason as CHARACTER_AVATARS below.
 export { CHARACTER_STATUSES };
@@ -127,6 +135,22 @@ function validateFields(fields: {
   }
 }
 
+/** Validates an uploaded portrait's data: URL shape and size. Returns the
+ * value unchanged (no resizing/compression is done server-side — this is
+ * intentionally minimal: reject anything too large or the wrong shape,
+ * rather than trying to transform it). Pass null to explicitly clear an
+ * existing portrait back to the emoji avatar. */
+function validatePortraitDataUrl(value: string | null): string | null {
+  if (value === null) return null;
+  if (value.length > MAX_PORTRAIT_DATA_URL_LENGTH) {
+    throw new CharacterError("That image is too large — please use a smaller or more compressed image (roughly under 200KB).");
+  }
+  if (!PORTRAIT_DATA_URL_PATTERN.test(value)) {
+    throw new CharacterError("Portraits must be a PNG, JPEG, WEBP, or GIF image.");
+  }
+  return value;
+}
+
 export interface CharacterCreateInput {
   name: string;
   archetype?: string;
@@ -140,6 +164,10 @@ export interface CharacterCreateInput {
    * adventuring; retiring or killing one off is something you do later. */
   status?: CharacterStatus;
   epilogue?: string;
+  /** An uploaded portrait as a data: URL, or null/omitted for none (falls
+   * back to avatarEmoji). See validatePortraitDataUrl() for size/shape
+   * limits. */
+  portraitDataUrl?: string | null;
 }
 
 export function createCharacter(userId: string, input: CharacterCreateInput): Character {
@@ -158,6 +186,8 @@ export function createCharacter(userId: string, input: CharacterCreateInput): Ch
       ? input.avatarEmoji
       : defaultAvatarFor(name);
 
+  const portrait_data_url = validatePortraitDataUrl(input.portraitDataUrl ?? null);
+
   const campaignId = input.campaignId ?? null;
   if (campaignId) assertCampaignLinkAllowed(campaignId, userId);
 
@@ -173,12 +203,13 @@ export function createCharacter(userId: string, input: CharacterCreateInput): Ch
     avatar_emoji,
     status,
     epilogue,
+    portrait_data_url,
     created_at: now,
     updated_at: now,
   };
   db.prepare(
-    `INSERT INTO characters (id, user_id, campaign_id, name, archetype, bio, backstory, avatar_emoji, status, epilogue, created_at, updated_at)
-     VALUES (@id, @user_id, @campaign_id, @name, @archetype, @bio, @backstory, @avatar_emoji, @status, @epilogue, @created_at, @updated_at)`
+    `INSERT INTO characters (id, user_id, campaign_id, name, archetype, bio, backstory, avatar_emoji, status, epilogue, portrait_data_url, created_at, updated_at)
+     VALUES (@id, @user_id, @campaign_id, @name, @archetype, @bio, @backstory, @avatar_emoji, @status, @epilogue, @portrait_data_url, @created_at, @updated_at)`
   ).run(character);
   return character;
 }
@@ -194,6 +225,9 @@ export interface CharacterUpdateInput {
   campaignId?: string | null;
   status?: CharacterStatus;
   epilogue?: string;
+  /** undefined = leave the existing portrait unchanged; null = remove it
+   * (falls back to avatarEmoji); a data: URL = set/replace it. */
+  portraitDataUrl?: string | null;
 }
 
 export function updateCharacter(
@@ -224,6 +258,11 @@ export function updateCharacter(
         : current.avatar_emoji
       : current.avatar_emoji;
 
+  const portrait_data_url =
+    input.portraitDataUrl !== undefined
+      ? validatePortraitDataUrl(input.portraitDataUrl)
+      : current.portrait_data_url;
+
   let campaign_id = current.campaign_id;
   if (input.campaignId !== undefined) {
     if (input.campaignId === null) {
@@ -237,7 +276,7 @@ export function updateCharacter(
   const updated_at = new Date().toISOString();
   db.prepare(
     `UPDATE characters
-     SET name = ?, archetype = ?, bio = ?, backstory = ?, avatar_emoji = ?, campaign_id = ?, status = ?, epilogue = ?, updated_at = ?
+     SET name = ?, archetype = ?, bio = ?, backstory = ?, avatar_emoji = ?, campaign_id = ?, status = ?, epilogue = ?, portrait_data_url = ?, updated_at = ?
      WHERE id = ?`
   ).run(
     name,
@@ -248,6 +287,7 @@ export function updateCharacter(
     campaign_id,
     status,
     epilogue,
+    portrait_data_url,
     updated_at,
     characterId
   );

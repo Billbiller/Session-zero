@@ -128,6 +128,7 @@ CREATE TABLE IF NOT EXISTS characters (
   avatar_emoji TEXT NOT NULL DEFAULT '🎲',
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','retired','fallen')),
   epilogue TEXT NOT NULL DEFAULT '',
+  portrait_data_url TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -188,6 +189,16 @@ if (!campaignColumns.some((c) => c.name === "location")) {
 const profileColumns = db.prepare("PRAGMA table_info(profiles)").all() as { name: string }[];
 if (!profileColumns.some((c) => c.name === "location")) {
   db.exec("ALTER TABLE profiles ADD COLUMN location TEXT NOT NULL DEFAULT ''");
+}
+
+// Lightweight migration for databases created before character portrait
+// uploads existed (backlog #26). New databases already get this column
+// from the CREATE TABLE statement above. Nullable — a character with no
+// uploaded portrait falls back to its curated avatar_emoji. Reuses the
+// characterColumns snapshot taken above (captured before any ALTER TABLE
+// in this file runs, so it correctly never contains this column either).
+if (!characterColumns.some((c) => c.name === "portrait_data_url")) {
+  db.exec("ALTER TABLE characters ADD COLUMN portrait_data_url TEXT");
 }
 
 export default db;

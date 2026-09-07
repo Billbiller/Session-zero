@@ -391,4 +391,63 @@ describe("characters", () => {
       total: 0,
     });
   });
+
+  it("defaults a new character's portrait to null (falls back to the emoji avatar)", () => {
+    const user = signUp("NoPortrait", "char-portrait1@example.com", "testpassword123");
+    const character = createCharacter(user.id, { name: "Plain" });
+    expect(character.portrait_data_url).toBeNull();
+  });
+
+  it("lets a character be created with a valid portrait data URL", () => {
+    const user = signUp("Painter", "char-portrait2@example.com", "testpassword123");
+    const dataUrl = "data:image/png;base64," + "A".repeat(100);
+    const character = createCharacter(user.id, { name: "Portrayed", portraitDataUrl: dataUrl });
+    expect(character.portrait_data_url).toBe(dataUrl);
+  });
+
+  it("rejects a portrait that isn't a recognized image data URL", () => {
+    const user = signUp("Faker", "char-portrait3@example.com", "testpassword123");
+    expect(() =>
+      createCharacter(user.id, { name: "Bad", portraitDataUrl: "not-a-data-url" })
+    ).toThrow(CharacterError);
+    expect(() =>
+      createCharacter(user.id, {
+        name: "Bad2",
+        portraitDataUrl: "data:text/plain;base64,aGVsbG8=",
+      })
+    ).toThrow(CharacterError);
+  });
+
+  it("rejects a portrait data URL over the max length", () => {
+    const user = signUp("Hoarder", "char-portrait4@example.com", "testpassword123");
+    const tooLong = "data:image/png;base64," + "A".repeat(300_000);
+    expect(() =>
+      createCharacter(user.id, { name: "TooBig", portraitDataUrl: tooLong })
+    ).toThrow(CharacterError);
+  });
+
+  it("lets the owner set, replace, and remove a portrait via update", () => {
+    const user = signUp("Editor", "char-portrait5@example.com", "testpassword123");
+    const character = createCharacter(user.id, { name: "Evolving" });
+    expect(character.portrait_data_url).toBeNull();
+
+    const first = "data:image/jpeg;base64," + "B".repeat(50);
+    const withPortrait = updateCharacter(character.id, user.id, { portraitDataUrl: first });
+    expect(withPortrait.portrait_data_url).toBe(first);
+
+    const second = "data:image/webp;base64," + "C".repeat(50);
+    const replaced = updateCharacter(character.id, user.id, { portraitDataUrl: second });
+    expect(replaced.portrait_data_url).toBe(second);
+
+    const removed = updateCharacter(character.id, user.id, { portraitDataUrl: null });
+    expect(removed.portrait_data_url).toBeNull();
+  });
+
+  it("leaves an existing portrait untouched when omitted from an update", () => {
+    const user = signUp("Consistent", "char-portrait6@example.com", "testpassword123");
+    const dataUrl = "data:image/gif;base64," + "D".repeat(50);
+    const character = createCharacter(user.id, { name: "Steady", portraitDataUrl: dataUrl });
+    const updated = updateCharacter(character.id, user.id, { bio: "New bio" });
+    expect(updated.portrait_data_url).toBe(dataUrl);
+  });
 });

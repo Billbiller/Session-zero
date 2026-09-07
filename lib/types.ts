@@ -203,6 +203,12 @@ export interface Character {
    * "active", but not restricted at the data layer to allow e.g. writing
    * it in advance before formally retiring a character. */
   epilogue: string;
+  /** An uploaded portrait, stored as a data: URL (base64) directly in
+   * SQLite — the simplest no-new-infrastructure option, deliberately kept
+   * small (see MAX_PORTRAIT_BYTES in lib/characters.ts) to limit database
+   * bloat. null means no upload; avatar_emoji is shown instead. Revisit
+   * with real object storage once a deployment target is chosen. */
+  portrait_data_url: string | null;
   created_at: string;
   updated_at: string;
 }

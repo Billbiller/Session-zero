@@ -36,6 +36,9 @@ const bodySchema = z.object({
   campaignId: z.string().min(1).nullable().optional(),
   status: z.enum(CHARACTER_STATUSES).optional(),
   epilogue: z.string().max(2000).optional(),
+  // Shape/size validated again in lib/characters.ts (the source of truth);
+  // this cap just rejects an obviously-oversized payload before it's parsed.
+  portraitDataUrl: z.string().max(300000).nullable().optional(),
 });
 
 export async function POST(request: NextRequest) {

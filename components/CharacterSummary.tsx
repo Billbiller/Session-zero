@@ -19,9 +19,18 @@ export default function CharacterSummary({
 }) {
   return (
     <div className="flex gap-3">
-      <span className="text-2xl leading-none" aria-hidden="true">
-        {character.avatar_emoji}
-      </span>
+      {character.portrait_data_url ? (
+        // eslint-disable-next-line @next/next/no-img-element -- data: URL can't use next/image's optimizer.
+        <img
+          src={character.portrait_data_url}
+          alt=""
+          className="h-10 w-10 shrink-0 rounded-full object-cover"
+        />
+      ) : (
+        <span className="text-2xl leading-none" aria-hidden="true">
+          {character.avatar_emoji}
+        </span>
+      )}
       <div className="flex flex-col gap-1">
         <p className="font-medium">
           {character.name}

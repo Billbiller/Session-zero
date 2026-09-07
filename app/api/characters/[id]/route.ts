@@ -22,6 +22,9 @@ const bodySchema = z.object({
   campaignId: z.string().min(1).nullable().optional(),
   status: z.enum(CHARACTER_STATUSES).optional(),
   epilogue: z.string().max(2000).optional(),
+  // undefined = leave the portrait unchanged; null = remove it; a data:
+  // URL = set/replace it. Shape/size re-validated in lib/characters.ts.
+  portraitDataUrl: z.string().max(300000).nullable().optional(),
 });
 
 export async function PATCH(

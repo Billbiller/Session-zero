@@ -23,6 +23,11 @@ interface FormState {
   campaignId: string;
   status: CharacterStatus;
   epilogue: string;
+  /** null = no uploaded portrait (shows avatarEmoji instead); a data: URL =
+   * the current/uploaded portrait. Always sent as-is on submit (even if
+   * unchanged) — simpler than tracking a separate "touched" flag, and
+   * idempotent since the server just re-validates and re-stores it. */
+  portraitDataUrl: string | null;
 }
 
 const EMPTY_FORM: FormState = {
@@ -34,7 +39,14 @@ const EMPTY_FORM: FormState = {
   campaignId: "",
   status: "active",
   epilogue: "",
+  portraitDataUrl: null,
 };
+
+// Mirrors MAX_PORTRAIT_DATA_URL_LENGTH's ~200KB budget in
+// lib/characters.ts, checked against the raw file here (before base64
+// inflates it ~33%) so a too-large file is rejected immediately instead of
+// after an upload+encode round trip.
+const MAX_PORTRAIT_FILE_BYTES = 200 * 1024;
 
 function formFromCharacter(character: CharacterWithCampaignTitle): FormState {
   return {
@@ -46,6 +58,7 @@ function formFromCharacter(character: CharacterWithCampaignTitle): FormState {
     campaignId: character.campaign_id ?? "",
     status: character.status,
     epilogue: character.epilogue,
+    portraitDataUrl: character.portrait_data_url,
   };
 }
 
@@ -112,7 +125,31 @@ export default function CharacterManager({
       campaignId: form.campaignId ? form.campaignId : null,
       status: form.status,
       epilogue: form.epilogue,
+      portraitDataUrl: form.portraitDataUrl,
     };
+  }
+
+  function handlePortraitFile(
+    file: File | undefined,
+    form: FormState,
+    setForm: (f: FormState) => void
+  ) {
+    if (!file) return;
+    setError(null);
+    if (file.size > MAX_PORTRAIT_FILE_BYTES) {
+      setError(
+        `That image is too large — please use one under ${Math.round(MAX_PORTRAIT_FILE_BYTES / 1024)}KB.`
+      );
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setForm({ ...form, portraitDataUrl: reader.result });
+      }
+    };
+    reader.onerror = () => setError("Couldn't read that image — please try again.");
+    reader.readAsDataURL(file);
   }
 
   async function handleCreate() {
@@ -196,7 +233,7 @@ export default function CharacterManager({
           />
         </label>
         <label className="flex flex-col gap-1">
-          Portrait
+          Portrait (emoji)
           <select
             value={form.avatarEmoji}
             onChange={(e) => setForm({ ...form, avatarEmoji: e.target.value })}
@@ -209,6 +246,39 @@ export default function CharacterManager({
             ))}
           </select>
         </label>
+        <div className="flex flex-col gap-1">
+          Or upload a picture
+          <div className="flex items-center gap-3">
+            {form.portraitDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- data: URL can't use next/image's optimizer.
+              <img
+                src={form.portraitDataUrl}
+                alt=""
+                className="h-12 w-12 rounded-full object-cover"
+              />
+            ) : (
+              <span className="text-2xl leading-none">{form.avatarEmoji}</span>
+            )}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={(e) => handlePortraitFile(e.target.files?.[0], form, setForm)}
+              className="text-xs"
+            />
+            {form.portraitDataUrl && (
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, portraitDataUrl: null })}
+                className="text-xs underline"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+          <span className="text-xs text-black/60 dark:text-white/60">
+            Under {Math.round(MAX_PORTRAIT_FILE_BYTES / 1024)}KB. Takes priority over the emoji above when set.
+          </span>
+        </div>
         <label className="flex flex-col gap-1">
           Playing in
           <select
