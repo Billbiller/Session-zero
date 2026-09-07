@@ -151,6 +151,22 @@ CREATE TABLE IF NOT EXISTS ratings (
 
 CREATE INDEX IF NOT EXISTS idx_ratings_ratee ON ratings(ratee_id);
 CREATE INDEX IF NOT EXISTS idx_ratings_campaign ON ratings(campaign_id);
+
+-- Phase 1 of backlog #27 (recurring weekly availability): a user marks
+-- which day/time-of-day blocks they're generally free, as a structured
+-- complement to profiles.availability's free text. day_of_week is 0=Monday
+-- .. 6=Sunday, an app-level display-order index unrelated to
+-- Date.prototype.getDay() (which is 0=Sunday) -- deliberately so, since
+-- this is a recurring weekly pattern, not tied to any specific date. No
+-- timezone is stored; treated as the user's own local week. The
+-- search/matching layer that would compare two users' grids is explicitly
+-- deferred to a later phase.
+CREATE TABLE IF NOT EXISTS availability_slots (
+  user_id TEXT NOT NULL REFERENCES users(id),
+  day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+  block TEXT NOT NULL CHECK (block IN ('morning','afternoon','evening','night')),
+  PRIMARY KEY (user_id, day_of_week, block)
+);
 `);
 
 // Lightweight migration for databases created before password_hash existed

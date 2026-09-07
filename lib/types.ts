@@ -155,6 +155,31 @@ export interface Profile {
   updated_at: string | null;
 }
 
+/** Day-of-week display order for the structured availability grid
+ * (backlog #27, phase 1). Index 0 = Monday, 6 = Sunday — an app-level
+ * display convention, NOT the same as Date.prototype.getDay() (which is
+ * 0 = Sunday). This is a recurring weekly pattern with no attached date,
+ * so there's no calendar day to derive it from either way. */
+export const AVAILABILITY_DAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+] as const;
+
+export const AVAILABILITY_BLOCKS = ["morning", "afternoon", "evening", "night"] as const;
+
+export type AvailabilityBlock = (typeof AVAILABILITY_BLOCKS)[number];
+
+export interface AvailabilitySlot {
+  /** 0-6, see AVAILABILITY_DAYS. */
+  day: number;
+  block: AvailabilityBlock;
+}
+
 export const CHARACTER_AVATARS = [
   "🧙‍♂️",
   "🧙‍♀️",

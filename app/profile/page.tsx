@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Campaign, Profile, UserStats } from "@/lib/types";
+import type { Campaign, Profile, UserStats, AvailabilitySlot } from "@/lib/types";
 import CharacterManager from "@/components/CharacterManager";
 import StatsPanel from "@/components/StatsPanel";
+import AvailabilityGrid from "@/components/AvailabilityGrid";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -16,6 +17,7 @@ export default function ProfilePage() {
   const [preferredSystems, setPreferredSystems] = useState("");
   const [availability, setAvailability] = useState("");
   const [location, setLocation] = useState("");
+  const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +37,7 @@ export default function ProfilePage() {
       setPreferredSystems(data.profile.preferred_systems);
       setAvailability(data.profile.availability);
       setLocation(data.profile.location);
+      setAvailabilitySlots(data.availabilitySlots ?? []);
       setDming(data.dming ?? []);
       setPlaying(data.playing ?? []);
       setStats(data.stats ?? null);
@@ -58,7 +61,7 @@ export default function ProfilePage() {
     const res = await fetch("/api/profile", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bio, preferredSystems, availability, location }),
+      body: JSON.stringify({ bio, preferredSystems, availability, location, availabilitySlots }),
     });
     setSaving(false);
     const data = await res.json().catch(() => ({}));
@@ -132,6 +135,14 @@ export default function ProfilePage() {
               className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
           </label>
+          <div className="flex flex-col gap-1">
+            <span>Weekly availability (optional, in addition to the note above)</span>
+            <AvailabilityGrid
+              slots={availabilitySlots}
+              onChange={setAvailabilitySlots}
+              editable
+            />
+          </div>
           {error && <p className="text-red-600 dark:text-red-400">{error}</p>}
           <div className="flex items-center gap-3">
             <button

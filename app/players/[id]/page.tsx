@@ -5,8 +5,10 @@ import { listCharactersForUser } from "@/lib/characters";
 import { getCampaign } from "@/lib/campaigns";
 import { getUserRatingSummary } from "@/lib/ratings";
 import { getUserStats } from "@/lib/stats";
+import { getAvailabilitySlots } from "@/lib/availability";
 import CharacterSummary from "@/components/CharacterSummary";
 import StatsPanel from "@/components/StatsPanel";
+import AvailabilityGrid from "@/components/AvailabilityGrid";
 
 function reputationLine(label: string, summary: { average: number | null; count: number; tagCounts: Record<string, number> }) {
   const topTags = Object.entries(summary.tagCounts)
@@ -50,6 +52,7 @@ export default async function PlayerProfilePage({
   const characters = listCharactersForUser(id);
   const ratingSummary = getUserRatingSummary(id);
   const stats = getUserStats(id);
+  const availabilitySlots = getAvailabilitySlots(id);
 
   return (
     <div className="flex max-w-lg flex-col gap-4">
@@ -88,6 +91,15 @@ export default async function PlayerProfilePage({
         <div>
           <h2 className="text-sm font-medium">Availability</h2>
           <p className="text-sm">{profile.availability}</p>
+        </div>
+      )}
+
+      {availabilitySlots.length > 0 && (
+        <div>
+          <h2 className="text-sm font-medium">Weekly availability</h2>
+          <div className="mt-1">
+            <AvailabilityGrid slots={availabilitySlots} />
+          </div>
         </div>
       )}
 
