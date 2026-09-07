@@ -66,6 +66,12 @@ CREATE TABLE IF NOT EXISTS notifications (
   user_id TEXT NOT NULL REFERENCES users(id),
   type TEXT NOT NULL,
   campaign_id TEXT REFERENCES campaigns(id),
+  -- Backlog #31 (direct messaging): an optional second subject for a
+  -- notification that isn't campaign-shaped -- e.g. "X sent you a
+  -- message" links to /messages/<related_user_id>, not a campaign. Null
+  -- for every notification type that predates this (they all link via
+  -- campaign_id instead, or don't link anywhere).
+  related_user_id TEXT REFERENCES users(id),
   message TEXT NOT NULL,
   read INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
@@ -252,6 +258,27 @@ CREATE TABLE IF NOT EXISTS sub_placements (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sub_placements_request ON sub_placements(request_id);
+
+-- Backlog #31: 1:1 direct messaging. A "conversation" is not its own
+-- entity/row -- it's simply the unique unordered pair of
+-- (sender_id, recipient_id) values across a user's messages, computed at
+-- query time in lib/messages.ts rather than tracked as a separate table.
+-- Any signed-in user may message any other signed-in user (matching this
+-- app's existing openness -- campaign browsing, the sub-request pool,
+-- etc. have no prerequisite-relationship gate either); see
+-- lib/messages.ts for the full reasoning. "read" is from the recipient's
+-- perspective only, same shape as notifications.read.
+CREATE TABLE IF NOT EXISTS messages (
+  id TEXT PRIMARY KEY,
+  sender_id TEXT NOT NULL REFERENCES users(id),
+  recipient_id TEXT NOT NULL REFERENCES users(id),
+  body TEXT NOT NULL,
+  read INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
 `);
 
 // Lightweight migration for databases created before password_hash existed
@@ -314,6 +341,14 @@ if (!characterColumns.some((c) => c.name === "temp_pilot_user_id")) {
 const subRequestColumns = db.prepare("PRAGMA table_info(sub_requests)").all() as { name: string }[];
 if (!subRequestColumns.some((c) => c.name === "character_id")) {
   db.exec("ALTER TABLE sub_requests ADD COLUMN character_id TEXT");
+}
+
+// Lightweight migration for databases created before direct messaging
+// existed (backlog #31). New databases already get this column from the
+// CREATE TABLE statement above.
+const notificationColumns = db.prepare("PRAGMA table_info(notifications)").all() as { name: string }[];
+if (!notificationColumns.some((c) => c.name === "related_user_id")) {
+  db.exec("ALTER TABLE notifications ADD COLUMN related_user_id TEXT");
 }
 
 export default db;

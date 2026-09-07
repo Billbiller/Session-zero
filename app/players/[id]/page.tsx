@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getUserById } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/currentUser";
 import { getProfile, splitPreferredSystems } from "@/lib/profiles";
 import { listCharactersForUser } from "@/lib/characters";
 import { getCampaign } from "@/lib/campaigns";
@@ -47,6 +49,9 @@ export default async function PlayerProfilePage({
   const user = getUserById(id);
   if (!user) notFound();
 
+  const viewer = await getCurrentUser();
+  const isOwnProfile = viewer?.id === id;
+
   const profile = getProfile(id);
   const systems = splitPreferredSystems(profile.preferred_systems);
   const characters = listCharactersForUser(id);
@@ -56,7 +61,17 @@ export default async function PlayerProfilePage({
 
   return (
     <div className="flex max-w-lg flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{user.display_name}</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">{user.display_name}</h1>
+        {viewer && !isOwnProfile && (
+          <Link
+            href={`/messages/${id}`}
+            className="whitespace-nowrap rounded border border-black/10 px-3 py-1 text-sm dark:border-white/10"
+          >
+            Message
+          </Link>
+        )}
+      </div>
 
       <div className="flex flex-col gap-3 rounded border border-black/10 p-3 dark:border-white/10 sm:flex-row sm:gap-6">
         {reputationLine("As DM", ratingSummary.asDm)}

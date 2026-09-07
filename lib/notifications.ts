@@ -14,12 +14,19 @@ export {
  * before any row is written, so a muted user gets nothing inserted at all
  * (not written-then-filtered). Returns the created notification, or null if
  * the type is muted for this user.
+ *
+ * relatedUserId (backlog #31) is an optional second link target for
+ * notification types that aren't campaign-shaped -- e.g. message_received
+ * links to the sender's conversation (/messages/<relatedUserId>) rather
+ * than a campaign. Defaults to null so every pre-existing call site
+ * (which only ever passes the first four positional args) is unaffected.
  */
 export function notify(
   userId: string,
   type: NotificationType,
   campaignId: string | null,
-  message: string
+  message: string,
+  relatedUserId: string | null = null
 ): Notification | null {
   if (!isEnabled(userId, type)) return null;
   const notification: Notification = {
@@ -27,13 +34,14 @@ export function notify(
     user_id: userId,
     type,
     campaign_id: campaignId,
+    related_user_id: relatedUserId,
     message,
     read: 0,
     created_at: new Date().toISOString(),
   };
   db.prepare(
-    `INSERT INTO notifications (id, user_id, type, campaign_id, message, read, created_at)
-     VALUES (@id, @user_id, @type, @campaign_id, @message, @read, @created_at)`
+    `INSERT INTO notifications (id, user_id, type, campaign_id, related_user_id, message, read, created_at)
+     VALUES (@id, @user_id, @type, @campaign_id, @related_user_id, @message, @read, @created_at)`
   ).run(notification);
   // Push the fresh unread count to any open SSE stream for this user (see
   // notificationEvents.ts + app/api/notifications/stream/route.ts) so the

@@ -70,6 +70,7 @@ export const NOTIFICATION_TYPES = [
   "sub_volunteer",
   "sub_placement_pending",
   "sub_placement_resolved",
+  "message_received",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -89,6 +90,7 @@ export const NOTIFICATION_LABELS: Record<NotificationType, string> = {
   sub_volunteer: "Someone volunteers to sub in for your campaign",
   sub_placement_pending: "A sub placement needs your review (owner or DM approval)",
   sub_placement_resolved: "A sub placement is confirmed, declined, or cancelled",
+  message_received: "Someone sends you a direct message",
 };
 
 export interface Notification {
@@ -96,6 +98,11 @@ export interface Notification {
   user_id: string;
   type: NotificationType;
   campaign_id: string | null;
+  /** See lib/db.ts's notifications table comment -- an optional second
+   * link target for a notification that isn't campaign-shaped, e.g. a
+   * message_received notification links to /messages/<related_user_id>.
+   * Null for every notification type that predates backlog #31. */
+  related_user_id: string | null;
   message: string;
   read: number; // 0 | 1
   created_at: string;
@@ -426,4 +433,37 @@ export interface CampaignRatingSummary {
   average: number | null;
   count: number;
   tagCounts: Record<string, number>;
+}
+
+/** Backlog #31: 1:1 direct messaging. A "conversation" is never a stored
+ * entity of its own -- it's the unique unordered pair of
+ * (sender_id, recipient_id) across a user's messages, computed at query
+ * time by lib/messages.ts. Any signed-in user can message any other
+ * signed-in user -- see lib/messages.ts for the full reasoning. `read`
+ * is from the recipient's perspective only (same shape as
+ * notifications.read), and has no bearing on a message's own
+ * notification -- those are two independent "unread" concepts tracked
+ * in two different tables. */
+export interface Message {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  body: string;
+  read: number; // 0 | 1
+  created_at: string;
+}
+
+/** One row per conversation partner, enriched for the inbox view -- the
+ * most recent message with that partner plus how many of their messages
+ * to the viewer are still unread. Computed server-side (a join against
+ * users), matching this file's existing client-safe-types convention. */
+export interface ConversationSummary {
+  otherUserId: string;
+  otherUserName: string;
+  lastMessage: {
+    body: string;
+    createdAt: string;
+    senderId: string;
+  };
+  unreadCount: number;
 }
