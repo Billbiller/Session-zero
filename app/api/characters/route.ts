@@ -5,6 +5,7 @@ import {
   listCharactersForUser,
   CharacterError,
   CHARACTER_AVATARS,
+  CHARACTER_STATUSES,
 } from "@/lib/characters";
 import { getCampaign } from "@/lib/campaigns";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
@@ -33,6 +34,8 @@ const bodySchema = z.object({
   // A campaign to link this character to (must be one the creator has
   // DM/active-member access to — enforced in lib/characters.ts, not here).
   campaignId: z.string().min(1).nullable().optional(),
+  status: z.enum(CHARACTER_STATUSES).optional(),
+  epilogue: z.string().max(2000).optional(),
 });
 
 export async function POST(request: NextRequest) {

@@ -2,7 +2,13 @@ import { v4 as uuidv4 } from "uuid";
 import db from "./db";
 import { getCampaign } from "./campaigns";
 import { hasPrivateAccess } from "./access";
-import { CHARACTER_AVATARS, type Character } from "./types";
+import {
+  CHARACTER_AVATARS,
+  CHARACTER_STATUSES,
+  type Character,
+  type CharacterStatus,
+  type CampaignChronicle,
+} from "./types";
 
 export class CharacterError extends Error {}
 
@@ -10,6 +16,14 @@ const MAX_NAME = 100;
 const MAX_ARCHETYPE = 150;
 const MAX_BIO = 1000;
 const MAX_BACKSTORY = 4000;
+const MAX_EPILOGUE = 2000;
+
+// Re-exported for the same reason as CHARACTER_AVATARS below.
+export { CHARACTER_STATUSES };
+
+function isKnownStatus(value: string): value is CharacterStatus {
+  return (CHARACTER_STATUSES as readonly string[]).includes(value);
+}
 
 // Re-exported so existing server-side callers (API routes) can import the
 // avatar set from this module too — but client components must import it
@@ -87,6 +101,7 @@ function validateFields(fields: {
   archetype: string;
   bio: string;
   backstory: string;
+  epilogue: string;
 }) {
   if (!fields.name) {
     throw new CharacterError("Name is required.");
@@ -107,6 +122,9 @@ function validateFields(fields: {
       `Backstory can't be longer than ${MAX_BACKSTORY} characters.`
     );
   }
+  if (fields.epilogue.length > MAX_EPILOGUE) {
+    throw new CharacterError(`Epilogue can't be longer than ${MAX_EPILOGUE} characters.`);
+  }
 }
 
 export interface CharacterCreateInput {
@@ -118,6 +136,10 @@ export interface CharacterCreateInput {
   /** Optional campaign to link this character to on creation. Must be a
    * campaign the creating user has DM/active-member access to. */
   campaignId?: string | null;
+  /** Defaults to "active" — a brand-new character is always still
+   * adventuring; retiring or killing one off is something you do later. */
+  status?: CharacterStatus;
+  epilogue?: string;
 }
 
 export function createCharacter(userId: string, input: CharacterCreateInput): Character {
@@ -125,7 +147,11 @@ export function createCharacter(userId: string, input: CharacterCreateInput): Ch
   const archetype = (input.archetype ?? "").trim();
   const bio = (input.bio ?? "").trim();
   const backstory = (input.backstory ?? "").trim();
-  validateFields({ name, archetype, bio, backstory });
+  const epilogue = (input.epilogue ?? "").trim();
+  validateFields({ name, archetype, bio, backstory, epilogue });
+
+  const status: CharacterStatus =
+    input.status !== undefined && isKnownStatus(input.status) ? input.status : "active";
 
   const avatar_emoji =
     input.avatarEmoji !== undefined && isKnownAvatar(input.avatarEmoji)
@@ -145,12 +171,14 @@ export function createCharacter(userId: string, input: CharacterCreateInput): Ch
     bio,
     backstory,
     avatar_emoji,
+    status,
+    epilogue,
     created_at: now,
     updated_at: now,
   };
   db.prepare(
-    `INSERT INTO characters (id, user_id, campaign_id, name, archetype, bio, backstory, avatar_emoji, created_at, updated_at)
-     VALUES (@id, @user_id, @campaign_id, @name, @archetype, @bio, @backstory, @avatar_emoji, @created_at, @updated_at)`
+    `INSERT INTO characters (id, user_id, campaign_id, name, archetype, bio, backstory, avatar_emoji, status, epilogue, created_at, updated_at)
+     VALUES (@id, @user_id, @campaign_id, @name, @archetype, @bio, @backstory, @avatar_emoji, @status, @epilogue, @created_at, @updated_at)`
   ).run(character);
   return character;
 }
@@ -164,6 +192,8 @@ export interface CharacterUpdateInput {
   /** undefined = leave the campaign link unchanged; null = unlink;
    * a campaign id = link/re-link (access-checked). */
   campaignId?: string | null;
+  status?: CharacterStatus;
+  epilogue?: string;
 }
 
 export function updateCharacter(
@@ -181,7 +211,11 @@ export function updateCharacter(
   const archetype = (input.archetype ?? current.archetype).trim();
   const bio = (input.bio ?? current.bio).trim();
   const backstory = (input.backstory ?? current.backstory).trim();
-  validateFields({ name, archetype, bio, backstory });
+  const epilogue = (input.epilogue ?? current.epilogue).trim();
+  validateFields({ name, archetype, bio, backstory, epilogue });
+
+  const status: CharacterStatus =
+    input.status !== undefined && isKnownStatus(input.status) ? input.status : current.status;
 
   const avatar_emoji =
     input.avatarEmoji !== undefined
@@ -203,11 +237,46 @@ export function updateCharacter(
   const updated_at = new Date().toISOString();
   db.prepare(
     `UPDATE characters
-     SET name = ?, archetype = ?, bio = ?, backstory = ?, avatar_emoji = ?, campaign_id = ?, updated_at = ?
+     SET name = ?, archetype = ?, bio = ?, backstory = ?, avatar_emoji = ?, campaign_id = ?, status = ?, epilogue = ?, updated_at = ?
      WHERE id = ?`
-  ).run(name, archetype, bio, backstory, avatar_emoji, campaign_id, updated_at, characterId);
+  ).run(
+    name,
+    archetype,
+    bio,
+    backstory,
+    avatar_emoji,
+    campaign_id,
+    status,
+    epilogue,
+    updated_at,
+    characterId
+  );
 
   return getCharacter(characterId) as Character;
+}
+
+/** Aggregate counts, by status, of every character currently linked to a
+ * campaign — the campaign's "chronicle." Scoped to *currently* linked
+ * characters: a character can only be linked to one campaign at a time and
+ * this app doesn't retain a history of past links once a character is
+ * unlinked or relinked elsewhere, so "characters passed through" here means
+ * "characters linked to this campaign right now," not a full historical
+ * roster. That's an honest reading given the existing single-link data
+ * model, not a hidden gap — a fuller history would need link-history
+ * tracking, which is out of scope for this item. */
+export function getCampaignChronicle(campaignId: string): CampaignChronicle {
+  const rows = db
+    .prepare("SELECT status, COUNT(*) as count FROM characters WHERE campaign_id = ? GROUP BY status")
+    .all(campaignId) as { status: CharacterStatus; count: number }[];
+
+  const counts: CampaignChronicle = { active: 0, retired: 0, fallen: 0, total: 0 };
+  for (const row of rows) {
+    if (row.status === "active" || row.status === "retired" || row.status === "fallen") {
+      counts[row.status] = row.count;
+    }
+    counts.total += row.count;
+  }
+  return counts;
 }
 
 export function deleteCharacter(characterId: string, userId: string): void {

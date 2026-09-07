@@ -218,4 +218,50 @@ describe("campaigns", () => {
     const reopened = manualReopen(campaign.id, dm.id);
     expect(reopened.accepting_requests).toBe(1);
   });
+
+  it("defaults a new campaign's danger level to null", () => {
+    const dm = makeDm("dm9@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(campaign.danger_level).toBeNull();
+  });
+
+  it("lets the DM set, change, and clear the danger level", () => {
+    const dm = makeDm("dm10@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+
+    const set = updateCampaign(campaign.id, dm.id, { dangerLevel: "deadly-osr" });
+    expect(set.danger_level).toBe("deadly-osr");
+
+    const changed = updateCampaign(campaign.id, dm.id, { dangerLevel: "low-lethality" });
+    expect(changed.danger_level).toBe("low-lethality");
+
+    const cleared = updateCampaign(campaign.id, dm.id, { dangerLevel: null });
+    expect(cleared.danger_level).toBeNull();
+  });
+
+  it("leaves the danger level untouched when omitted from an update", () => {
+    const dm = makeDm("dm11@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    updateCampaign(campaign.id, dm.id, { dangerLevel: "moderate" });
+    const updated = updateCampaign(campaign.id, dm.id, { title: "New title" });
+    expect(updated.danger_level).toBe("moderate");
+  });
 });

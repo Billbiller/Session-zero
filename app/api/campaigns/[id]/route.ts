@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getUserById } from "@/lib/auth";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
 import db from "@/lib/db";
-import type { Membership } from "@/lib/types";
+import { DANGER_LEVELS, type Membership } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +47,8 @@ const updateSchema = z.object({
   description: z.string().trim().optional(),
   system: z.string().trim().min(1).optional(),
   capacity: z.number().int().min(1).optional(),
+  // undefined = leave unchanged; null = clear; a recognized level = set it.
+  dangerLevel: z.enum(DANGER_LEVELS).nullable().optional(),
 });
 
 export async function PATCH(

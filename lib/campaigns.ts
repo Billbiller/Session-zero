@@ -1,9 +1,13 @@
 import { v4 as uuidv4 } from "uuid";
 import db from "./db";
 import { notify } from "./notifications";
-import type { Campaign } from "./types";
+import { DANGER_LEVELS, type Campaign, type DangerLevel } from "./types";
 
 export class CampaignError extends Error {}
+
+function isKnownDangerLevel(value: string): value is DangerLevel {
+  return (DANGER_LEVELS as readonly string[]).includes(value);
+}
 
 export function approvedHeadcount(campaignId: string): number {
   const row = db
@@ -35,14 +39,15 @@ export function createCampaign(input: {
     accepting_requests: 1,
     cancelled: 0,
     next_session_at: null,
+    danger_level: null,
     created_at: now,
     updated_at: now,
   };
   db.prepare(
     `INSERT INTO campaigns
-      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, created_at, updated_at)
+      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, created_at, updated_at)
      VALUES
-      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @created_at, @updated_at)`
+      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @created_at, @updated_at)`
   ).run(campaign);
   return campaign;
 }
@@ -62,6 +67,10 @@ export function updateCampaign(
     description: string;
     system: string;
     capacity: number;
+    /** undefined = leave unchanged; null = clear; a DangerLevel = set it.
+     * DM-set, player-visible heads-up filter — see the field's own doc
+     * comment on the Campaign type for the "not a scoreboard" framing. */
+    dangerLevel: DangerLevel | null;
   }>
 ): Campaign {
   const campaign = getCampaign(id);
@@ -80,6 +89,9 @@ export function updateCampaign(
       );
     }
   }
+  if (updates.dangerLevel !== undefined && updates.dangerLevel !== null && !isKnownDangerLevel(updates.dangerLevel)) {
+    throw new CampaignError("Not a recognized danger level.");
+  }
   const next: Campaign = {
     ...campaign,
     title: updates.title !== undefined ? updates.title.trim() : campaign.title,
@@ -89,11 +101,12 @@ export function updateCampaign(
         : campaign.description,
     system: updates.system !== undefined ? updates.system.trim() : campaign.system,
     capacity: updates.capacity ?? campaign.capacity,
+    danger_level: updates.dangerLevel !== undefined ? updates.dangerLevel : campaign.danger_level,
     updated_at: new Date().toISOString(),
   };
   db.prepare(
     `UPDATE campaigns SET title=@title, description=@description, system=@system,
-     capacity=@capacity, updated_at=@updated_at WHERE id=@id`
+     capacity=@capacity, danger_level=@danger_level, updated_at=@updated_at WHERE id=@id`
   ).run(next);
   return next;
 }

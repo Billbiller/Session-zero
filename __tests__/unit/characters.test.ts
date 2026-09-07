@@ -10,6 +10,7 @@ import {
   getCharacter,
   listCharactersForUser,
   listCharactersForCampaign,
+  getCampaignChronicle,
   CharacterError,
 } from "@/lib/characters";
 
@@ -292,5 +293,102 @@ describe("characters", () => {
 
     const listing = listCharactersForCampaign(campaignA.id);
     expect(listing.map((c) => c.id)).toEqual([first.id, second.id]);
+  });
+
+  it("defaults a new character to active status and an empty epilogue", () => {
+    const user = signUp("Fresh", "char-status1@example.com", "testpassword123");
+    const character = createCharacter(user.id, { name: "Newborn" });
+    expect(character.status).toBe("active");
+    expect(character.epilogue).toBe("");
+  });
+
+  it("lets a character be created directly as retired or fallen with an epilogue", () => {
+    const user = signUp("Vet", "char-status2@example.com", "testpassword123");
+    const character = createCharacter(user.id, {
+      name: "Old Soldier",
+      status: "retired",
+      epilogue: "Hung up the sword after the war ended.",
+    });
+    expect(character.status).toBe("retired");
+    expect(character.epilogue).toBe("Hung up the sword after the war ended.");
+  });
+
+  it("lets the owner update a character's status and epilogue independently of other fields", () => {
+    const user = signUp("Owner", "char-status3@example.com", "testpassword123");
+    const character = createCharacter(user.id, { name: "Doomed" });
+
+    const fallen = updateCharacter(character.id, user.id, {
+      status: "fallen",
+      epilogue: "Died holding the bridge so the others could escape.",
+    });
+    expect(fallen.status).toBe("fallen");
+    expect(fallen.epilogue).toBe("Died holding the bridge so the others could escape.");
+    // Untouched fields stay as they were.
+    expect(fallen.name).toBe("Doomed");
+  });
+
+  it("rejects an epilogue longer than the max length", () => {
+    const user = signUp("Verbose", "char-status4@example.com", "testpassword123");
+    expect(() =>
+      createCharacter(user.id, { name: "TooMuch", epilogue: "x".repeat(2001) })
+    ).toThrow(CharacterError);
+  });
+
+  it("ignores an unrecognized status value and falls back to the current/default status", () => {
+    const user = signUp("Cautious", "char-status5@example.com", "testpassword123");
+    // @ts-expect-error deliberately passing an invalid status to prove it's rejected gracefully
+    const created = createCharacter(user.id, { name: "Steady", status: "haunted" });
+    expect(created.status).toBe("active");
+  });
+
+  it("aggregates a campaign's chronicle by character status among currently linked characters", () => {
+    const dm = makeDm("char-chron1-dm@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "Chronicle Test",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(getCampaignChronicle(campaign.id)).toEqual({
+      active: 0,
+      retired: 0,
+      fallen: 0,
+      total: 0,
+    });
+
+    createCharacter(dm.id, { name: "Alive", campaignId: campaign.id });
+    createCharacter(dm.id, { name: "Retiree", campaignId: campaign.id, status: "retired" });
+    createCharacter(dm.id, { name: "Ghost1", campaignId: campaign.id, status: "fallen" });
+    createCharacter(dm.id, { name: "Ghost2", campaignId: campaign.id, status: "fallen" });
+    createCharacter(dm.id, { name: "Elsewhere" }); // unlinked, shouldn't count
+
+    expect(getCampaignChronicle(campaign.id)).toEqual({
+      active: 1,
+      retired: 1,
+      fallen: 2,
+      total: 4,
+    });
+  });
+
+  it("drops a character out of a campaign's chronicle once unlinked", () => {
+    const dm = makeDm("char-chron2-dm@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "Chronicle Test 2",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const character = createCharacter(dm.id, { name: "Temp", campaignId: campaign.id, status: "fallen" });
+    expect(getCampaignChronicle(campaign.id).total).toBe(1);
+
+    updateCharacter(character.id, dm.id, { campaignId: null });
+    expect(getCampaignChronicle(campaign.id)).toEqual({
+      active: 0,
+      retired: 0,
+      fallen: 0,
+      total: 0,
+    });
   });
 });

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import type { Character } from "@/lib/types";
-import { CHARACTER_AVATARS } from "@/lib/types";
+import type { Character, CharacterStatus } from "@/lib/types";
+import { CHARACTER_AVATARS, CHARACTER_STATUSES, CHARACTER_STATUS_LABELS } from "@/lib/types";
 import CharacterSummary from "./CharacterSummary";
 
 type CharacterWithCampaignTitle = Character & { campaignTitle: string | null };
@@ -21,6 +21,8 @@ interface FormState {
   /** "" means "not linked to a campaign" in the <select>; converted to
    * null/omitted before hitting the API. */
   campaignId: string;
+  status: CharacterStatus;
+  epilogue: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -30,6 +32,8 @@ const EMPTY_FORM: FormState = {
   backstory: "",
   avatarEmoji: CHARACTER_AVATARS[0],
   campaignId: "",
+  status: "active",
+  epilogue: "",
 };
 
 function formFromCharacter(character: CharacterWithCampaignTitle): FormState {
@@ -40,6 +44,8 @@ function formFromCharacter(character: CharacterWithCampaignTitle): FormState {
     backstory: character.backstory,
     avatarEmoji: character.avatar_emoji,
     campaignId: character.campaign_id ?? "",
+    status: character.status,
+    epilogue: character.epilogue,
   };
 }
 
@@ -104,6 +110,8 @@ export default function CharacterManager({
       backstory: form.backstory,
       avatarEmoji: form.avatarEmoji,
       campaignId: form.campaignId ? form.campaignId : null,
+      status: form.status,
+      epilogue: form.epilogue,
     };
   }
 
@@ -238,6 +246,33 @@ export default function CharacterManager({
             className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
           />
         </label>
+        <label className="flex flex-col gap-1">
+          Status
+          <select
+            value={form.status}
+            onChange={(e) => setForm({ ...form, status: e.target.value as typeof form.status })}
+            className="w-fit rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+          >
+            {CHARACTER_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {CHARACTER_STATUS_LABELS[status]}
+              </option>
+            ))}
+          </select>
+        </label>
+        {form.status !== "active" && (
+          <label className="flex flex-col gap-1">
+            Epilogue
+            <textarea
+              value={form.epilogue}
+              onChange={(e) => setForm({ ...form, epilogue: e.target.value })}
+              rows={2}
+              maxLength={2000}
+              placeholder="How it ended."
+              className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+            />
+          </label>
+        )}
         <div className="flex gap-2">
           <button
             disabled={submitting || !form.name.trim()}

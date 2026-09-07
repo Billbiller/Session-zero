@@ -5,6 +5,7 @@ import {
   deleteCharacter,
   CharacterError,
   CHARACTER_AVATARS,
+  CHARACTER_STATUSES,
 } from "@/lib/characters";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
 
@@ -19,6 +20,8 @@ const bodySchema = z.object({
   // undefined = leave the campaign link unchanged; null = unlink; a
   // campaign id = link/re-link (access-checked in lib/characters.ts).
   campaignId: z.string().min(1).nullable().optional(),
+  status: z.enum(CHARACTER_STATUSES).optional(),
+  epilogue: z.string().max(2000).optional(),
 });
 
 export async function PATCH(

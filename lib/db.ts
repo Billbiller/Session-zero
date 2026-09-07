@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
   accepting_requests INTEGER NOT NULL DEFAULT 1,
   cancelled INTEGER NOT NULL DEFAULT 0,
   next_session_at TEXT,
+  danger_level TEXT CHECK (danger_level IS NULL OR danger_level IN ('low-lethality','moderate','high-lethality','deadly-osr')),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -123,6 +124,8 @@ CREATE TABLE IF NOT EXISTS characters (
   bio TEXT NOT NULL DEFAULT '',
   backstory TEXT NOT NULL DEFAULT '',
   avatar_emoji TEXT NOT NULL DEFAULT '🎲',
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','retired','fallen')),
+  epilogue TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -153,6 +156,25 @@ CREATE INDEX IF NOT EXISTS idx_ratings_campaign ON ratings(campaign_id);
 const userColumns = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
 if (!userColumns.some((c) => c.name === "password_hash")) {
   db.exec("ALTER TABLE users ADD COLUMN password_hash TEXT NOT NULL DEFAULT ''");
+}
+
+// Lightweight migrations for databases created before character legacies
+// (status/epilogue) and campaign danger levels existed (backlog #19). New
+// databases already get these columns from the CREATE TABLE statements
+// above, so this is a no-op for them. SQLite can't add a CHECK constraint
+// via ALTER TABLE ADD COLUMN, so these two columns are left unconstrained
+// at the schema level for migrated databases — validation still happens in
+// lib/characters.ts and lib/campaigns.ts before any write.
+const characterColumns = db.prepare("PRAGMA table_info(characters)").all() as { name: string }[];
+if (!characterColumns.some((c) => c.name === "status")) {
+  db.exec("ALTER TABLE characters ADD COLUMN status TEXT NOT NULL DEFAULT 'active'");
+}
+if (!characterColumns.some((c) => c.name === "epilogue")) {
+  db.exec("ALTER TABLE characters ADD COLUMN epilogue TEXT NOT NULL DEFAULT ''");
+}
+const campaignColumns = db.prepare("PRAGMA table_info(campaigns)").all() as { name: string }[];
+if (!campaignColumns.some((c) => c.name === "danger_level")) {
+  db.exec("ALTER TABLE campaigns ADD COLUMN danger_level TEXT");
 }
 
 export default db;

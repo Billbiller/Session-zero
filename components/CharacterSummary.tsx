@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Character } from "@/lib/types";
+import { CHARACTER_STATUS_LABELS, type Character } from "@/lib/types";
 
 /** Presentational-only display of a character's public fields — shared by
  * the editable "My characters" list on /profile, the read-only list on
@@ -30,6 +30,17 @@ export default function CharacterSummary({
               {character.archetype}
             </span>
           )}
+          {character.status !== "active" && (
+            <span
+              className={`ml-2 rounded-full border px-2 py-0.5 text-xs font-normal ${
+                character.status === "fallen"
+                  ? "border-red-300 text-red-700 dark:border-red-800 dark:text-red-300"
+                  : "border-black/20 text-black/60 dark:border-white/20 dark:text-white/60"
+              }`}
+            >
+              {CHARACTER_STATUS_LABELS[character.status]}
+            </span>
+          )}
         </p>
         {linkedCampaign && (
           <p className="text-xs text-black/60 dark:text-white/60">
@@ -43,6 +54,11 @@ export default function CharacterSummary({
         {character.backstory && (
           <p className="whitespace-pre-wrap text-sm text-black/70 dark:text-white/70">
             {character.backstory}
+          </p>
+        )}
+        {character.status !== "active" && character.epilogue && (
+          <p className="whitespace-pre-wrap text-sm italic text-black/70 dark:text-white/70">
+            {character.epilogue}
           </p>
         )}
       </div>

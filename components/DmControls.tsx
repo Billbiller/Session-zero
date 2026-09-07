@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Campaign } from "@/lib/types";
+import { DANGER_LEVELS, DANGER_LEVEL_LABELS, type Campaign, type DangerLevel } from "@/lib/types";
 
 export default function DmControls({ campaign }: { campaign: Campaign }) {
   const [editing, setEditing] = useState(false);
@@ -10,6 +10,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
   const [description, setDescription] = useState(campaign.description);
   const [system, setSystem] = useState(campaign.system);
   const [capacity, setCapacity] = useState(campaign.capacity);
+  const [dangerLevel, setDangerLevel] = useState<DangerLevel | "">(campaign.danger_level ?? "");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
@@ -21,7 +22,13 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
     const res = await fetch(`/api/campaigns/${campaign.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, system, capacity }),
+      body: JSON.stringify({
+        title,
+        description,
+        system,
+        capacity,
+        dangerLevel: dangerLevel === "" ? null : dangerLevel,
+      }),
     });
     setSubmitting(false);
     const data = await res.json().catch(() => ({}));
@@ -128,6 +135,24 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
               onChange={(e) => setCapacity(Number(e.target.value))}
               className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
+          </label>
+          <label className="flex flex-col gap-1">
+            Danger level
+            <select
+              value={dangerLevel}
+              onChange={(e) => setDangerLevel(e.target.value as DangerLevel | "")}
+              className="w-fit rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+            >
+              <option value="">Not set</option>
+              {DANGER_LEVELS.map((level) => (
+                <option key={level} value={level}>
+                  {DANGER_LEVEL_LABELS[level]}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-black/60 dark:text-white/60">
+              A heads-up for prospective players, not a scoreboard.
+            </span>
           </label>
           <div className="flex gap-2">
             <button

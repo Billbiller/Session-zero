@@ -8,9 +8,9 @@ import { listRequests } from "@/lib/memberships";
 import { getNotes } from "@/lib/partyNotes";
 import { listEntriesWithKudos } from "@/lib/sessionLog";
 import { computeScheduleStatus } from "@/lib/schedule";
-import { listCharactersForCampaign } from "@/lib/characters";
+import { listCharactersForCampaign, getCampaignChronicle } from "@/lib/characters";
 import db from "@/lib/db";
-import type { Membership, User } from "@/lib/types";
+import { DANGER_LEVEL_LABELS, type Membership, type User } from "@/lib/types";
 
 import DmControls from "@/components/DmControls";
 import JoinLeaveControls from "@/components/JoinLeaveControls";
@@ -57,6 +57,7 @@ export default async function CampaignDetailPage({
       .all(id) as User[]
   );
   const campaignCharacters = listCharactersForCampaign(id);
+  const chronicle = getCampaignChronicle(id);
 
   return (
     <div className="flex flex-col gap-6">
@@ -79,6 +80,18 @@ export default async function CampaignDetailPage({
             "Unknown"
           )}{" "}
           &middot; {headcount}/{campaign.capacity} players
+          {campaign.danger_level && (
+            <>
+              {" "}
+              &middot;{" "}
+              <span
+                className="rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20"
+                title="A heads-up from the DM, not a scoreboard."
+              >
+                {DANGER_LEVEL_LABELS[campaign.danger_level]}
+              </span>
+            </>
+          )}
         </p>
         {campaign.description && <p className="mt-2 text-sm">{campaign.description}</p>}
       </div>
@@ -117,6 +130,14 @@ export default async function CampaignDetailPage({
             </Link>
           )}
         </div>
+        {chronicle.total > 0 && (
+          <p className="mb-2 text-xs text-black/60 dark:text-white/60">
+            Chronicle: {chronicle.total} character{chronicle.total === 1 ? "" : "s"} passed through
+            {chronicle.active > 0 && ` · ${chronicle.active} still adventuring`}
+            {chronicle.retired > 0 && ` · ${chronicle.retired} retired`}
+            {chronicle.fallen > 0 && ` · ${chronicle.fallen} fallen`}
+          </p>
+        )}
         <ul className="flex flex-col gap-3 text-sm">
           {campaignCharacters.map((c) => (
             <li key={c.id} className="border-t border-black/10 pt-3 first:border-t-0 first:pt-0 dark:border-white/10">

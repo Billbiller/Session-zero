@@ -5,6 +5,22 @@ export interface User {
   created_at: string;
 }
 
+export const DANGER_LEVELS = [
+  "low-lethality",
+  "moderate",
+  "high-lethality",
+  "deadly-osr",
+] as const;
+
+export type DangerLevel = (typeof DANGER_LEVELS)[number];
+
+export const DANGER_LEVEL_LABELS: Record<DangerLevel, string> = {
+  "low-lethality": "Low-lethality",
+  moderate: "Moderate",
+  "high-lethality": "High-lethality",
+  "deadly-osr": "Deadly (OSR-style)",
+};
+
 export interface Campaign {
   id: string;
   dm_id: string;
@@ -15,6 +31,11 @@ export interface Campaign {
   accepting_requests: number; // 0 | 1
   cancelled: number; // 0 | 1
   next_session_at: string | null;
+  /** DM-set, player-visible heads-up filter for how lethal/deadly this
+   * table runs — explicitly not a scoreboard or a judgment on DM skill,
+   * just advance notice for a player deciding whether to join. null means
+   * the DM hasn't set one. */
+  danger_level: DangerLevel | null;
   created_at: string;
   updated_at: string;
 }
@@ -150,6 +171,16 @@ export const CHARACTER_AVATARS = [
   "🎲",
 ] as const;
 
+export const CHARACTER_STATUSES = ["active", "retired", "fallen"] as const;
+
+export type CharacterStatus = (typeof CHARACTER_STATUSES)[number];
+
+export const CHARACTER_STATUS_LABELS: Record<CharacterStatus, string> = {
+  active: "Still adventuring",
+  retired: "Retired",
+  fallen: "Fallen",
+};
+
 export interface Character {
   id: string;
   user_id: string;
@@ -159,8 +190,24 @@ export interface Character {
   bio: string;
   backstory: string;
   avatar_emoji: string;
+  status: CharacterStatus;
+  /** Free-text "how it ended" line — how a retired character stepped away,
+   * or how a fallen one met their end. Meaningful mainly once status isn't
+   * "active", but not restricted at the data layer to allow e.g. writing
+   * it in advance before formally retiring a character. */
+  epilogue: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface CampaignChronicle {
+  active: number;
+  retired: number;
+  fallen: number;
+  /** Total currently linked to this campaign (active + retired + fallen).
+   * Named distinctly from the individual counts since "characters passed
+   * through" reads more naturally as a single headline number. */
+  total: number;
 }
 
 export const DM_RATING_TAGS = [
