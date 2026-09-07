@@ -80,6 +80,7 @@ export default async function CampaignDetailPage({
             "Unknown"
           )}{" "}
           &middot; {headcount}/{campaign.capacity} players
+          {campaign.location && <> &middot; {campaign.location}</>}
           {campaign.danger_level && (
             <>
               {" "}

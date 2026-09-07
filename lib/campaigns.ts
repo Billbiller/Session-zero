@@ -24,6 +24,7 @@ export function createCampaign(input: {
   description: string;
   system: string;
   capacity: number;
+  location?: string;
 }): Campaign {
   if (!Number.isInteger(input.capacity) || input.capacity < 1) {
     throw new CampaignError("Capacity must be a positive integer.");
@@ -40,14 +41,15 @@ export function createCampaign(input: {
     cancelled: 0,
     next_session_at: null,
     danger_level: null,
+    location: (input.location ?? "").trim(),
     created_at: now,
     updated_at: now,
   };
   db.prepare(
     `INSERT INTO campaigns
-      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, created_at, updated_at)
+      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, created_at, updated_at)
      VALUES
-      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @created_at, @updated_at)`
+      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @created_at, @updated_at)`
   ).run(campaign);
   return campaign;
 }
@@ -71,6 +73,7 @@ export function updateCampaign(
      * DM-set, player-visible heads-up filter — see the field's own doc
      * comment on the Campaign type for the "not a scoreboard" framing. */
     dangerLevel: DangerLevel | null;
+    location: string;
   }>
 ): Campaign {
   const campaign = getCampaign(id);
@@ -102,11 +105,12 @@ export function updateCampaign(
     system: updates.system !== undefined ? updates.system.trim() : campaign.system,
     capacity: updates.capacity ?? campaign.capacity,
     danger_level: updates.dangerLevel !== undefined ? updates.dangerLevel : campaign.danger_level,
+    location: updates.location !== undefined ? updates.location.trim() : campaign.location,
     updated_at: new Date().toISOString(),
   };
   db.prepare(
     `UPDATE campaigns SET title=@title, description=@description, system=@system,
-     capacity=@capacity, danger_level=@danger_level, updated_at=@updated_at WHERE id=@id`
+     capacity=@capacity, danger_level=@danger_level, location=@location, updated_at=@updated_at WHERE id=@id`
   ).run(next);
   return next;
 }
@@ -167,6 +171,11 @@ function escapeLikePattern(value: string): string {
 export function listCampaigns(opts: {
   system?: string;
   q?: string;
+  /** Coarse, case-insensitive substring match against the campaign's
+   * free-text location (e.g. filtering "Austin" matches "Austin, TX") —
+   * a lighter-weight first step toward "near me" discovery. Not a
+   * geocoded distance search; see the location field's own doc comment. */
+  location?: string;
   sort?: CampaignSort;
   page?: number;
   pageSize?: number;
@@ -186,6 +195,11 @@ export function listCampaigns(opts: {
       "(LOWER(title) LIKE @q ESCAPE '\\' OR LOWER(description) LIKE @q ESCAPE '\\' OR LOWER(system) LIKE @q ESCAPE '\\')"
     );
     params.q = `%${escapeLikePattern(keyword.toLowerCase())}%`;
+  }
+  const location = opts.location?.trim();
+  if (location) {
+    where.push("LOWER(location) LIKE @location ESCAPE '\\'");
+    params.location = `%${escapeLikePattern(location.toLowerCase())}%`;
   }
   if (!opts.includeCancelled) {
     where.push("cancelled = 0");

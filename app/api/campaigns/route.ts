@@ -9,10 +9,11 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const system = searchParams.get("system") || undefined;
   const q = searchParams.get("q") || undefined;
+  const location = searchParams.get("location") || undefined;
   const sort = (searchParams.get("sort") as CampaignSort) || undefined;
   const page = Number(searchParams.get("page") || "1");
   const pageSize = Number(searchParams.get("pageSize") || "10");
-  const result = listCampaigns({ system, q, sort, page, pageSize });
+  const result = listCampaigns({ system, q, location, sort, page, pageSize });
   return NextResponse.json(result);
 }
 
@@ -21,6 +22,7 @@ const createSchema = z.object({
   description: z.string().trim().default(""),
   system: z.string().trim().min(1),
   capacity: z.number().int().min(1),
+  location: z.string().trim().max(200).optional(),
 });
 
 export async function POST(request: NextRequest) {

@@ -91,6 +91,13 @@ export default async function PlayerProfilePage({
         </div>
       )}
 
+      {profile.location && (
+        <div>
+          <h2 className="text-sm font-medium">Location</h2>
+          <p className="text-sm">{profile.location}</p>
+        </div>
+      )}
+
       {characters.length > 0 && (
         <div>
           <h2 className="text-sm font-medium">Characters</h2>

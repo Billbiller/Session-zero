@@ -36,6 +36,10 @@ export interface Campaign {
    * just advance notice for a player deciding whether to join. null means
    * the DM hasn't set one. */
   danger_level: DangerLevel | null;
+  /** Free-text, coarse location (e.g. "Austin, TX" or "Online/Remote") —
+   * deliberately not a precise geocoded address. A lighter-weight first
+   * step toward "near me" discovery; empty string means unset. */
+  location: string;
   created_at: string;
   updated_at: string;
 }
@@ -145,6 +149,9 @@ export interface Profile {
   bio: string;
   preferred_systems: string;
   availability: string;
+  /** Free-text, coarse location (e.g. "Austin, TX" or "Online/Remote") —
+   * same deliberately-imprecise scope as a campaign's own location field. */
+  location: string;
   updated_at: string | null;
 }
 

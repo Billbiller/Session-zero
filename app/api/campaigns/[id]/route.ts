@@ -49,6 +49,7 @@ const updateSchema = z.object({
   capacity: z.number().int().min(1).optional(),
   // undefined = leave unchanged; null = clear; a recognized level = set it.
   dangerLevel: z.enum(DANGER_LEVELS).nullable().optional(),
+  location: z.string().trim().max(200).optional(),
 });
 
 export async function PATCH(

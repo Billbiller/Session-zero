@@ -17,6 +17,7 @@ describe("profiles", () => {
     expect(profile.bio).toBe("");
     expect(profile.preferred_systems).toBe("");
     expect(profile.availability).toBe("");
+    expect(profile.location).toBe("");
     expect(profile.updated_at).toBeNull();
   });
 
@@ -26,10 +27,12 @@ describe("profiles", () => {
       bio: "  Loves gothic horror campaigns.  ",
       preferredSystems: "  D&D 5e, Pathfinder 2e  ",
       availability: "  Weeknights after 7pm ET  ",
+      location: "  Austin, TX  ",
     });
     expect(saved.bio).toBe("Loves gothic horror campaigns.");
     expect(saved.preferred_systems).toBe("D&D 5e, Pathfinder 2e");
     expect(saved.availability).toBe("Weeknights after 7pm ET");
+    expect(saved.location).toBe("Austin, TX");
     expect(saved.updated_at).not.toBeNull();
 
     const reread = getProfile(user.id);
@@ -62,6 +65,11 @@ describe("profiles", () => {
     expect(() => upsertProfile(user.id, { availability: "x".repeat(301) })).toThrow(
       ProfileError
     );
+  });
+
+  it("rejects a location over its length limit", () => {
+    const user = signUp("Location Eve", "profile5b@example.com", "testpassword123");
+    expect(() => upsertProfile(user.id, { location: "x".repeat(201) })).toThrow(ProfileError);
   });
 
   it("does not affect another user's profile", () => {

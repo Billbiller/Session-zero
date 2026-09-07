@@ -264,4 +264,68 @@ describe("campaigns", () => {
     const updated = updateCampaign(campaign.id, dm.id, { title: "New title" });
     expect(updated.danger_level).toBe("moderate");
   });
+
+  it("defaults a new campaign's location to an empty string and lets it be set/updated", () => {
+    const dm = makeDm("dm12@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(campaign.location).toBe("");
+
+    const withLocation = createCampaign({
+      dmId: dm.id,
+      title: "T2",
+      description: "",
+      system: "S",
+      capacity: 4,
+      location: "  Austin, TX  ",
+    });
+    expect(withLocation.location).toBe("Austin, TX");
+
+    const updated = updateCampaign(campaign.id, dm.id, { location: "Online/Remote" });
+    expect(updated.location).toBe("Online/Remote");
+  });
+
+  it("filters listed campaigns by a case-insensitive substring match on location", () => {
+    const dm = makeDm("dm13@example.com");
+    createCampaign({
+      dmId: dm.id,
+      title: "Austin Game",
+      description: "",
+      system: "Unique Location System A",
+      capacity: 4,
+      location: "Austin, TX",
+    });
+    createCampaign({
+      dmId: dm.id,
+      title: "Denver Game",
+      description: "",
+      system: "Unique Location System A",
+      capacity: 4,
+      location: "Denver, CO",
+    });
+    createCampaign({
+      dmId: dm.id,
+      title: "Remote Game",
+      description: "",
+      system: "Unique Location System A",
+      capacity: 4,
+      location: "Online/Remote",
+    });
+
+    const austin = listCampaigns({ system: "Unique Location System A", location: "austin" });
+    expect(austin.total).toBe(1);
+    expect(austin.items[0].title).toBe("Austin Game");
+
+    const online = listCampaigns({ system: "Unique Location System A", location: "online" });
+    expect(online.total).toBe(1);
+    expect(online.items[0].title).toBe("Remote Game");
+
+    const none = listCampaigns({ system: "Unique Location System A", location: "nowhere" });
+    expect(none.total).toBe(0);
+  });
 });

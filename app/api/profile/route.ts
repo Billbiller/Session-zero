@@ -22,6 +22,7 @@ const bodySchema = z.object({
   bio: z.string().max(2000).optional(),
   preferredSystems: z.string().max(300).optional(),
   availability: z.string().max(300).optional(),
+  location: z.string().max(200).optional(),
 });
 
 export async function PUT(request: NextRequest) {

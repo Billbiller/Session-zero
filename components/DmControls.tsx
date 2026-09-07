@@ -10,6 +10,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
   const [description, setDescription] = useState(campaign.description);
   const [system, setSystem] = useState(campaign.system);
   const [capacity, setCapacity] = useState(campaign.capacity);
+  const [location, setLocation] = useState(campaign.location);
   const [dangerLevel, setDangerLevel] = useState<DangerLevel | "">(campaign.danger_level ?? "");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -27,6 +28,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
         description,
         system,
         capacity,
+        location,
         dangerLevel: dangerLevel === "" ? null : dangerLevel,
       }),
     });
@@ -133,6 +135,16 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
               min={1}
               value={capacity}
               onChange={(e) => setCapacity(Number(e.target.value))}
+              className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            Location
+            <input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              maxLength={200}
+              placeholder="e.g. Austin, TX or Online/Remote"
               className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
           </label>

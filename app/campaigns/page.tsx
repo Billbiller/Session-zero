@@ -7,15 +7,16 @@ const PAGE_SIZE = 10;
 export default async function CampaignsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ system?: string; q?: string; sort?: string; page?: string }>;
+  searchParams: Promise<{ system?: string; q?: string; location?: string; sort?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const system = params.system?.trim() || undefined;
   const q = params.q?.trim() || undefined;
+  const location = params.location?.trim() || undefined;
   const sort = (params.sort as CampaignSort) || "newest";
   const page = Number(params.page || "1");
 
-  const { items, total } = listCampaigns({ system, q, sort, page, pageSize: PAGE_SIZE });
+  const { items, total } = listCampaigns({ system, q, location, sort, page, pageSize: PAGE_SIZE });
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
@@ -50,6 +51,15 @@ export default async function CampaignsPage({
           />
         </label>
         <label className="flex flex-col gap-1">
+          Location
+          <input
+            name="location"
+            defaultValue={location}
+            placeholder="e.g. Austin or Online"
+            className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
           Sort
           <select
             name="sort"
@@ -71,7 +81,7 @@ export default async function CampaignsPage({
 
       {items.length === 0 && (
         <p className="text-sm text-black/60 dark:text-white/60">
-          {q || system ? "No campaigns match your search." : "No campaigns match yet."}
+          {q || system || location ? "No campaigns match your search." : "No campaigns match yet."}
         </p>
       )}
 
@@ -98,6 +108,7 @@ export default async function CampaignsPage({
                 )}{" "}
                 &middot; {headcount}/{campaign.capacity} players
                 {!campaign.accepting_requests && " (closed to new requests)"}
+                {campaign.location && <> &middot; {campaign.location}</>}
               </p>
               {campaign.description && (
                 <p className="mt-1 text-sm">{campaign.description}</p>
@@ -114,7 +125,7 @@ export default async function CampaignsPage({
               key={p}
               href={{
                 pathname: "/campaigns",
-                query: { system, q, sort, page: p },
+                query: { system, q, location, sort, page: p },
               }}
               className={
                 p === page

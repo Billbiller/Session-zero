@@ -8,6 +8,7 @@ export default function NewCampaignPage() {
   const [description, setDescription] = useState("");
   const [system, setSystem] = useState("");
   const [capacity, setCapacity] = useState(4);
+  const [location, setLocation] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
@@ -19,7 +20,7 @@ export default function NewCampaignPage() {
     const res = await fetch("/api/campaigns", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, system, capacity }),
+      body: JSON.stringify({ title, description, system, capacity, location }),
     });
     setSubmitting(false);
     const data = await res.json().catch(() => ({}));
@@ -74,6 +75,16 @@ export default function NewCampaignPage() {
             min={1}
             value={capacity}
             onChange={(e) => setCapacity(Number(e.target.value))}
+            className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Location
+          <input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            maxLength={200}
+            placeholder="e.g. Austin, TX or Online/Remote"
             className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
           />
         </label>

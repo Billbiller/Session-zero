@@ -15,6 +15,7 @@ export default function ProfilePage() {
   const [bio, setBio] = useState("");
   const [preferredSystems, setPreferredSystems] = useState("");
   const [availability, setAvailability] = useState("");
+  const [location, setLocation] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +34,7 @@ export default function ProfilePage() {
       setBio(data.profile.bio);
       setPreferredSystems(data.profile.preferred_systems);
       setAvailability(data.profile.availability);
+      setLocation(data.profile.location);
       setDming(data.dming ?? []);
       setPlaying(data.playing ?? []);
       setStats(data.stats ?? null);
@@ -56,7 +58,7 @@ export default function ProfilePage() {
     const res = await fetch("/api/profile", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bio, preferredSystems, availability }),
+      body: JSON.stringify({ bio, preferredSystems, availability, location }),
     });
     setSaving(false);
     const data = await res.json().catch(() => ({}));
@@ -117,6 +119,16 @@ export default function ProfilePage() {
               onChange={(e) => setAvailability(e.target.value)}
               maxLength={300}
               placeholder="e.g. Weeknights after 7pm ET, most Saturdays"
+              className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            Location
+            <input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              maxLength={200}
+              placeholder="e.g. Austin, TX or Online/Remote"
               className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
           </label>

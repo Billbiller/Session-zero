@@ -6,6 +6,7 @@ export class ProfileError extends Error {}
 const MAX_BIO = 2000;
 const MAX_PREFERRED_SYSTEMS = 300;
 const MAX_AVAILABILITY = 300;
+const MAX_LOCATION = 200;
 
 function defaultProfile(userId: string): Profile {
   return {
@@ -13,6 +14,7 @@ function defaultProfile(userId: string): Profile {
     bio: "",
     preferred_systems: "",
     availability: "",
+    location: "",
     updated_at: null,
   };
 }
@@ -28,12 +30,13 @@ export function getProfile(userId: string): Profile {
 
 export function upsertProfile(
   userId: string,
-  input: { bio?: string; preferredSystems?: string; availability?: string }
+  input: { bio?: string; preferredSystems?: string; availability?: string; location?: string }
 ): Profile {
   const current = getProfile(userId);
   const bio = (input.bio ?? current.bio).trim();
   const preferredSystems = (input.preferredSystems ?? current.preferred_systems).trim();
   const availability = (input.availability ?? current.availability).trim();
+  const location = (input.location ?? current.location).trim();
 
   if (bio.length > MAX_BIO) {
     throw new ProfileError(`Bio can't be longer than ${MAX_BIO} characters.`);
@@ -48,21 +51,26 @@ export function upsertProfile(
       `Availability can't be longer than ${MAX_AVAILABILITY} characters.`
     );
   }
+  if (location.length > MAX_LOCATION) {
+    throw new ProfileError(`Location can't be longer than ${MAX_LOCATION} characters.`);
+  }
 
   const updated_at = new Date().toISOString();
   db.prepare(
-    `INSERT INTO profiles (user_id, bio, preferred_systems, availability, updated_at)
-     VALUES (@user_id, @bio, @preferred_systems, @availability, @updated_at)
+    `INSERT INTO profiles (user_id, bio, preferred_systems, availability, location, updated_at)
+     VALUES (@user_id, @bio, @preferred_systems, @availability, @location, @updated_at)
      ON CONFLICT (user_id) DO UPDATE SET
        bio = excluded.bio,
        preferred_systems = excluded.preferred_systems,
        availability = excluded.availability,
+       location = excluded.location,
        updated_at = excluded.updated_at`
   ).run({
     user_id: userId,
     bio,
     preferred_systems: preferredSystems,
     availability,
+    location,
     updated_at,
   });
   return getProfile(userId);

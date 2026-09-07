@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
   cancelled INTEGER NOT NULL DEFAULT 0,
   next_session_at TEXT,
   danger_level TEXT CHECK (danger_level IS NULL OR danger_level IN ('low-lethality','moderate','high-lethality','deadly-osr')),
+  location TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -112,6 +113,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   bio TEXT NOT NULL DEFAULT '',
   preferred_systems TEXT NOT NULL DEFAULT '',
   availability TEXT NOT NULL DEFAULT '',
+  location TEXT NOT NULL DEFAULT '',
   updated_at TEXT
 );
 
@@ -175,6 +177,17 @@ if (!characterColumns.some((c) => c.name === "epilogue")) {
 const campaignColumns = db.prepare("PRAGMA table_info(campaigns)").all() as { name: string }[];
 if (!campaignColumns.some((c) => c.name === "danger_level")) {
   db.exec("ALTER TABLE campaigns ADD COLUMN danger_level TEXT");
+}
+
+// Lightweight migration for databases created before coarse location fields
+// existed (backlog #22). New databases already get these from the CREATE
+// TABLE statements above.
+if (!campaignColumns.some((c) => c.name === "location")) {
+  db.exec("ALTER TABLE campaigns ADD COLUMN location TEXT NOT NULL DEFAULT ''");
+}
+const profileColumns = db.prepare("PRAGMA table_info(profiles)").all() as { name: string }[];
+if (!profileColumns.some((c) => c.name === "location")) {
+  db.exec("ALTER TABLE profiles ADD COLUMN location TEXT NOT NULL DEFAULT ''");
 }
 
 export default db;
