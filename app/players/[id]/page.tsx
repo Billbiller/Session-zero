@@ -4,7 +4,9 @@ import { getProfile, splitPreferredSystems } from "@/lib/profiles";
 import { listCharactersForUser } from "@/lib/characters";
 import { getCampaign } from "@/lib/campaigns";
 import { getUserRatingSummary } from "@/lib/ratings";
+import { getUserStats } from "@/lib/stats";
 import CharacterSummary from "@/components/CharacterSummary";
+import StatsPanel from "@/components/StatsPanel";
 
 function reputationLine(label: string, summary: { average: number | null; count: number; tagCounts: Record<string, number> }) {
   const topTags = Object.entries(summary.tagCounts)
@@ -47,6 +49,7 @@ export default async function PlayerProfilePage({
   const systems = splitPreferredSystems(profile.preferred_systems);
   const characters = listCharactersForUser(id);
   const ratingSummary = getUserRatingSummary(id);
+  const stats = getUserStats(id);
 
   return (
     <div className="flex max-w-lg flex-col gap-4">
@@ -56,6 +59,8 @@ export default async function PlayerProfilePage({
         {reputationLine("As DM", ratingSummary.asDm)}
         {reputationLine("As player", ratingSummary.asPlayer)}
       </div>
+
+      <StatsPanel stats={stats} />
 
       {profile.bio ? (
         <p className="text-sm">{profile.bio}</p>

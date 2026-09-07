@@ -84,6 +84,32 @@ export interface SessionLogEntryWithKudos extends SessionLogEntry {
   viewerGaveKudos: boolean;
 }
 
+export interface UserStats {
+  campaignsAsDm: number;
+  campaignsAsPlayer: number;
+  /** A proxy for "sessions run," not a literal session count: each session
+   * log entry represents one recap a DM posted after a session, so the
+   * count of entries a user has authored across every campaign they DM is
+   * the closest honest measure this app's data model supports. */
+  sessionsRun: number;
+  /** Same proxy, from the other side of the table: session log entries
+   * posted in campaigns where this user has (or had) an approved
+   * membership, i.e. sessions they were actually part of as a player. */
+  sessionsPlayed: number;
+  charactersCreated: number;
+  /** Distinct `system` values across every campaign this user has DMed or
+   * played in (not just their stated preferences on their profile). */
+  systemsPlayed: string[];
+  /** The system appearing across the most campaigns this user has DMed or
+   * played in, or null if they haven't been part of any campaign yet. */
+  mostPlayedSystem: string | null;
+  /** The campaign (among ones this user DMed or played in) with the most
+   * session log entries — "longest" measured by recorded sessions rather
+   * than wall-clock duration, since this app has no session-length or
+   * campaign-end data to compute an actual elapsed time from. */
+  longestCampaign: { id: string; title: string; sessionCount: number } | null;
+}
+
 export interface PartyNotes {
   campaign_id: string;
   content: string;

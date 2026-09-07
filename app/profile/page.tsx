@@ -3,13 +3,15 @@
 import { useEffect, useState, useCallback, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Campaign, Profile } from "@/lib/types";
+import type { Campaign, Profile, UserStats } from "@/lib/types";
 import CharacterManager from "@/components/CharacterManager";
+import StatsPanel from "@/components/StatsPanel";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [dming, setDming] = useState<Campaign[]>([]);
   const [playing, setPlaying] = useState<Campaign[]>([]);
+  const [stats, setStats] = useState<UserStats | null>(null);
   const [bio, setBio] = useState("");
   const [preferredSystems, setPreferredSystems] = useState("");
   const [availability, setAvailability] = useState("");
@@ -33,6 +35,7 @@ export default function ProfilePage() {
       setAvailability(data.profile.availability);
       setDming(data.dming ?? []);
       setPlaying(data.playing ?? []);
+      setStats(data.stats ?? null);
     }
     setLoading(false);
   }, [router]);
@@ -130,6 +133,8 @@ export default function ProfilePage() {
           </div>
         </form>
       </div>
+
+      {stats && <StatsPanel stats={stats} />}
 
       <div>
         <CharacterManager assignableCampaigns={assignableCampaigns} />

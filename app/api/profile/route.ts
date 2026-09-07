@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getProfile, upsertProfile, myCampaigns, ProfileError } from "@/lib/profiles";
+import { getUserStats } from "@/lib/stats";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,12 @@ export async function GET() {
   const auth = await requireUser();
   if ("error" in auth) return auth.error;
   const { dming, playing } = myCampaigns(auth.user.id);
-  return NextResponse.json({ profile: getProfile(auth.user.id), dming, playing });
+  return NextResponse.json({
+    profile: getProfile(auth.user.id),
+    dming,
+    playing,
+    stats: getUserStats(auth.user.id),
+  });
 }
 
 const bodySchema = z.object({
