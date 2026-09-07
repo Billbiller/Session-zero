@@ -71,6 +71,7 @@ export const NOTIFICATION_TYPES = [
   "sub_placement_pending",
   "sub_placement_resolved",
   "message_received",
+  "campaign_chat_message",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -91,6 +92,7 @@ export const NOTIFICATION_LABELS: Record<NotificationType, string> = {
   sub_placement_pending: "A sub placement needs your review (owner or DM approval)",
   sub_placement_resolved: "A sub placement is confirmed, declined, or cancelled",
   message_received: "Someone sends you a direct message",
+  campaign_chat_message: "Someone posts in your table's group chat",
 };
 
 export interface Notification {
@@ -466,4 +468,30 @@ export interface ConversationSummary {
     senderId: string;
   };
   unreadCount: number;
+}
+
+/** Backlog #32: a group thread per campaign's active party, separate
+ * from 1:1 direct messages (backlog #31's Message type above, an
+ * unrelated pairwise table) and from PartyNotes (a persistent shared
+ * document, not a conversation history). Reuses the (sender, body,
+ * created_at) message shape from #31, scoped to a campaign instead of
+ * a user pair. Visibility is exactly the hasPrivateAccess boundary (DM
+ * + approved active members) already gating party notes/session log --
+ * a message posted by someone who has since left stays visible in the
+ * thread's history to the remaining party (history isn't rewritten),
+ * but the departed member themselves loses read/write access the same
+ * way they lose the rest of the private side. */
+export interface CampaignMessage {
+  id: string;
+  campaign_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+}
+
+/** A campaign chat message enriched with the sender's display name --
+ * computed server-side, matching this file's existing client-safe-types
+ * convention (e.g. ConversationSummary above). */
+export interface CampaignMessageWithSender extends CampaignMessage {
+  senderName: string;
 }

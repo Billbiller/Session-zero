@@ -279,6 +279,40 @@ CREATE TABLE IF NOT EXISTS messages (
 
 CREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient_id);
 CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+
+-- Backlog #32: table group chat -- a group thread per campaign's active
+-- party, separate from 1:1 direct messages (backlog #31's own
+-- pairwise messages table above) and separate from party_notes (a
+-- persistent shared document, not a conversation history). Reuses the
+-- same (sender, body, created_at) message shape as #31, scoped to a
+-- campaign instead of a user pair. Access is the same hasPrivateAccess
+-- boundary already gating party notes/session log (DM + approved
+-- active members) -- see lib/campaignMessages.ts. Unlike messages.read
+-- (per-recipient, per-message), a group thread's "have I read this"
+-- state is naturally per-user-per-thread, not per-message -- see
+-- campaign_message_reads below.
+CREATE TABLE IF NOT EXISTS campaign_messages (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id),
+  sender_id TEXT NOT NULL REFERENCES users(id),
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_campaign_messages_campaign ON campaign_messages(campaign_id);
+
+-- One row per (campaign, user) tracking when that user last opened the
+-- campaign's group chat. Used both to compute a per-user unread count
+-- and to decide whether a fresh chat message should fire a notification
+-- (see lib/campaignMessages.ts's sendCampaignMessage -- only the first
+-- unread message since a user's last visit notifies them, not every
+-- message, to avoid the noise a naive per-message fan-out would cause).
+CREATE TABLE IF NOT EXISTS campaign_message_reads (
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id),
+  user_id TEXT NOT NULL REFERENCES users(id),
+  last_read_at TEXT NOT NULL,
+  PRIMARY KEY (campaign_id, user_id)
+);
 `);
 
 // Lightweight migration for databases created before password_hash existed
