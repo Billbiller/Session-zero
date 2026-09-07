@@ -89,6 +89,7 @@ export default function NavBar({
           {user && (
             <>
               <Link href="/campaigns/new">New campaign</Link>
+              <Link href="/feed">Feed</Link>
               <Link href="/messages">Messages</Link>
               <Link href="/notifications" className="relative">
                 Notifications

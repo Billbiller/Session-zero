@@ -773,3 +773,46 @@ export interface BoardReply {
 export interface BoardReplyWithAuthor extends BoardReply {
   authorName: string;
 }
+
+/** Backlog #38: opt-in following + a lightweight public activity feed.
+ * See lib/db.ts's follows table comment for the "who can follow whom"
+ * judgment call (open, no shared-campaign gate -- matching #31's
+ * messaging precedent) and lib/follows.ts for the enforcement logic. */
+export interface Follow {
+  id: string;
+  follower_id: string;
+  followed_id: string;
+  created_at: string;
+}
+
+/** See lib/db.ts's feed_events table comment for the full privacy-
+ * boundary reasoning -- every event type here surfaces something already
+ * fully public elsewhere in this app (a character's status/existence on
+ * /players/[id], a campaign's accepting_requests/rating on its own
+ * detail page). Never session-log/party-notes/chat content, which stays
+ * behind hasPrivateAccess() exactly as it does everywhere else. */
+export const FEED_EVENT_TYPES = [
+  "character_created",
+  "character_status_changed",
+  "campaign_became_full",
+  "campaign_first_rated",
+] as const;
+
+export type FeedEventType = (typeof FEED_EVENT_TYPES)[number];
+
+export interface FeedEvent {
+  id: string;
+  actor_id: string;
+  type: FeedEventType;
+  campaign_id: string | null;
+  character_id: string | null;
+  message: string;
+  created_at: string;
+}
+
+/** A feed event enriched with the actor's display name -- computed
+ * server-side, matching this file's existing client-safe-types
+ * convention (e.g. CampaignMessageWithSender). */
+export interface FeedEventWithActor extends FeedEvent {
+  actorName: string;
+}

@@ -457,6 +457,71 @@ CREATE TABLE IF NOT EXISTS board_replies (
 );
 
 CREATE INDEX IF NOT EXISTS idx_board_replies_thread ON board_replies(thread_id);
+
+-- Backlog #38: opt-in following + a lightweight public activity feed.
+-- Judgment call on who can follow whom (the backlog line's own text says
+-- "players/DMs you've actually played with"): any signed-in user may
+-- follow any other signed-in user, with NO shared-campaign-membership
+-- gate enforced -- matching the exact same openness precedent already
+-- established for direct messaging (backlog #31, see lib/messages.ts's
+-- own doc comment) and for starting a board thread/volunteering for a
+-- sub (#37/#20), rather than inventing a new "you must have actually
+-- played together" restriction unique to this one relationship. The
+-- backlog phrase describes the *expected* use case (you follow people
+-- from your own tables), not a hard technical gate this app enforces
+-- anywhere else for a comparable relationship -- and a real gate would
+-- need to walk shared (including past 'left') campaign membership for
+-- privacy benefit that doesn't actually exist here, since everything a
+-- followed user's feed events surface is already fully public on their
+-- own /players/[id] page regardless of who follows them. See
+-- lib/follows.ts and claude/progress.md's dated session log entry for
+-- the full reasoning.
+CREATE TABLE IF NOT EXISTS follows (
+  id TEXT PRIMARY KEY,
+  follower_id TEXT NOT NULL REFERENCES users(id),
+  followed_id TEXT NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL,
+  UNIQUE (follower_id, followed_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows(follower_id);
+CREATE INDEX IF NOT EXISTS idx_follows_followed ON follows(followed_id);
+
+-- The feed itself: a small, explicit event log written at the exact
+-- moment a feed-worthy event happens (see lib/feed.ts's recordX
+-- functions, called from lib/characters.ts/lib/memberships.ts/
+-- lib/campaignRatings.ts), not derived after the fact by scanning
+-- mutable rows -- a character's updated_at bumps on every edit, not
+-- just a status change, so it can't double as a reliable "this is when
+-- the status changed" timestamp the way an immutable per-entry table
+-- like session_log_entries can be read directly.
+--
+-- CRITICAL PRIVACY BOUNDARY, read before adding a new event type here:
+-- every event type this table can hold surfaces something that is
+-- ALREADY fully public elsewhere in this app today -- a character's
+-- existence/status on its owner's public /players/[id] page, or a
+-- campaign's accepting_requests/rating aggregate on its own public
+-- detail page. Session log entries, party notes, table chat, and DM-
+-- only tools (initiative tracker/NPC notes) are deliberately never
+-- written here, because those are gated behind hasPrivateAccess()/
+-- isDm() (lib/access.ts) and NOT visible to a non-member follower --
+-- surfacing them in a feed would leak private campaign content past an
+-- author's actual audience just because they have followers, which is
+-- a real regression against this app's own tested private-side
+-- boundary, not a feature. This table is a browsing *view* over
+-- already-public facts, never a new kind of content or a bypass of an
+-- existing access check.
+CREATE TABLE IF NOT EXISTS feed_events (
+  id TEXT PRIMARY KEY,
+  actor_id TEXT NOT NULL REFERENCES users(id),
+  type TEXT NOT NULL CHECK (type IN ('character_created','character_status_changed','campaign_became_full','campaign_first_rated')),
+  campaign_id TEXT REFERENCES campaigns(id),
+  character_id TEXT REFERENCES characters(id),
+  message TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_feed_events_actor ON feed_events(actor_id);
 `);
 
 // Lightweight migration for databases created before password_hash existed

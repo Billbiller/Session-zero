@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import db from "./db";
 import { getCampaign } from "./campaigns";
+import { recordCampaignFirstRated } from "./feed";
 import { CAMPAIGN_RATING_TAGS, type CampaignRating, type CampaignRatingSummary } from "./types";
 
 export class CampaignRatingError extends Error {}
@@ -82,6 +83,11 @@ export function rateCampaign(
   }
 
   const existing = getCampaignRating(campaignId, raterId);
+  // Backlog #38: captured before the upsert below, so this reflects
+  // whether the campaign had ANY rating (from anyone) prior to this
+  // call -- the signal for "this campaign's first rating ever", not
+  // "this rater's first rating" (existing, which is per-rater).
+  const isCampaignsFirstRatingEver = getCampaignRatingSummary(campaignId).count === 0;
   const now = new Date().toISOString();
   const rating: CampaignRating = {
     id: existing?.id ?? uuidv4(),
@@ -100,6 +106,11 @@ export function rateCampaign(
        tags = excluded.tags,
        updated_at = excluded.updated_at`
   ).run({ ...rating, tags: JSON.stringify(tags) });
+
+  if (isCampaignsFirstRatingEver) {
+    const campaign = getCampaign(campaignId);
+    if (campaign) recordCampaignFirstRated(campaign.dm_id, campaign);
+  }
 
   return rating;
 }

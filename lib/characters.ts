@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import db from "./db";
 import { getCampaign } from "./campaigns";
 import { hasPrivateAccess } from "./access";
+import { recordCharacterCreated, recordCharacterStatusChanged } from "./feed";
 import {
   CHARACTER_AVATARS,
   CHARACTER_STATUSES,
@@ -214,6 +215,11 @@ export function createCharacter(userId: string, input: CharacterCreateInput): Ch
     `INSERT INTO characters (id, user_id, campaign_id, name, archetype, bio, backstory, avatar_emoji, status, epilogue, portrait_data_url, created_at, updated_at)
      VALUES (@id, @user_id, @campaign_id, @name, @archetype, @bio, @backstory, @avatar_emoji, @status, @epilogue, @portrait_data_url, @created_at, @updated_at)`
   ).run(character);
+  // Backlog #38: a new character is already public on its owner's
+  // /players/[id] page from the moment it's created -- record it so
+  // followers can notice, matching the "no new content types, just a
+  // new way to surface existing public ones" scope of this feature.
+  recordCharacterCreated(userId, character);
   return character;
 }
 
@@ -295,7 +301,17 @@ export function updateCharacter(
     characterId
   );
 
-  return getCharacter(characterId) as Character;
+  const updated = getCharacter(characterId) as Character;
+  // Backlog #38: record a feed-worthy "milestone" only on the actual
+  // transition into retired/fallen (not on every edit that happens to
+  // leave status unchanged, and not on a transition back to "active" --
+  // this app's character-legacy framing treats retiring/falling as the
+  // notable moment, not un-retiring). A character's status is already
+  // public on its owner's /players/[id] page regardless of this event.
+  if (current.status !== updated.status && (updated.status === "retired" || updated.status === "fallen")) {
+    recordCharacterStatusChanged(userId, updated);
+  }
+  return updated;
 }
 
 /** Aggregate counts, by status, of every character currently linked to a
@@ -328,5 +344,12 @@ export function deleteCharacter(characterId: string, userId: string): void {
   if (current.user_id !== userId) {
     throw new CharacterError("You can only delete your own characters.");
   }
+  // Backlog #38: a feed_events row may reference this character
+  // (character_id REFERENCES characters(id)) -- null that link out rather
+  // than deleting the event itself. The event's message already has the
+  // character's name baked in as plain text at the moment it was recorded
+  // (e.g. "created a new character, Thistle Bramblewick."), so it stays
+  // meaningful even once the character itself is gone.
+  db.prepare("UPDATE feed_events SET character_id = NULL WHERE character_id = ?").run(characterId);
   db.prepare("DELETE FROM characters WHERE id = ?").run(characterId);
 }

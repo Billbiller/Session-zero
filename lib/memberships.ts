@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import db from "./db";
 import { getCampaign, approvedHeadcount, CampaignError } from "./campaigns";
 import { notify } from "./notifications";
+import { recordCampaignBecameFull } from "./feed";
 import { activePartyUserIds } from "./access";
 import type { Membership } from "./types";
 
@@ -75,6 +76,13 @@ export function approveRequest(membershipId: string, dmId: string): Membership {
     db.prepare(
       "UPDATE campaigns SET accepting_requests = 0, updated_at = ? WHERE id = ?"
     ).run(now, campaign.id);
+    // Backlog #38: only a feed-worthy event on the actual open -> full
+    // transition (campaign.accepting_requests, read before this update,
+    // was still 1) -- not every approval that happens to leave a
+    // manually-reopened, already-full campaign at newCount >= capacity.
+    if (campaign.accepting_requests) {
+      recordCampaignBecameFull(campaign.dm_id, campaign);
+    }
   }
 
   notify(

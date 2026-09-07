@@ -8,9 +8,11 @@ import { getCampaign } from "@/lib/campaigns";
 import { getUserRatingSummary } from "@/lib/ratings";
 import { getUserStats } from "@/lib/stats";
 import { getAvailabilitySlots } from "@/lib/availability";
+import { isFollowing, followerCount, followingCount } from "@/lib/follows";
 import CharacterSummary from "@/components/CharacterSummary";
 import StatsPanel from "@/components/StatsPanel";
 import AvailabilityGrid from "@/components/AvailabilityGrid";
+import FollowButton from "@/components/FollowButton";
 
 function reputationLine(label: string, summary: { average: number | null; count: number; tagCounts: Record<string, number> }) {
   const topTags = Object.entries(summary.tagCounts)
@@ -58,19 +60,32 @@ export default async function PlayerProfilePage({
   const ratingSummary = getUserRatingSummary(id);
   const stats = getUserStats(id);
   const availabilitySlots = getAvailabilitySlots(id);
+  const followers = followerCount(id);
+  const followees = followingCount(id);
+  const viewerIsFollowing = viewer && !isOwnProfile ? isFollowing(viewer.id, id) : false;
 
   return (
     <div className="flex max-w-lg flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{user.display_name}</h1>
-        {viewer && !isOwnProfile && (
-          <Link
-            href={`/messages/${id}`}
-            className="whitespace-nowrap rounded border border-black/10 px-3 py-1 text-sm dark:border-white/10"
-          >
-            Message
-          </Link>
-        )}
+        <div>
+          <h1 className="text-2xl font-semibold">{user.display_name}</h1>
+          <p className="mt-0.5 text-xs text-black/60 dark:text-white/60">
+            {followers} follower{followers === 1 ? "" : "s"} &middot; following {followees}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {viewer && !isOwnProfile && (
+            <>
+              <FollowButton userId={id} initiallyFollowing={viewerIsFollowing} />
+              <Link
+                href={`/messages/${id}`}
+                className="whitespace-nowrap rounded border border-black/10 px-3 py-1 text-sm dark:border-white/10"
+              >
+                Message
+              </Link>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 rounded border border-black/10 p-3 dark:border-white/10 sm:flex-row sm:gap-6">
