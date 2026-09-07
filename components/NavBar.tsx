@@ -83,6 +83,7 @@ export default function NavBar({
         </Link>
         <nav className="flex items-center gap-4 text-sm">
           <Link href="/campaigns">Browse</Link>
+          <Link href="/subs">Find a sub</Link>
           {user && (
             <>
               <Link href="/campaigns/new">New campaign</Link>

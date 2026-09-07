@@ -21,6 +21,7 @@ import PartyNotesPanel from "@/components/PartyNotesPanel";
 import SessionLogPanel from "@/components/SessionLogPanel";
 import CharacterSummary from "@/components/CharacterSummary";
 import RatingsPanel from "@/components/RatingsPanel";
+import SubRequestPanel from "@/components/SubRequestPanel";
 
 export default async function CampaignDetailPage({
   params,
@@ -154,6 +155,13 @@ export default async function CampaignDetailPage({
       </div>
 
       <RatingsPanel campaignId={id} signedIn={!!viewer} />
+
+      <SubRequestPanel
+        campaignId={id}
+        viewerId={viewer?.id ?? null}
+        isDm={isDm}
+        canPost={access}
+      />
 
       {access && (
         <>

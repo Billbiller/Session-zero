@@ -67,6 +67,7 @@ export const NOTIFICATION_TYPES = [
   "campaign_cancelled",
   "rating_prompt",
   "session_log_kudos",
+  "sub_volunteer",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -83,6 +84,7 @@ export const NOTIFICATION_LABELS: Record<NotificationType, string> = {
   campaign_cancelled: "A campaign you're in is cancelled",
   rating_prompt: "You're invited to rate a DM or player after leaving a campaign",
   session_log_kudos: "Someone gives kudos to your session log entry",
+  sub_volunteer: "Someone volunteers to sub in for your campaign",
 };
 
 export interface Notification {
@@ -178,6 +180,49 @@ export interface AvailabilitySlot {
   /** 0-6, see AVAILABILITY_DAYS. */
   day: number;
   block: AvailabilityBlock;
+}
+
+/** Phase 1 of backlog #20 (substitute player workflow) -- just the
+ * request + volunteer pool, no approval state machine or character
+ * custody yet. A request starts "open" and moves to a terminal state
+ * ("filled" or "cancelled") once the requester or DM picks someone,
+ * which for this phase is a manual decision made outside this system. */
+export const SUB_REQUEST_STATUSES = ["open", "filled", "cancelled"] as const;
+
+export type SubRequestStatus = (typeof SUB_REQUEST_STATUSES)[number];
+
+export interface SubRequest {
+  id: string;
+  campaign_id: string;
+  requester_id: string;
+  note: string;
+  status: SubRequestStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubVolunteer {
+  id: string;
+  request_id: string;
+  volunteer_id: string;
+  message: string;
+  created_at: string;
+}
+
+/** A sub request enriched with the display context the browse pool and
+ * campaign-page panel need -- computed server-side (joins against
+ * campaigns/users) so client components never need direct DB access,
+ * matching the client-safe-types convention used throughout this file. */
+export interface SubRequestSummary extends SubRequest {
+  campaignTitle: string;
+  campaignSystem: string;
+  requesterName: string;
+  volunteerCount: number;
+  viewerHasVolunteered: boolean;
+}
+
+export interface SubVolunteerWithName extends SubVolunteer {
+  volunteerName: string;
 }
 
 export const CHARACTER_AVATARS = [

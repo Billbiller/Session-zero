@@ -167,6 +167,38 @@ CREATE TABLE IF NOT EXISTS availability_slots (
   block TEXT NOT NULL CHECK (block IN ('morning','afternoon','evening','night')),
   PRIMARY KEY (user_id, day_of_week, block)
 );
+
+-- Phase 1 of backlog #20 (substitute player workflow): a campaign member
+-- posts "looking for a sub" for an upcoming session, and any signed-in
+-- user can browse open requests app-wide and volunteer. Explicitly NOT
+-- phase 2/3 -- there's no three-way approval state machine and no
+-- temporary character-custody/guardrail enforcement yet. A request just
+-- tracks open/filled/cancelled, and volunteering just expresses interest;
+-- the requester or DM picks a volunteer manually and marks the request
+-- filled outside this system for now.
+CREATE TABLE IF NOT EXISTS sub_requests (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id),
+  requester_id TEXT NOT NULL REFERENCES users(id),
+  note TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','filled','cancelled')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sub_requests_campaign ON sub_requests(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_sub_requests_status ON sub_requests(status);
+
+CREATE TABLE IF NOT EXISTS sub_volunteers (
+  id TEXT PRIMARY KEY,
+  request_id TEXT NOT NULL REFERENCES sub_requests(id),
+  volunteer_id TEXT NOT NULL REFERENCES users(id),
+  message TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  UNIQUE (request_id, volunteer_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sub_volunteers_request ON sub_volunteers(request_id);
 `);
 
 // Lightweight migration for databases created before password_hash existed
