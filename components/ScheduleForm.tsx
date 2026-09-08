@@ -63,6 +63,11 @@ export default function ScheduleForm({
           <>
             {" "}
             &middot; {new Date(nextSessionAt).toLocaleString()}
+            {" "}
+            &middot;{" "}
+            <a href={`/api/campaigns/${campaignId}/calendar`} className="underline">
+              Add to calendar (.ics)
+            </a>
           </>
         )}
       </p>
