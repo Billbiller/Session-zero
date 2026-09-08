@@ -11,6 +11,7 @@ export default function NavBar({
 }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [unreadTableChatCount, setUnreadTableChatCount] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -132,6 +133,70 @@ export default function NavBar({
     };
   }, [user]);
 
+  // Backlog #45: dedicated unread-table-chat badge, mirroring the
+  // unreadMessageCount effect immediately above one more level down --
+  // backed by campaign_messages/campaign_message_reads (via
+  // lib/campaignChatEvents.ts + /api/campaigns/chat/stream) rather than
+  // messages.read or notifications.read, so it's a third, independent
+  // counter with the same SSE-with-15s-polling-fallback shape. There's no
+  // dedicated "my tables" top-level nav link to hang this on the way
+  // Messages/Notifications each have their own -- it rides the existing
+  // profile link instead, since "My campaigns" (with its own per-campaign
+  // breakdown -- see app/profile/page.tsx) already lives at /profile.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    let pollInterval: ReturnType<typeof setInterval> | undefined;
+
+    async function pollOnce() {
+      const res = await fetch("/api/profile");
+      if (!res.ok || cancelled) return;
+      const data = await res.json();
+      if (!cancelled) {
+        const counts = (data.unreadCampaignChatCounts ?? {}) as Record<string, number>;
+        const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+        setUnreadTableChatCount(total);
+      }
+    }
+
+    function startPolling() {
+      if (pollInterval || cancelled) return;
+      pollOnce();
+      pollInterval = setInterval(pollOnce, 15000);
+    }
+
+    if (typeof EventSource === "undefined") {
+      startPolling();
+      return () => {
+        cancelled = true;
+        if (pollInterval) clearInterval(pollInterval);
+      };
+    }
+
+    const source = new EventSource("/api/campaigns/chat/stream");
+
+    source.addEventListener("unread", (event) => {
+      if (cancelled) return;
+      try {
+        const data = JSON.parse((event as MessageEvent).data);
+        if (typeof data.unreadCount === "number") setUnreadTableChatCount(data.unreadCount);
+      } catch {
+        // malformed event — ignore, the next one (or the polling fallback) will catch up
+      }
+    });
+
+    source.onerror = () => {
+      source.close();
+      startPolling();
+    };
+
+    return () => {
+      cancelled = true;
+      source.close();
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [user]);
+
   async function handleSignOut() {
     await fetch("/api/auth/signout", { method: "POST" });
     router.push("/");
@@ -170,8 +235,16 @@ export default function NavBar({
                 )}
               </Link>
               <Link href="/settings/notifications">Settings</Link>
-              <Link href="/profile" className="text-black/60 dark:text-white/60">
+              <Link href="/profile" className="relative text-black/60 dark:text-white/60">
                 {user.displayName}
+                {unreadTableChatCount > 0 && (
+                  <span
+                    className="ml-1 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-xs font-medium text-white"
+                    title="Unread table chat messages across your campaigns"
+                  >
+                    {unreadTableChatCount}
+                  </span>
+                )}
               </Link>
               <button onClick={handleSignOut} className="underline">
                 Sign out

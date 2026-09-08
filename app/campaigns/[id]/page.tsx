@@ -10,6 +10,7 @@ import { listEntriesWithKudos } from "@/lib/sessionLog";
 import { computeScheduleStatus } from "@/lib/schedule";
 import { checkAndFireSessionReminder } from "@/lib/sessionReminders";
 import { listCharactersForCampaign, getCampaignChronicle } from "@/lib/characters";
+import { getUnreadCampaignMessageCount } from "@/lib/campaignMessages";
 import db from "@/lib/db";
 import {
   CAMPAIGN_TONE_TAG_LABELS,
@@ -83,6 +84,14 @@ export default async function CampaignDetailPage({
   if (viewer && access) {
     checkAndFireSessionReminder(id, viewer.id);
   }
+
+  // Backlog #45: a one-time server-side snapshot of this viewer's unread
+  // table-chat count for *this* campaign, taken before CampaignChatPanel's
+  // own client-side GET runs (that GET immediately marks the thread read --
+  // see lib/campaignMessages.ts's markCampaignChatRead -- so a client-side
+  // "unread" badge here could never stay accurate). Shown as a simple
+  // "N new" next to the panel's own heading; see CampaignChatPanel.
+  const chatUnreadCount = viewer && access ? getUnreadCampaignMessageCount(id, viewer.id) : 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -258,7 +267,7 @@ export default async function CampaignDetailPage({
             status={computeScheduleStatus(campaign.next_session_at)}
           />
           {campaign.next_session_at && <SessionRsvpPanel campaignId={id} viewerId={viewer?.id ?? null} />}
-          <CampaignChatPanel campaignId={id} viewerId={viewer?.id ?? null} />
+          <CampaignChatPanel campaignId={id} viewerId={viewer?.id ?? null} initialUnreadCount={chatUnreadCount} />
           <ResourceVaultPanel campaignId={id} viewerId={viewer?.id ?? null} isDm={isDm} />
           <PartyNotesPanel campaignId={id} initialContent={getNotes(id).content} />
           <SessionLogPanel

@@ -21,6 +21,12 @@ export default function ProfilePage() {
   const [dming, setDming] = useState<Campaign[]>([]);
   const [playing, setPlaying] = useState<Campaign[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
+  // Backlog #45: per-campaign unread table-chat counts, keyed by campaign
+  // id (only campaigns with unread > 0 are present). Feeds the small
+  // badges next to each campaign below.
+  const [unreadCampaignChatCounts, setUnreadCampaignChatCounts] = useState<
+    Record<string, number>
+  >({});
   const [bio, setBio] = useState("");
   const [preferredSystems, setPreferredSystems] = useState("");
   const [availability, setAvailability] = useState("");
@@ -55,6 +61,7 @@ export default function ProfilePage() {
       setDming(data.dming ?? []);
       setPlaying(data.playing ?? []);
       setStats(data.stats ?? null);
+      setUnreadCampaignChatCounts(data.unreadCampaignChatCounts ?? {});
     }
     setLoading(false);
   }, [router]);
@@ -227,6 +234,14 @@ export default function ProfilePage() {
                       {c.title}
                     </Link>
                     {c.cancelled ? " (cancelled)" : ""}
+                    {!!unreadCampaignChatCounts[c.id] && (
+                      <span
+                        className="ml-2 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-xs font-medium text-white"
+                        title="Unread table chat messages"
+                      >
+                        {unreadCampaignChatCounts[c.id]}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -245,6 +260,14 @@ export default function ProfilePage() {
                     <Link href={`/campaigns/${c.id}`} className="underline">
                       {c.title}
                     </Link>
+                    {!!unreadCampaignChatCounts[c.id] && (
+                      <span
+                        className="ml-2 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-xs font-medium text-white"
+                        title="Unread table chat messages"
+                      >
+                        {unreadCampaignChatCounts[c.id]}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

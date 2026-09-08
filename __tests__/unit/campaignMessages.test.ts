@@ -10,6 +10,8 @@ import {
   listCampaignMessages,
   getUnreadCampaignMessageCount,
   markCampaignChatRead,
+  getTotalUnreadCampaignMessageCountForUser,
+  getUnreadCampaignMessageCountsForUser,
   CampaignMessageError,
 } from "@/lib/campaignMessages";
 
@@ -168,5 +170,118 @@ describe("table group chat (backlog #32)", () => {
     const { campaign: campaignB } = setupParty("cm13b");
     sendCampaignMessage(campaignA.id, dmA.id, "campaign A only");
     expect(listCampaignMessages(campaignB.id)).toEqual([]);
+  });
+});
+
+describe("total + per-campaign unread table-chat counts (backlog #45)", () => {
+  it("returns 0 / an empty map for a user with no campaigns at all", () => {
+    const loner = signUp("Loner", "cm14-loner@example.com", "testpassword123");
+    expect(getTotalUnreadCampaignMessageCountForUser(loner.id)).toBe(0);
+    expect(getUnreadCampaignMessageCountsForUser(loner.id)).toEqual({});
+  });
+
+  it("returns 0 / an empty map when a user's campaigns have no unread messages", () => {
+    const { dm } = setupParty("cm15");
+    expect(getTotalUnreadCampaignMessageCountForUser(dm.id)).toBe(0);
+    expect(getUnreadCampaignMessageCountsForUser(dm.id)).toEqual({});
+  });
+
+  it("sums unread across every campaign a user has access to, both DMing and playing", () => {
+    // U DMs campaign A and plays in campaign B (DM'd by someone else).
+    const u = signUp("U", "cm16-u@example.com", "testpassword123");
+    const campaignA = createCampaign({
+      dmId: u.id,
+      title: "A",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const otherDm = signUp("OtherDM", "cm16-odm@example.com", "testpassword123");
+    const campaignB = createCampaign({
+      dmId: otherDm.id,
+      title: "B",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const mB = requestJoin(campaignB.id, u.id);
+    approveRequest(mB.id, otherDm.id);
+
+    const playerInA = signUp("PlayerInA", "cm16-pa@example.com", "testpassword123");
+    const mA = requestJoin(campaignA.id, playerInA.id);
+    approveRequest(mA.id, u.id);
+
+    sendCampaignMessage(campaignA.id, playerInA.id, "hi from A");
+    sendCampaignMessage(campaignA.id, playerInA.id, "hi again from A");
+    sendCampaignMessage(campaignB.id, otherDm.id, "hi from B");
+
+    expect(getTotalUnreadCampaignMessageCountForUser(u.id)).toBe(3);
+    expect(getUnreadCampaignMessageCountsForUser(u.id)).toEqual({
+      [campaignA.id]: 2,
+      [campaignB.id]: 1,
+    });
+  });
+
+  it("excludes a campaign from the per-campaign map once the user has caught up, without affecting another campaign's entry", () => {
+    const u = signUp("U2", "cm17-u@example.com", "testpassword123");
+    const campaignA = createCampaign({
+      dmId: u.id,
+      title: "A",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const otherDm = signUp("OtherDM2", "cm17-odm@example.com", "testpassword123");
+    const campaignB = createCampaign({
+      dmId: otherDm.id,
+      title: "B",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const mB = requestJoin(campaignB.id, u.id);
+    approveRequest(mB.id, otherDm.id);
+    const playerInA = signUp("PlayerInA2", "cm17-pa@example.com", "testpassword123");
+    const mA = requestJoin(campaignA.id, playerInA.id);
+    approveRequest(mA.id, u.id);
+
+    sendCampaignMessage(campaignA.id, playerInA.id, "hi from A");
+    sendCampaignMessage(campaignB.id, otherDm.id, "hi from B");
+    expect(getUnreadCampaignMessageCountsForUser(u.id)).toEqual({
+      [campaignA.id]: 1,
+      [campaignB.id]: 1,
+    });
+
+    markCampaignChatRead(campaignA.id, u.id);
+    expect(getUnreadCampaignMessageCountsForUser(u.id)).toEqual({ [campaignB.id]: 1 });
+    expect(getTotalUnreadCampaignMessageCountForUser(u.id)).toBe(1);
+  });
+
+  it("never counts the user's own sent messages toward their own aggregate total", () => {
+    const { dm, campaign } = setupParty("cm18");
+    sendCampaignMessage(campaign.id, dm.id, "my own message");
+    expect(getTotalUnreadCampaignMessageCountForUser(dm.id)).toBe(0);
+  });
+
+  it("isolates aggregate counts per user -- one member's unread total doesn't leak into another's", () => {
+    const dm = signUp("DM3", "cm19-dm@example.com", "testpassword123");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const p1 = signUp("P1_3", "cm19-p1@example.com", "testpassword123");
+    const p2 = signUp("P2_3", "cm19-p2@example.com", "testpassword123");
+    for (const p of [p1, p2]) {
+      const m = requestJoin(campaign.id, p.id);
+      approveRequest(m.id, dm.id);
+    }
+    sendCampaignMessage(campaign.id, p1.id, "hello");
+    markCampaignChatRead(campaign.id, p2.id); // p2 catches up immediately
+
+    expect(getTotalUnreadCampaignMessageCountForUser(dm.id)).toBe(1);
+    expect(getTotalUnreadCampaignMessageCountForUser(p2.id)).toBe(0);
   });
 });

@@ -564,4 +564,75 @@ describe("HTTP integration", () => {
 
     await reader.cancel();
   });
+
+  it("pushes a live unread-count update over the table-chat SSE stream (backlog #45)", async () => {
+    const dmJar = new CookieJar();
+    const playerJar = new CookieJar();
+
+    const dm = await dmJar.signUp("CHAT SSE DM", "chat-sse-dm@example.com");
+    await playerJar.signUp("CHAT SSE Player", "chat-sse-player@example.com");
+
+    // Requires an auth cookie, same as the other /api/campaigns/chat routes.
+    const signedOutRes = await fetch(`${BASE_URL}/api/campaigns/chat/stream`);
+    expect(signedOutRes.status).toBe(401);
+
+    const { campaign } = await (
+      await dmJar.fetch("/api/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Chat SSE Campaign",
+          description: "",
+          system: "SSE System",
+          capacity: 3,
+        }),
+      })
+    ).json();
+    const { membership } = await (
+      await playerJar.fetch(`/api/campaigns/${campaign.id}/join`, { method: "POST" })
+    ).json();
+    await dmJar.fetch(`/api/campaigns/${campaign.id}/requests/${membership.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve" }),
+    });
+
+    const streamRes = await playerJar.fetch("/api/campaigns/chat/stream");
+    expect(streamRes.status).toBe(200);
+    expect(streamRes.headers.get("content-type")).toContain("text/event-stream");
+    expect(streamRes.body).not.toBeNull();
+
+    const reader = streamRes.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    async function readUntil(predicate: (buf: string) => boolean, timeoutMs = 10000) {
+      const deadline = Date.now() + timeoutMs;
+      while (!predicate(buffer)) {
+        if (Date.now() > deadline) {
+          throw new Error(`Timed out waiting for SSE data. Buffer so far: ${buffer}`);
+        }
+        const { value, done } = await reader.read();
+        if (done) throw new Error("Stream closed before expected data arrived.");
+        buffer += decoder.decode(value, { stream: true });
+      }
+    }
+
+    // The route sends an immediate snapshot on connect: unreadCount 0 (the
+    // player just joined and hasn't missed any table-chat messages yet).
+    await readUntil((buf) => buf.includes('"unreadCount":0'));
+
+    await dmJar.fetch(`/api/campaigns/${campaign.id}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: `Welcome to the table, from ${dm.display_name}!` }),
+    });
+
+    await readUntil((buf) => {
+      const matches = [...buf.matchAll(/"unreadCount":(\d+)/g)];
+      return matches.some((m) => Number(m[1]) > 0);
+    });
+
+    await reader.cancel();
+  });
 });

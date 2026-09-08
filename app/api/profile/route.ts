@@ -7,6 +7,7 @@ import {
   AvailabilityError,
 } from "@/lib/availability";
 import { getUserStats } from "@/lib/stats";
+import { getUnreadCampaignMessageCountsForUser } from "@/lib/campaignMessages";
 import { AVAILABILITY_BLOCKS, SESSION_FORMAT_PREFERENCES } from "@/lib/types";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
 
@@ -22,6 +23,13 @@ export async function GET() {
     dming,
     playing,
     stats: getUserStats(auth.user.id),
+    // Backlog #45: per-campaign unread table-chat counts, keyed by
+    // campaign id (only campaigns with unread > 0) -- feeds the small
+    // badges next to each campaign in the "My campaigns" list below, and
+    // doubles as the NavBar badge's 15s-polling fallback (it sums these
+    // values the same way the Messages badge's fallback sums GET
+    // /api/messages's per-conversation unreadCount).
+    unreadCampaignChatCounts: getUnreadCampaignMessageCountsForUser(auth.user.id),
   });
 }
 

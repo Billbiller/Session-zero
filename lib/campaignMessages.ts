@@ -4,6 +4,8 @@ import { getCampaign } from "./campaigns";
 import { getUserById } from "./auth";
 import { hasPrivateAccess, activePartyUserIds } from "./access";
 import { notify } from "./notifications";
+import { myCampaigns } from "./profiles";
+import { publishUnreadCampaignChatCount } from "./campaignChatEvents";
 import type { CampaignMessage, CampaignMessageWithSender } from "./types";
 
 export class CampaignMessageError extends Error {}
@@ -67,6 +69,12 @@ export function markCampaignChatRead(campaignId: string, userId: string): void {
      VALUES (@campaign_id, @user_id, @last_read_at)
      ON CONFLICT (campaign_id, user_id) DO UPDATE SET last_read_at = excluded.last_read_at`
   ).run({ campaign_id: campaignId, user_id: userId, last_read_at: now });
+  // Push this user's fresh total-unread-table-chat count (across every
+  // campaign, not just this one) to any open SSE stream for them -- see
+  // campaignChatEvents.ts + app/api/campaigns/chat/stream/route.ts.
+  // Mirrors lib/messages.ts's markConversationRead() publishing its own
+  // fresh total on read (backlog #45, one level down from #44).
+  publishUnreadCampaignChatCount(userId, getTotalUnreadCampaignMessageCountForUser(userId));
 }
 
 /** Posts a message to a campaign's group chat. Restricted to the same
@@ -143,5 +151,58 @@ export function sendCampaignMessage(
     );
   }
 
+  // Every other active party member's total-unread-table-chat count just
+  // went up by one for this campaign (this message is newer than their
+  // last-read timestamp, whatever it was) -- push each of their fresh
+  // totals live, separately from the campaign_chat_message notification
+  // fan-out above (recipientsToNotify), which only covers who gets
+  // *notified* under the first-unread-since-visit rule. The badge should
+  // reflect every new message, not just the first one since a visit.
+  for (const otherId of others) {
+    publishUnreadCampaignChatCount(otherId, getTotalUnreadCampaignMessageCountForUser(otherId));
+  }
+
   return message;
+}
+
+/** The signed-in user's total unread table-chat count, summed across
+ * every campaign they DM or actively play in -- the number behind the
+ * NavBar badge (backlog #45), distinct from any single campaign's own
+ * getUnreadCampaignMessageCount() above. Reuses lib/profiles.ts's
+ * myCampaigns() for the "campaigns I have private access to" set, the
+ * same reuse lib/sessionReminders.ts's checkAndFireSessionRemindersForUser
+ * already established -- rather than re-deriving that set from scratch
+ * here. */
+export function getTotalUnreadCampaignMessageCountForUser(userId: string): number {
+  const { dming, playing } = myCampaigns(userId);
+  const seen = new Set<string>();
+  let total = 0;
+  for (const campaign of [...dming, ...playing]) {
+    if (seen.has(campaign.id)) continue;
+    seen.add(campaign.id);
+    total += getUnreadCampaignMessageCount(campaign.id, userId);
+  }
+  return total;
+}
+
+/** Per-campaign unread table-chat counts across every campaign a user has
+ * private access to, keyed by campaign id and omitting any campaign with
+ * zero unread -- the data behind the small per-campaign badges on
+ * /profile's "My campaigns" list (backlog #45), so a user can see *which*
+ * table has new chat activity without opening each one. A badge inside
+ * the campaign detail page itself can't stay accurate the same way (see
+ * markCampaignChatRead -- opening a campaign's own chat panel immediately
+ * marks it read), so this list-level view is the one place a per-campaign
+ * count can actually sit still to be read. */
+export function getUnreadCampaignMessageCountsForUser(userId: string): Record<string, number> {
+  const { dming, playing } = myCampaigns(userId);
+  const seen = new Set<string>();
+  const counts: Record<string, number> = {};
+  for (const campaign of [...dming, ...playing]) {
+    if (seen.has(campaign.id)) continue;
+    seen.add(campaign.id);
+    const count = getUnreadCampaignMessageCount(campaign.id, userId);
+    if (count > 0) counts[campaign.id] = count;
+  }
+  return counts;
 }

@@ -12,9 +12,18 @@ import Section from "@/components/Section";
 export default function CampaignChatPanel({
   campaignId,
   viewerId,
+  initialUnreadCount = 0,
 }: {
   campaignId: string;
   viewerId: string | null;
+  /** Backlog #45: a one-time server-computed snapshot of how many
+   * messages were unread when this page was requested, taken *before*
+   * this panel's own load() below fires and marks the thread read --
+   * see app/campaigns/[id]/page.tsx. Shown next to the heading for the
+   * lifetime of this page view; it deliberately doesn't live-update
+   * (once you're looking at the panel, the transcript itself is the
+   * up-to-date signal). */
+  initialUnreadCount?: number;
 }) {
   const [messages, setMessages] = useState<CampaignMessageWithSender[]>([]);
   const [draft, setDraft] = useState("");
@@ -62,7 +71,14 @@ export default function CampaignChatPanel({
 
   return (
     <Section>
-      <h2 className="mb-2 font-medium">Table chat</h2>
+      <h2 className="mb-2 font-medium">
+        Table chat
+        {initialUnreadCount > 0 && (
+          <span className="ml-2 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-xs font-medium text-white">
+            {initialUnreadCount} new
+          </span>
+        )}
+      </h2>
       {loading ? (
         <p className="text-sm">Loading...</p>
       ) : (
