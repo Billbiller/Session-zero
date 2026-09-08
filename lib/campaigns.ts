@@ -256,6 +256,49 @@ export function updateCampaign(
   return next;
 }
 
+/** Backlog #47 (self-identified): a DM who runs recurring one-shots or
+ * west-marches-style tables currently has to re-type every field from
+ * scratch for each new table. Duplicates a campaign's own re-usable
+ * "setup" fields (title, description, system, capacity, location,
+ * new-player-friendly flag, session format, starting level, tone tags,
+ * and danger level) into a brand-new campaign owned by the same DM --
+ * deliberately NOT the roster, schedule, session log, party notes,
+ * table chat, resources, initiative tracker, NPC notes, sub requests, or
+ * ratings, all of which belong to one specific run of the table, not the
+ * template it was built from. The new campaign starts exactly like any
+ * other freshly-created one: open for requests, an empty roster, and no
+ * next session scheduled -- a DM re-launches the duplicate the same way
+ * they'd launch any new campaign (posting a fresh schedule once players
+ * have joined). Only the original campaign's own DM may duplicate it. */
+export function duplicateCampaign(id: string, dmId: string): Campaign {
+  const source = getCampaign(id);
+  if (!source) throw new CampaignError("Campaign not found.");
+  if (source.dm_id !== dmId) {
+    throw new CampaignError("Only the DM can duplicate this campaign.");
+  }
+  const copy = createCampaign({
+    dmId,
+    title: `${source.title} (Copy)`,
+    description: source.description,
+    system: source.system,
+    capacity: source.capacity,
+    location: source.location,
+    newPlayerFriendly: !!source.new_player_friendly,
+    sessionFormat: source.session_format ?? undefined,
+    startingLevel: source.starting_level ?? undefined,
+    toneTags: source.tone_tags,
+  });
+  // createCampaign has no dangerLevel parameter -- it's only settable
+  // after creation via updateCampaign, matching this app's own existing
+  // /campaigns/new form, which likewise has no danger-level field at
+  // creation time. A follow-up update carries it over so a duplicate
+  // doesn't silently drop a DM-set heads-up filter the original had.
+  if (source.danger_level) {
+    return updateCampaign(copy.id, dmId, { dangerLevel: source.danger_level });
+  }
+  return copy;
+}
+
 export function setCancelled(
   id: string,
   dmId: string,

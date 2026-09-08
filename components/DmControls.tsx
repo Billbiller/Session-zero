@@ -100,6 +100,23 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
     router.refresh();
   }
 
+  // Backlog #47: re-usable "setup" fields only -- see duplicateCampaign()'s
+  // own doc comment in lib/campaigns.ts for exactly what carries over.
+  // Navigates straight to the new campaign so the DM can pick up editing
+  // it (or scheduling a session) immediately.
+  async function duplicate() {
+    setSubmitting(true);
+    setError(null);
+    const res = await fetch(`/api/campaigns/${campaign.id}/duplicate`, { method: "POST" });
+    setSubmitting(false);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "Something went wrong.");
+      return;
+    }
+    router.push(`/campaigns/${data.campaign.id}`);
+  }
+
   return (
     <Section>
       <h2 className="mb-3 font-medium">DM controls</h2>
@@ -128,6 +145,14 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
               Reopen for requests
             </button>
           )}
+          <button
+            disabled={submitting}
+            onClick={duplicate}
+            title="Copy this campaign's setup (title, system, capacity, and other details) into a brand-new campaign, with an empty roster and no schedule."
+            className="rounded border border-black/20 px-3 py-1.5 text-sm dark:border-white/20"
+          >
+            Duplicate campaign
+          </button>
         </div>
       ) : (
         <form onSubmit={save} className="flex flex-col gap-3 text-sm">

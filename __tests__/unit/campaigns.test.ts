@@ -8,6 +8,7 @@ import {
   approvedHeadcount,
   setCancelled,
   manualReopen,
+  duplicateCampaign,
   CampaignError,
   CAMPAIGN_TONE_TAGS,
 } from "@/lib/campaigns";
@@ -859,5 +860,107 @@ describe("campaigns", () => {
     // because a stale/tampered query string had a bogus tag in it.
     const result = listCampaigns({ system: sys, toneTags: ["not-a-real-tag"] });
     expect(result.total).toBe(1);
+  });
+});
+
+describe("duplicateCampaign (backlog #47)", () => {
+  it("copies the re-usable setup fields into a brand-new campaign owned by the same DM", () => {
+    const dm = makeDm("dm-dup1@example.com");
+    const original = createCampaign({
+      dmId: dm.id,
+      title: "West Marches Base Camp",
+      description: "A rotating-cast sandbox game.",
+      system: "D&D 5e",
+      capacity: 6,
+      location: "Austin, TX",
+      newPlayerFriendly: true,
+      sessionFormat: "in_person",
+      startingLevel: "Level 3",
+      toneTags: ["exploration", "one-shot-friendly"],
+    });
+
+    const copy = duplicateCampaign(original.id, dm.id);
+
+    expect(copy.id).not.toBe(original.id);
+    expect(copy.dm_id).toBe(dm.id);
+    expect(copy.title).toBe("West Marches Base Camp (Copy)");
+    expect(copy.description).toBe(original.description);
+    expect(copy.system).toBe(original.system);
+    expect(copy.capacity).toBe(original.capacity);
+    expect(copy.location).toBe(original.location);
+    expect(copy.new_player_friendly).toBe(1);
+    expect(copy.session_format).toBe("in_person");
+    expect(copy.starting_level).toBe("Level 3");
+    expect(copy.tone_tags).toEqual(["exploration", "one-shot-friendly"]);
+  });
+
+  it("carries over a set danger level via the post-creation update path", () => {
+    const dm = makeDm("dm-dup2@example.com");
+    const original = createCampaign({
+      dmId: dm.id,
+      title: "Deadly Dungeon",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    updateCampaign(original.id, dm.id, { dangerLevel: "high-lethality" });
+
+    const copy = duplicateCampaign(getCampaign(original.id)!.id, dm.id);
+    expect(copy.danger_level).toBe("high-lethality");
+  });
+
+  it("leaves danger level unset on the copy when the original never had one", () => {
+    const dm = makeDm("dm-dup3@example.com");
+    const original = createCampaign({
+      dmId: dm.id,
+      title: "Plain Game",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const copy = duplicateCampaign(original.id, dm.id);
+    expect(copy.danger_level).toBeNull();
+  });
+
+  it("starts the duplicate open, uncancelled, unscheduled, and with an empty roster -- not a clone of the original's live state", () => {
+    const dm = makeDm("dm-dup4@example.com");
+    const player = signUp("Player Dup4", "player-dup4@example.com", "testpassword123");
+    const original = createCampaign({
+      dmId: dm.id,
+      title: "Active Table",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const membership = requestJoin(original.id, player.id);
+    approveRequest(membership.id, dm.id);
+    updateCampaign(original.id, dm.id, {});
+    setCancelled(original.id, dm.id, false);
+
+    const copy = duplicateCampaign(original.id, dm.id);
+    expect(copy.accepting_requests).toBe(1);
+    expect(copy.cancelled).toBe(0);
+    expect(copy.next_session_at).toBeNull();
+    expect(approvedHeadcount(copy.id)).toBe(0);
+    // The original's own roster and state are untouched by duplicating it.
+    expect(approvedHeadcount(original.id)).toBe(1);
+  });
+
+  it("rejects duplication by anyone other than the campaign's own DM", () => {
+    const dm = makeDm("dm-dup5@example.com");
+    const stranger = signUp("Stranger Dup5", "stranger-dup5@example.com", "testpassword123");
+    const original = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(() => duplicateCampaign(original.id, stranger.id)).toThrow(CampaignError);
+  });
+
+  it("rejects duplicating an unknown campaign id", () => {
+    const dm = makeDm("dm-dup6@example.com");
+    expect(() => duplicateCampaign("not-a-real-id", dm.id)).toThrow(CampaignError);
   });
 });
