@@ -21,6 +21,25 @@ function getUserByEmail(email: string): (User & { password_hash: string }) | nul
   return row ?? null;
 }
 
+// Backlog #48: the only way to become a site admin -- there's no UI to
+// grant/revoke it, and no human is available in this sandbox to configure
+// one by hand. Following the exact SQLITE_DB_PATH env-var convention
+// already established in lib/db.ts: whoever signs up with an email
+// matching ADMIN_EMAIL (compared the same normalized way as every other
+// email in this file) becomes an admin automatically, at account
+// creation only -- this does not retroactively promote an
+// already-existing account if ADMIN_EMAIL is set later. Since this env
+// var is unset in this sandbox, nobody actually becomes an admin by
+// running the test suite or a smoke test here; the real owner would need
+// ADMIN_EMAIL set in whatever hosting environment backlog #3 eventually
+// picks for this to take effect for real. See claude/progress.md's dated
+// session log entry for the full reasoning.
+function isAdminEmail(email: string): boolean {
+  const configured = process.env.ADMIN_EMAIL;
+  if (!configured) return false;
+  return normalizeEmail(configured) === normalizeEmail(email);
+}
+
 /** Creates a brand-new account. Throws AuthError if the email is already taken. */
 export function signUp(displayName: string, email: string, password: string): User {
   const trimmedName = displayName.trim();
@@ -34,13 +53,14 @@ export function signUp(displayName: string, email: string, password: string): Us
   const id = uuidv4();
   const created_at = new Date().toISOString();
   db.prepare(
-    `INSERT INTO users (id, display_name, email, password_hash, created_at)
-     VALUES (@id, @display_name, @email, @password_hash, @created_at)`
+    `INSERT INTO users (id, display_name, email, password_hash, is_admin, created_at)
+     VALUES (@id, @display_name, @email, @password_hash, @is_admin, @created_at)`
   ).run({
     id,
     display_name: trimmedName,
     email: normalizeEmail(email),
     password_hash: bcrypt.hashSync(password, BCRYPT_ROUNDS),
+    is_admin: isAdminEmail(email) ? 1 : 0,
     created_at,
   });
   return { id, display_name: trimmedName, email: normalizeEmail(email), created_at };

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { signUp } from "@/lib/auth";
+import { isSiteAdmin } from "@/lib/access";
 import { BOARD_TOPICS } from "@/lib/types";
 import { listNotifications } from "@/lib/notifications";
 import { setPreference } from "@/lib/notificationPreferences";
@@ -17,6 +18,11 @@ import {
   getReply,
   createReply,
   deleteReply,
+  reportThread,
+  reportReply,
+  hasReportedThread,
+  hasReportedReply,
+  listReportedContent,
 } from "@/lib/boards";
 
 function makeUser(prefix: string) {
@@ -331,6 +337,158 @@ describe("community discussion boards (backlog #37)", () => {
       expect(notifs[0].related_thread_id).toBeNull();
       // The message itself still names the thread, even once it's gone.
       expect(notifs[0].message).toContain("Doomed thread");
+    });
+  });
+
+  describe("site-admin moderation (backlog #48)", () => {
+    // Sets ADMIN_EMAIL just long enough to sign up one admin account, then
+    // restores whatever (if anything) it was before -- this file's tests
+    // share one process, so a stray ADMIN_EMAIL left set would silently
+    // turn every later makeUser() call in this describe block into an
+    // admin too.
+    function makeAdminUser(prefix: string) {
+      const original = process.env.ADMIN_EMAIL;
+      process.env.ADMIN_EMAIL = `${prefix}@example.com`;
+      try {
+        return signUp(prefix, `${prefix}@example.com`, "testpassword123");
+      } finally {
+        if (original === undefined) delete process.env.ADMIN_EMAIL;
+        else process.env.ADMIN_EMAIL = original;
+      }
+    }
+
+    it("lets a site admin delete another user's thread, cascading to its replies", () => {
+      const author = makeUser("bd22");
+      const replier = makeUser("bd22r");
+      const admin = makeAdminUser("bd22admin");
+      expect(isSiteAdmin(admin.id)).toBe(true);
+      const thread = createThread("lfg-advice", author.id, { title: "T", body: "B" });
+      const reply = createReply(thread.id, replier.id, "a reply");
+
+      deleteThread(thread.id, admin.id);
+
+      expect(getThread(thread.id)).toBeNull();
+      expect(getReply(reply.id)).toBeNull();
+    });
+
+    it("lets a site admin delete another user's reply without deleting the thread", () => {
+      const author = makeUser("bd23");
+      const replier = makeUser("bd23r");
+      const admin = makeAdminUser("bd23admin");
+      const thread = createThread("lfg-advice", author.id, { title: "T", body: "B" });
+      const reply = createReply(thread.id, replier.id, "a reply");
+
+      deleteReply(reply.id, admin.id);
+
+      expect(getReply(reply.id)).toBeNull();
+      expect(getThread(thread.id)).not.toBeNull();
+    });
+
+    it("reports a thread, rejecting an unknown thread and a duplicate report from the same reporter", () => {
+      const author = makeUser("bd24");
+      const reporter = makeUser("bd24r");
+      const thread = createThread("lfg-advice", author.id, { title: "T", body: "B" });
+
+      expect(hasReportedThread(thread.id, reporter.id)).toBe(false);
+      const report = reportThread(thread.id, reporter.id, "spam");
+      expect(report.thread_id).toBe(thread.id);
+      expect(report.reply_id).toBeNull();
+      expect(report.reason).toBe("spam");
+      expect(hasReportedThread(thread.id, reporter.id)).toBe(true);
+
+      expect(() => reportThread(thread.id, reporter.id)).toThrow(BoardError);
+      expect(() => reportThread("nonexistent", reporter.id)).toThrow(BoardError);
+    });
+
+    it("reports a reply, rejecting an unknown reply and a duplicate report from the same reporter", () => {
+      const author = makeUser("bd25");
+      const replier = makeUser("bd25r");
+      const reporter = makeUser("bd25rep");
+      const thread = createThread("lfg-advice", author.id, { title: "T", body: "B" });
+      const reply = createReply(thread.id, replier.id, "a reply");
+
+      expect(hasReportedReply(reply.id, reporter.id)).toBe(false);
+      const report = reportReply(reply.id, reporter.id);
+      expect(report.reply_id).toBe(reply.id);
+      expect(report.thread_id).toBeNull();
+      expect(report.reason).toBe("");
+      expect(hasReportedReply(reply.id, reporter.id)).toBe(true);
+
+      expect(() => reportReply(reply.id, reporter.id)).toThrow(BoardError);
+      expect(() => reportReply("nonexistent", reporter.id)).toThrow(BoardError);
+    });
+
+    it("rejects an over-length report reason", () => {
+      const author = makeUser("bd26");
+      const reporter = makeUser("bd26r");
+      const thread = createThread("lfg-advice", author.id, { title: "T", body: "B" });
+      expect(() => reportThread(thread.id, reporter.id, "x".repeat(501))).toThrow(BoardError);
+    });
+
+    it("allows two different reporters to each report the same thread independently", () => {
+      const author = makeUser("bd27");
+      const reporter1 = makeUser("bd27r1");
+      const reporter2 = makeUser("bd27r2");
+      const thread = createThread("lfg-advice", author.id, { title: "T", body: "B" });
+
+      reportThread(thread.id, reporter1.id);
+      reportThread(thread.id, reporter2.id);
+
+      const queue = listReportedContent();
+      const found = queue.find((item) => item.kind === "thread" && item.id === thread.id);
+      expect(found?.reportCount).toBe(2);
+    });
+
+    it("listReportedContent sorts by report count descending and reflects both threads and replies", () => {
+      const author = makeUser("bd28");
+      const replier = makeUser("bd28r");
+      const r1 = makeUser("bd28rep1");
+      const r2 = makeUser("bd28rep2");
+      const r3 = makeUser("bd28rep3");
+
+      const thread = createThread("lfg-advice", author.id, { title: "Popular target", body: "B" });
+      const reply = createReply(thread.id, replier.id, "a reply");
+
+      reportThread(thread.id, r1.id);
+      reportThread(thread.id, r2.id);
+      reportThread(thread.id, r3.id);
+      reportReply(reply.id, r1.id);
+
+      const queue = listReportedContent();
+      const threadEntry = queue.find((item) => item.kind === "thread" && item.id === thread.id);
+      const replyEntry = queue.find((item) => item.kind === "reply" && item.id === reply.id);
+      expect(threadEntry?.reportCount).toBe(3);
+      expect(replyEntry?.reportCount).toBe(1);
+      expect(queue.indexOf(threadEntry!)).toBeLessThan(queue.indexOf(replyEntry!));
+    });
+
+    it("removes a deleted thread's reports from the admin queue", () => {
+      const author = makeUser("bd29");
+      const reporter = makeUser("bd29r");
+      const thread = createThread("lfg-advice", author.id, { title: "To be deleted", body: "B" });
+      reportThread(thread.id, reporter.id);
+      expect(listReportedContent().some((item) => item.id === thread.id)).toBe(true);
+
+      deleteThread(thread.id, author.id);
+
+      expect(listReportedContent().some((item) => item.id === thread.id)).toBe(false);
+    });
+
+    it("removes a deleted reply's reports from the admin queue without touching its thread's own report count", () => {
+      const author = makeUser("bd30");
+      const replier = makeUser("bd30r");
+      const reporter = makeUser("bd30rep");
+      const thread = createThread("lfg-advice", author.id, { title: "T", body: "B" });
+      const reply = createReply(thread.id, replier.id, "a reply");
+      reportThread(thread.id, reporter.id);
+      reportReply(reply.id, reporter.id);
+
+      deleteReply(reply.id, replier.id);
+
+      const queue = listReportedContent();
+      expect(queue.some((item) => item.kind === "reply" && item.id === reply.id)).toBe(false);
+      const threadEntry = queue.find((item) => item.kind === "thread" && item.id === thread.id);
+      expect(threadEntry?.reportCount).toBe(1);
     });
   });
 });

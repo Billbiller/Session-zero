@@ -24,6 +24,15 @@ CREATE TABLE IF NOT EXISTS users (
   display_name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL DEFAULT '',
+  -- Backlog #48: a plain site-wide admin flag -- no roles table, just a
+  -- boolean, matching this backlog item's own "narrow first pass" scope.
+  -- Granted automatically at signup when the new account's normalized
+  -- email matches the ADMIN_EMAIL environment variable (see lib/auth.ts's
+  -- signUp() and lib/db.ts's own "Tooling notes" convention for
+  -- SQLITE_DB_PATH) -- there is no UI to grant/revoke this later, since
+  -- that's a distinctly bigger admin-management feature this pass
+  -- doesn't attempt.
+  is_admin INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
 
@@ -508,6 +517,37 @@ CREATE TABLE IF NOT EXISTS board_replies (
 
 CREATE INDEX IF NOT EXISTS idx_board_replies_thread ON board_replies(thread_id);
 
+-- Backlog #48: lightweight site-admin moderation for discussion boards --
+-- the concrete gap backlog #37's own session log entry flagged twice
+-- ("no admin/reporting system of any kind"). Any signed-in user may
+-- report a thread or reply once each (a second report from the same
+-- reporter on the same target is rejected, not upserted -- matching
+-- lib/follows.ts's "already following" duplicate-relationship
+-- convention rather than sub_requests' volunteer-message-update
+-- convention, since a report has no mutable content worth updating).
+-- Exactly one of thread_id/reply_id is set per report, never both/
+-- neither -- a report always targets one specific post, and a reply's
+-- own report is independent of its parent thread's. reporter_id has no
+-- UNIQUE constraint on its own; the two partial unique indexes below
+-- enforce "once per (reporter, thread)" and "once per (reporter, reply)"
+-- separately, since SQLite's CHECK constraint above already guarantees
+-- the two are mutually exclusive per row. An admin browses
+-- lib/boards.ts's listReportedContent(), sorted by report count.
+CREATE TABLE IF NOT EXISTS board_reports (
+  id TEXT PRIMARY KEY,
+  reporter_id TEXT NOT NULL REFERENCES users(id),
+  thread_id TEXT REFERENCES board_threads(id),
+  reply_id TEXT REFERENCES board_replies(id),
+  reason TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  CHECK ((thread_id IS NOT NULL AND reply_id IS NULL) OR (thread_id IS NULL AND reply_id IS NOT NULL))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_board_reports_unique_thread ON board_reports(reporter_id, thread_id) WHERE thread_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_board_reports_unique_reply ON board_reports(reporter_id, reply_id) WHERE reply_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_board_reports_thread ON board_reports(thread_id);
+CREATE INDEX IF NOT EXISTS idx_board_reports_reply ON board_reports(reply_id);
+
 -- Backlog #38: opt-in following + a lightweight public activity feed.
 -- Judgment call on who can follow whom (the backlog line's own text says
 -- "players/DMs you've actually played with"): any signed-in user may
@@ -606,6 +646,15 @@ CREATE INDEX IF NOT EXISTS idx_session_log_attendance_user ON session_log_attend
 const userColumns = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
 if (!userColumns.some((c) => c.name === "password_hash")) {
   db.exec("ALTER TABLE users ADD COLUMN password_hash TEXT NOT NULL DEFAULT ''");
+}
+
+// Lightweight migration for databases created before site-admin support
+// existed (backlog #48). New databases already get this column from the
+// CREATE TABLE statement above. Reuses the userColumns snapshot taken
+// above (captured before any ALTER TABLE on this table ran, so it
+// correctly never contains this column either).
+if (!userColumns.some((c) => c.name === "is_admin")) {
+  db.exec("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0");
 }
 
 // Lightweight migrations for databases created before character legacies

@@ -36,6 +36,19 @@ export function isDm(userId: string | null, campaignId: string): boolean {
   return campaign.dm_id === userId;
 }
 
+/** Backlog #48: a plain site-wide admin flag (users.is_admin), unrelated
+ * to any one campaign -- distinct from isDm/hasPrivateAccess above, which
+ * are both scoped to a specific campaign_id. See lib/db.ts's users table
+ * comment and lib/auth.ts's signUp() for how ADMIN_EMAIL grants this at
+ * account creation. */
+export function isSiteAdmin(userId: string | null): boolean {
+  if (!userId) return false;
+  const row = db.prepare("SELECT is_admin FROM users WHERE id = ?").get(userId) as
+    | { is_admin: number }
+    | undefined;
+  return !!row?.is_admin;
+}
+
 /** DM + every approved/active member, used for fanning notifications out to "the party". */
 export function activePartyUserIds(campaignId: string): string[] {
   const campaign = getCampaign(campaignId);

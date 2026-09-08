@@ -7,6 +7,7 @@ import {
   getUserBySessionToken,
   destroySession,
 } from "@/lib/auth";
+import { isSiteAdmin } from "@/lib/access";
 
 describe("signUp", () => {
   it("creates a new account", () => {
@@ -55,6 +56,54 @@ describe("signIn", () => {
   it("rejects the wrong password", () => {
     signUp("Grace", "grace@example.com", "correcthorse1");
     expect(() => signIn("grace@example.com", "wrongpassword")).toThrow(AuthError);
+  });
+});
+
+describe("ADMIN_EMAIL (backlog #48)", () => {
+  // This is the only way to become a site admin -- see lib/auth.ts's
+  // isAdminEmail() doc comment: there's no UI to grant it, so a fresh
+  // account becomes an admin only if it's created while ADMIN_EMAIL
+  // happens to match. Each test restores whatever value (or absence)
+  // ADMIN_EMAIL had before it, since this file's tests share one process
+  // and a stray leftover value would silently admin-ify later signups.
+  function withAdminEmail(value: string | undefined, fn: () => void) {
+    const original = process.env.ADMIN_EMAIL;
+    if (value === undefined) delete process.env.ADMIN_EMAIL;
+    else process.env.ADMIN_EMAIL = value;
+    try {
+      fn();
+    } finally {
+      if (original === undefined) delete process.env.ADMIN_EMAIL;
+      else process.env.ADMIN_EMAIL = original;
+    }
+  }
+
+  it("grants is_admin at signup when the email matches ADMIN_EMAIL, normalized the same way as sign-in", () => {
+    withAdminEmail("  Admin@Example.com ", () => {
+      const admin = signUp("Admin", "admin@example.com", "correcthorse1");
+      expect(isSiteAdmin(admin.id)).toBe(true);
+    });
+  });
+
+  it("does not grant is_admin to an account whose email doesn't match ADMIN_EMAIL", () => {
+    withAdminEmail("admin2@example.com", () => {
+      const user = signUp("NotAdmin", "notadmin2@example.com", "correcthorse1");
+      expect(isSiteAdmin(user.id)).toBe(false);
+    });
+  });
+
+  it("grants is_admin to nobody when ADMIN_EMAIL is unset", () => {
+    withAdminEmail(undefined, () => {
+      const user = signUp("Plain", "plain3@example.com", "correcthorse1");
+      expect(isSiteAdmin(user.id)).toBe(false);
+    });
+  });
+
+  it("isSiteAdmin is false for a stranger and for a signed-out (null) user id", () => {
+    const user = signUp("Regular", "regular4@example.com", "correcthorse1");
+    expect(isSiteAdmin(user.id)).toBe(false);
+    expect(isSiteAdmin(null)).toBe(false);
+    expect(isSiteAdmin("nonexistent-user-id")).toBe(false);
   });
 });
 

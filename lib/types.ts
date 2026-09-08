@@ -923,6 +923,43 @@ export interface BoardReplyWithAuthor extends BoardReply {
   authorName: string;
 }
 
+/** Backlog #48: a report against a single thread or reply, filed by a
+ * signed-in user for a site admin to review. Exactly one of thread_id/
+ * reply_id is set (see lib/db.ts's board_reports table comment) --
+ * mirrored here as both fields nullable rather than a discriminated
+ * union, matching how BoardThread/BoardReply themselves are plain row
+ * shapes elsewhere in this file. */
+export interface BoardReport {
+  id: string;
+  reporter_id: string;
+  thread_id: string | null;
+  reply_id: string | null;
+  reason: string;
+  created_at: string;
+}
+
+/** Backlog #48: one row in the admin moderation queue at /admin/boards --
+ * a thread or reply enriched with its report count and enough context
+ * (board, author, an excerpt) to review without a second click. See
+ * lib/boards.ts's listReportedContent(). */
+export interface ReportedBoardPost {
+  kind: "thread" | "reply";
+  /** The thread's own id, or the reply's own id -- whichever this post is. */
+  id: string;
+  /** For a reply, its parent thread's id (for linking back to it); for a
+   * thread, the same value as id. */
+  threadId: string;
+  boardSlug: BoardSlug;
+  authorId: string;
+  authorName: string;
+  /** The thread's own title, or "Reply to "<thread title>"" for a reply. */
+  title: string;
+  /** A truncated excerpt of the post's body, for display in the queue. */
+  excerpt: string;
+  reportCount: number;
+  createdAt: string;
+}
+
 /** Backlog #38: opt-in following + a lightweight public activity feed.
  * See lib/db.ts's follows table comment for the "who can follow whom"
  * judgment call (open, no shared-campaign gate -- matching #31's

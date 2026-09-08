@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 export default function NavBar({
   user,
 }: {
-  user: { displayName: string } | null;
+  user: { displayName: string; isAdmin?: boolean } | null;
 }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
@@ -235,6 +235,7 @@ export default function NavBar({
                 )}
               </Link>
               <Link href="/settings/notifications">Settings</Link>
+              {user.isAdmin && <Link href="/admin/boards">Admin</Link>}
               <Link href="/profile" className="relative text-black/60 dark:text-white/60">
                 {user.displayName}
                 {unreadTableChatCount > 0 && (

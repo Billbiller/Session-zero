@@ -1,9 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getBoard, getThreadWithAuthor, listReplies } from "@/lib/boards";
+import {
+  getBoard,
+  getThreadWithAuthor,
+  listReplies,
+  hasReportedThread,
+  hasReportedReply,
+} from "@/lib/boards";
 import { getCurrentUser } from "@/lib/currentUser";
+import { isSiteAdmin } from "@/lib/access";
 import ReplyForm from "@/components/ReplyForm";
 import DeletePostButton from "@/components/DeletePostButton";
+import ReportPostButton from "@/components/ReportPostButton";
 import Section from "@/components/Section";
 
 export default async function ThreadPage({
@@ -20,6 +28,10 @@ export default async function ThreadPage({
 
   const replies = listReplies(threadId);
   const viewer = await getCurrentUser();
+  // Backlog #48: a site admin can delete anyone's thread/reply, not just
+  // their own -- see lib/boards.ts's requireAuthorOrAdmin. Computed once
+  // here rather than per-post, since it doesn't vary per thread/reply.
+  const viewerIsAdmin = viewer ? isSiteAdmin(viewer.id) : false;
 
   return (
     <div className="flex flex-col gap-6">
@@ -40,13 +52,25 @@ export default async function ThreadPage({
               by {thread.authorName} &middot; {new Date(thread.created_at).toLocaleString()}
             </p>
           </div>
-          {viewer?.id === thread.author_id && (
-            <DeletePostButton
-              endpoint={`/api/boards/${slug}/threads/${threadId}`}
-              redirectTo={`/boards/${slug}`}
-              confirmLabel="Delete this thread? This also deletes all of its replies."
-            />
-          )}
+          <div className="flex flex-col items-end gap-2">
+            {(viewer?.id === thread.author_id || viewerIsAdmin) && (
+              <DeletePostButton
+                endpoint={`/api/boards/${slug}/threads/${threadId}`}
+                redirectTo={`/boards/${slug}`}
+                confirmLabel={
+                  viewer?.id === thread.author_id
+                    ? "Delete this thread? This also deletes all of its replies."
+                    : "Delete this thread as an admin? This also deletes all of its replies."
+                }
+              />
+            )}
+            {viewer && viewer.id !== thread.author_id && (
+              <ReportPostButton
+                endpoint={`/api/boards/${slug}/threads/${threadId}/report`}
+                alreadyReported={hasReportedThread(threadId, viewer.id)}
+              />
+            )}
+          </div>
         </div>
         <p className="mt-3 whitespace-pre-wrap text-sm">{thread.body}</p>
       </Section>
@@ -61,12 +85,24 @@ export default async function ThreadPage({
               <p className="text-xs text-black/60 dark:text-white/60">
                 {reply.authorName} &middot; {new Date(reply.created_at).toLocaleString()}
               </p>
-              {viewer?.id === reply.author_id && (
-                <DeletePostButton
-                  endpoint={`/api/boards/${slug}/threads/${threadId}/replies/${reply.id}`}
-                  confirmLabel="Delete this reply?"
-                />
-              )}
+              <div className="flex flex-col items-end gap-2">
+                {(viewer?.id === reply.author_id || viewerIsAdmin) && (
+                  <DeletePostButton
+                    endpoint={`/api/boards/${slug}/threads/${threadId}/replies/${reply.id}`}
+                    confirmLabel={
+                      viewer?.id === reply.author_id
+                        ? "Delete this reply?"
+                        : "Delete this reply as an admin?"
+                    }
+                  />
+                )}
+                {viewer && viewer.id !== reply.author_id && (
+                  <ReportPostButton
+                    endpoint={`/api/boards/${slug}/threads/${threadId}/replies/${reply.id}/report`}
+                    alreadyReported={hasReportedReply(reply.id, viewer.id)}
+                  />
+                )}
+              </div>
             </div>
             <p className="mt-1 whitespace-pre-wrap text-sm">{reply.body}</p>
           </Section>

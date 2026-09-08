@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import db from "./db";
 import { getUserById } from "./auth";
 import { notify } from "./notifications";
+import { isSiteAdmin } from "./access";
 import { BOARD_TOPICS, BOARD_INFO } from "./types";
 import type {
   BoardSlug,
@@ -10,6 +11,8 @@ import type {
   BoardThreadWithAuthor,
   BoardReply,
   BoardReplyWithAuthor,
+  BoardReport,
+  ReportedBoardPost,
 } from "./types";
 
 export class BoardError extends Error {}
@@ -17,6 +20,8 @@ export class BoardError extends Error {}
 const MAX_TITLE = 200;
 const MAX_THREAD_BODY = 10000;
 const MAX_REPLY_BODY = 5000;
+const MAX_REPORT_REASON = 500;
+const REPORT_EXCERPT_LENGTH = 200;
 
 export function isBoardSlug(value: string): value is BoardSlug {
   return (BOARD_TOPICS as readonly string[]).includes(value);
@@ -147,24 +152,38 @@ export function createThread(
   return thread;
 }
 
-/** "Light moderation" for this first pass (backlog #37's own scope) means
- * self-moderation only -- a thread/reply's own author can delete it, and
- * there is no admin/reporting system, unlike e.g. campaign resources
- * where the DM is also a backstop moderator. Boards aren't campaign-
- * scoped, so there's no DM-equivalent role to lean on here. */
-function requireAuthor(authorId: string, userId: string, what: string): void {
-  if (authorId !== userId) {
-    throw new BoardError(`Only the person who posted this ${what} can delete it.`);
-  }
+/** "Light moderation" for backlog #37's original first pass meant
+ * self-moderation only. Backlog #48 adds the backstop that pass's own
+ * session log explicitly flagged as missing: a site admin (users.is_admin,
+ * see lib/access.ts's isSiteAdmin) can also delete any thread or reply,
+ * mirroring how a campaign's DM is already a backstop moderator for
+ * campaign resources/session log entries -- boards aren't campaign-scoped,
+ * so a site-wide admin role is the equivalent backstop here. */
+function requireAuthorOrAdmin(authorId: string, userId: string, what: string): void {
+  if (authorId === userId) return;
+  if (isSiteAdmin(userId)) return;
+  throw new BoardError(`Only the person who posted this ${what}, or a site admin, can delete it.`);
 }
 
-/** Deletes a thread and every reply on it. Author-only (see
- * requireAuthor above) -- there is no edit affordance for this first pass,
- * only delete-and-repost, keeping the write surface intentionally small. */
+/** Deletes a thread and every reply on it. Author-or-admin only (see
+ * requireAuthorOrAdmin above) -- there is no edit affordance for this
+ * first pass, only delete-and-repost, keeping the write surface
+ * intentionally small. */
 export function deleteThread(threadId: string, userId: string): void {
   const thread = getThreadRow(threadId);
   if (!thread) throw new BoardError("Thread not found.");
-  requireAuthor(thread.author_id, userId, "thread");
+  requireAuthorOrAdmin(thread.author_id, userId, "thread");
+  // Backlog #48: board_reports rows reference this thread (thread_id
+  // REFERENCES board_threads(id)) and, for reports on any of its replies,
+  // reference those replies (reply_id REFERENCES board_replies(id)) --
+  // both must be deleted before the thread/replies themselves, or the
+  // foreign_keys=ON pragma (lib/db.ts) rejects the delete. Unlike the
+  // notifications null-out below, report rows are deleted outright: once
+  // an admin has removed the content, there's nothing left to review.
+  db.prepare("DELETE FROM board_reports WHERE thread_id = ?").run(threadId);
+  db.prepare(
+    "DELETE FROM board_reports WHERE reply_id IN (SELECT id FROM board_replies WHERE thread_id = ?)"
+  ).run(threadId);
   // Backlog #43: a notifications row may reference this thread
   // (related_thread_id REFERENCES board_threads(id)) -- null that link out
   // rather than deleting the notification itself, same convention as
@@ -254,12 +273,168 @@ export function createReply(threadId: string, authorId: string, body: string): B
   return reply;
 }
 
-/** Deletes a single reply. Author-only, same self-moderation boundary as
+/** Deletes a single reply. Author-or-admin only, same boundary as
  * deleteThread -- deleting a reply never cascades (it has nothing under
  * it, replies are flat). */
 export function deleteReply(replyId: string, userId: string): void {
   const reply = getReplyRow(replyId);
   if (!reply) throw new BoardError("Reply not found.");
-  requireAuthor(reply.author_id, userId, "reply");
+  requireAuthorOrAdmin(reply.author_id, userId, "reply");
+  db.prepare("DELETE FROM board_reports WHERE reply_id = ?").run(replyId);
   db.prepare("DELETE FROM board_replies WHERE id = ?").run(replyId);
+}
+
+function validateReportReason(reason: string | undefined): string {
+  const trimmed = (reason ?? "").trim();
+  if (trimmed.length > MAX_REPORT_REASON) {
+    throw new BoardError(`Reason can't be longer than ${MAX_REPORT_REASON} characters.`);
+  }
+  return trimmed;
+}
+
+/** Whether reporterId has already reported this thread -- used both to
+ * reject a duplicate report (see reportThread below) and by the thread
+ * page to hide/relabel the Report button for something the viewer's
+ * already flagged, the same per-viewer-state convention as e.g.
+ * sub-request volunteering's viewerHasVolunteered. */
+export function hasReportedThread(threadId: string, reporterId: string): boolean {
+  const row = db
+    .prepare("SELECT 1 FROM board_reports WHERE thread_id = ? AND reporter_id = ?")
+    .get(threadId, reporterId);
+  return !!row;
+}
+
+export function hasReportedReply(replyId: string, reporterId: string): boolean {
+  const row = db
+    .prepare("SELECT 1 FROM board_reports WHERE reply_id = ? AND reporter_id = ?")
+    .get(replyId, reporterId);
+  return !!row;
+}
+
+/** Backlog #48: files a report against a thread for a site admin to
+ * review (see listReportedContent below). Any signed-in user may report
+ * any thread once -- including their own, technically (there's no
+ * self-report special case here, since the UI simply never renders the
+ * Report button next to a viewer's own post, the same "narrow surface,
+ * not a hard rule" approach this app already takes with e.g. reportReply
+ * below). A second report from the same reporter on the same thread is
+ * rejected, not upserted -- mirrors lib/follows.ts's "already following"
+ * duplicate-relationship convention. */
+export function reportThread(threadId: string, reporterId: string, reason?: string): BoardReport {
+  const thread = getThreadRow(threadId);
+  if (!thread) throw new BoardError("Thread not found.");
+  if (hasReportedThread(threadId, reporterId)) {
+    throw new BoardError("You've already reported this.");
+  }
+  const report: BoardReport = {
+    id: uuidv4(),
+    reporter_id: reporterId,
+    thread_id: threadId,
+    reply_id: null,
+    reason: validateReportReason(reason),
+    created_at: new Date().toISOString(),
+  };
+  db.prepare(
+    `INSERT INTO board_reports (id, reporter_id, thread_id, reply_id, reason, created_at)
+     VALUES (@id, @reporter_id, @thread_id, @reply_id, @reason, @created_at)`
+  ).run(report);
+  return report;
+}
+
+/** Same as reportThread, one level down -- see that function's doc comment. */
+export function reportReply(replyId: string, reporterId: string, reason?: string): BoardReport {
+  const reply = getReplyRow(replyId);
+  if (!reply) throw new BoardError("Reply not found.");
+  if (hasReportedReply(replyId, reporterId)) {
+    throw new BoardError("You've already reported this.");
+  }
+  const report: BoardReport = {
+    id: uuidv4(),
+    reporter_id: reporterId,
+    thread_id: null,
+    reply_id: replyId,
+    reason: validateReportReason(reason),
+    created_at: new Date().toISOString(),
+  };
+  db.prepare(
+    `INSERT INTO board_reports (id, reporter_id, thread_id, reply_id, reason, created_at)
+     VALUES (@id, @reporter_id, @thread_id, @reply_id, @reason, @created_at)`
+  ).run(report);
+  return report;
+}
+
+/** The admin moderation queue (/admin/boards): every thread or reply
+ * that has at least one report, sorted by report count descending (ties
+ * broken by the most recent report first, so a suddenly-hot post surfaces
+ * ahead of an old one with the same count sitting untouched). A thread
+ * and its own replies are independent entries here -- reporting a thread
+ * doesn't imply anything about its replies or vice versa. Skips a report
+ * whose underlying thread/reply has already been deleted (defensive only:
+ * deleteThread/deleteReply both clean up their own board_reports rows, so
+ * this shouldn't happen in practice, but a stale row is a display bug,
+ * not a crash). */
+export function listReportedContent(): ReportedBoardPost[] {
+  const threadCounts = db
+    .prepare(
+      `SELECT thread_id AS id, COUNT(*) AS count, MAX(created_at) AS latest
+       FROM board_reports WHERE thread_id IS NOT NULL GROUP BY thread_id`
+    )
+    .all() as { id: string; count: number; latest: string }[];
+  const replyCounts = db
+    .prepare(
+      `SELECT reply_id AS id, COUNT(*) AS count, MAX(created_at) AS latest
+       FROM board_reports WHERE reply_id IS NOT NULL GROUP BY reply_id`
+    )
+    .all() as { id: string; count: number; latest: string }[];
+
+  const entries: { post: ReportedBoardPost; latestReportAt: string }[] = [];
+
+  for (const row of threadCounts) {
+    const thread = getThreadRow(row.id);
+    if (!thread) continue;
+    entries.push({
+      post: {
+        kind: "thread",
+        id: thread.id,
+        threadId: thread.id,
+        boardSlug: thread.board_slug,
+        authorId: thread.author_id,
+        authorName: getUserById(thread.author_id)?.display_name ?? "Unknown",
+        title: thread.title,
+        excerpt: thread.body.slice(0, REPORT_EXCERPT_LENGTH),
+        reportCount: row.count,
+        createdAt: thread.created_at,
+      },
+      latestReportAt: row.latest,
+    });
+  }
+
+  for (const row of replyCounts) {
+    const reply = getReplyRow(row.id);
+    if (!reply) continue;
+    const parentThread = getThreadRow(reply.thread_id);
+    if (!parentThread) continue;
+    entries.push({
+      post: {
+        kind: "reply",
+        id: reply.id,
+        threadId: parentThread.id,
+        boardSlug: parentThread.board_slug,
+        authorId: reply.author_id,
+        authorName: getUserById(reply.author_id)?.display_name ?? "Unknown",
+        title: `Reply to "${parentThread.title}"`,
+        excerpt: reply.body.slice(0, REPORT_EXCERPT_LENGTH),
+        reportCount: row.count,
+        createdAt: reply.created_at,
+      },
+      latestReportAt: row.latest,
+    });
+  }
+
+  entries.sort((a, b) => {
+    if (b.post.reportCount !== a.post.reportCount) return b.post.reportCount - a.post.reportCount;
+    return b.latestReportAt.localeCompare(a.latestReportAt);
+  });
+
+  return entries.map((entry) => entry.post);
 }
