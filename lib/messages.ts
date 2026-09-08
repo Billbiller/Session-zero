@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import db from "./db";
 import { getUserById } from "./auth";
 import { notify } from "./notifications";
+import { publishUnreadMessageCount } from "./messageEvents";
 import type { Message, ConversationSummary } from "./types";
 
 export class MessageError extends Error {}
@@ -53,8 +54,26 @@ export function sendMessage(senderId: string, recipientId: string, body: string)
     `${sender?.display_name ?? "Someone"} sent you a message.`,
     senderId
   );
+  // Push the recipient's fresh total unread-message count to any open SSE
+  // stream for them (see messageEvents.ts + app/api/messages/stream/route.ts)
+  // so the NavBar's dedicated "Messages" badge updates live -- separate
+  // from, and in addition to, the general notifications badge the
+  // message_received notify() call above already updates.
+  publishUnreadMessageCount(recipientId, getTotalUnreadMessageCount(recipientId));
 
   return message;
+}
+
+/** The signed-in user's total unread direct-message count, across every
+ * conversation -- the number shown on the NavBar's "Messages" link,
+ * distinct from listConversations()'s per-conversation breakdown and from
+ * the general notifications unread count (a different table, notifications
+ * .read, which a message_received notification also bumps separately). */
+export function getTotalUnreadMessageCount(userId: string): number {
+  const row = db
+    .prepare("SELECT COUNT(*) as count FROM messages WHERE recipient_id = ? AND read = 0")
+    .get(userId) as { count: number };
+  return row.count;
 }
 
 function countUnreadFrom(otherUserId: string, viewerId: string): number {
@@ -131,4 +150,5 @@ export function markConversationRead(userId: string, otherUserId: string): void 
   db.prepare(
     "UPDATE messages SET read = 1 WHERE sender_id = ? AND recipient_id = ? AND read = 0"
   ).run(otherUserId, userId);
+  publishUnreadMessageCount(userId, getTotalUnreadMessageCount(userId));
 }

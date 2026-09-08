@@ -10,6 +10,7 @@ export default function NavBar({
   user: { displayName: string } | null;
 }) {
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -69,6 +70,68 @@ export default function NavBar({
     };
   }, [user]);
 
+  // Dedicated unread-direct-message badge (backlog #44), kept entirely
+  // separate from the general notifications badge above: it's backed by
+  // messages.read (via lib/messageEvents.ts + /api/messages/stream) rather
+  // than the notifications table, mirroring the exact SSE-with-polling-
+  // fallback shape of the effect above one level down. Before this, a new
+  // DM only ever bumped the undifferentiated "Notifications" count — the
+  // "Messages" link itself had no unread indicator of its own, unlike
+  // every other unread surface in this app.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    let pollInterval: ReturnType<typeof setInterval> | undefined;
+
+    async function pollOnce() {
+      const res = await fetch("/api/messages");
+      if (!res.ok || cancelled) return;
+      const data = await res.json();
+      if (!cancelled) {
+        const conversations = (data.conversations ?? []) as { unreadCount: number }[];
+        const total = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+        setUnreadMessageCount(total);
+      }
+    }
+
+    function startPolling() {
+      if (pollInterval || cancelled) return;
+      pollOnce();
+      pollInterval = setInterval(pollOnce, 15000);
+    }
+
+    if (typeof EventSource === "undefined") {
+      startPolling();
+      return () => {
+        cancelled = true;
+        if (pollInterval) clearInterval(pollInterval);
+      };
+    }
+
+    const source = new EventSource("/api/messages/stream");
+
+    source.addEventListener("unread", (event) => {
+      if (cancelled) return;
+      try {
+        const data = JSON.parse((event as MessageEvent).data);
+        if (typeof data.unreadCount === "number") setUnreadMessageCount(data.unreadCount);
+      } catch {
+        // malformed event — ignore, the next one (or the polling fallback) will catch up
+      }
+    });
+
+    source.onerror = () => {
+      source.close();
+      startPolling();
+    };
+
+    return () => {
+      cancelled = true;
+      source.close();
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [user]);
+
   async function handleSignOut() {
     await fetch("/api/auth/signout", { method: "POST" });
     router.push("/");
@@ -90,7 +153,14 @@ export default function NavBar({
             <>
               <Link href="/campaigns/new">New campaign</Link>
               <Link href="/feed">Feed</Link>
-              <Link href="/messages">Messages</Link>
+              <Link href="/messages" className="relative">
+                Messages
+                {unreadMessageCount > 0 && (
+                  <span className="ml-1 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-xs font-medium text-white">
+                    {unreadMessageCount}
+                  </span>
+                )}
+              </Link>
               <Link href="/notifications" className="relative">
                 Notifications
                 {unreadCount > 0 && (

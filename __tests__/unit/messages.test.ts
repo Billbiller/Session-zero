@@ -7,6 +7,7 @@ import {
   listConversations,
   getConversation,
   markConversationRead,
+  getTotalUnreadMessageCount,
   MessageError,
 } from "@/lib/messages";
 
@@ -120,5 +121,49 @@ describe("direct messaging (backlog #31)", () => {
     // Marking Bob's inbox read doesn't touch Alice's own unread count for
     // Bob's reply.
     expect(listConversations(a.id)[0].unreadCount).toBe(1);
+  });
+
+  describe("getTotalUnreadMessageCount (backlog #44)", () => {
+    it("is 0 for a brand-new user with no messages at all", () => {
+      const a = signUp("Alice", "msg-a12@example.com", "testpassword123");
+      expect(getTotalUnreadMessageCount(a.id)).toBe(0);
+    });
+
+    it("sums unread messages across every conversation, not just one", () => {
+      const a = signUp("Alice", "msg-a13@example.com", "testpassword123");
+      const b = signUp("Bob", "msg-b13@example.com", "testpassword123");
+      const c = signUp("Carl", "msg-c13@example.com", "testpassword123");
+      sendMessage(b.id, a.id, "hi from bob");
+      sendMessage(c.id, a.id, "hi from carl");
+      sendMessage(c.id, a.id, "carl again");
+      expect(getTotalUnreadMessageCount(a.id)).toBe(3);
+    });
+
+    it("doesn't count messages the viewer sent themselves", () => {
+      const a = signUp("Alice", "msg-a14@example.com", "testpassword123");
+      const b = signUp("Bob", "msg-b14@example.com", "testpassword123");
+      sendMessage(a.id, b.id, "outgoing, shouldn't count for Alice");
+      expect(getTotalUnreadMessageCount(a.id)).toBe(0);
+      expect(getTotalUnreadMessageCount(b.id)).toBe(1);
+    });
+
+    it("drops to 0 for one conversation's messages once read, while another conversation's stay unread", () => {
+      const a = signUp("Alice", "msg-a15@example.com", "testpassword123");
+      const b = signUp("Bob", "msg-b15@example.com", "testpassword123");
+      const c = signUp("Carl", "msg-c15@example.com", "testpassword123");
+      sendMessage(b.id, a.id, "from bob");
+      sendMessage(c.id, a.id, "from carl");
+      expect(getTotalUnreadMessageCount(a.id)).toBe(2);
+      markConversationRead(a.id, b.id);
+      expect(getTotalUnreadMessageCount(a.id)).toBe(1);
+    });
+
+    it("is isolated per user (a stranger's unread count is unaffected)", () => {
+      const a = signUp("Alice", "msg-a16@example.com", "testpassword123");
+      const b = signUp("Bob", "msg-b16@example.com", "testpassword123");
+      const stranger = signUp("Stranger", "msg-s16@example.com", "testpassword123");
+      sendMessage(a.id, b.id, "hi");
+      expect(getTotalUnreadMessageCount(stranger.id)).toBe(0);
+    });
   });
 });

@@ -514,4 +514,54 @@ describe("HTTP integration", () => {
 
     await reader.cancel();
   });
+
+  it("pushes a live unread-count update over the dedicated messages SSE stream (backlog #44)", async () => {
+    const senderJar = new CookieJar();
+    const recipientJar = new CookieJar();
+
+    await senderJar.signUp("MSG SSE Sender", "msg-sse-sender@example.com");
+    const recipient = await recipientJar.signUp("MSG SSE Recipient", "msg-sse-recipient@example.com");
+
+    // Requires an auth cookie, same as the other /api/messages routes.
+    const signedOutRes = await fetch(`${BASE_URL}/api/messages/stream`);
+    expect(signedOutRes.status).toBe(401);
+
+    const streamRes = await recipientJar.fetch("/api/messages/stream");
+    expect(streamRes.status).toBe(200);
+    expect(streamRes.headers.get("content-type")).toContain("text/event-stream");
+    expect(streamRes.body).not.toBeNull();
+
+    const reader = streamRes.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    async function readUntil(predicate: (buf: string) => boolean, timeoutMs = 10000) {
+      const deadline = Date.now() + timeoutMs;
+      while (!predicate(buffer)) {
+        if (Date.now() > deadline) {
+          throw new Error(`Timed out waiting for SSE data. Buffer so far: ${buffer}`);
+        }
+        const { value, done } = await reader.read();
+        if (done) throw new Error("Stream closed before expected data arrived.");
+        buffer += decoder.decode(value, { stream: true });
+      }
+    }
+
+    // The route sends an immediate snapshot on connect: unreadCount 0 (no
+    // messages yet for this brand-new user).
+    await readUntil((buf) => buf.includes('"unreadCount":0'));
+
+    await senderJar.fetch(`/api/messages/${recipient.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: "Hey, want to join my table?" }),
+    });
+
+    await readUntil((buf) => {
+      const matches = [...buf.matchAll(/"unreadCount":(\d+)/g)];
+      return matches.some((m) => Number(m[1]) > 0);
+    });
+
+    await reader.cancel();
+  });
 });
