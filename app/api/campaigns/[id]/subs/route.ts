@@ -21,6 +21,11 @@ export async function GET(
 const bodySchema = z.object({
   note: z.string().trim().max(500).default(""),
   characterId: z.string().trim().min(1).optional(),
+  // Backlog #29: both optional -- validated for real (parseable date,
+  // length cap) inside createSubRequest, same division of labor as the
+  // rest of this route.
+  neededAt: z.string().trim().min(1).optional(),
+  location: z.string().trim().max(200).optional(),
 });
 
 export async function POST(
@@ -40,7 +45,14 @@ export async function POST(
     );
   }
   try {
-    const subRequest = createSubRequest(id, auth.user.id, parsed.data.note, parsed.data.characterId);
+    const subRequest = createSubRequest(
+      id,
+      auth.user.id,
+      parsed.data.note,
+      parsed.data.characterId,
+      parsed.data.neededAt,
+      parsed.data.location
+    );
     return NextResponse.json({ request: subRequest }, { status: 201 });
   } catch (err) {
     if (err instanceof SubRequestError) return errorResponse(err, 403);

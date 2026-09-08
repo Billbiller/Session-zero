@@ -10,6 +10,13 @@ const STATUS_LABELS: Record<SubRequestSummary["status"], string> = {
   cancelled: "Cancelled",
 };
 
+// Backlog #29: labels only cover the two states worth flagging in the UI
+// -- "unscheduled" (no needed_at given) simply renders nothing, matching
+// how ScheduleForm only shows a date at all once one exists.
+const NEEDED_AT_STATUS_LABEL: Partial<Record<SubRequestSummary["neededAtStatus"], string>> = {
+  "past-due": "past due",
+};
+
 /** The campaign-page half of backlog #20 (substitute player workflow).
  * Phase 1: a DM or approved member posts "looking for a sub," anyone
  * signed in can volunteer, and the requester/DM can mark a request filled
@@ -29,6 +36,7 @@ export default function SubRequestPanel({
   isDm,
   canPost,
   myCharacters,
+  campaignLocation,
 }: {
   campaignId: string;
   viewerId: string | null;
@@ -38,12 +46,20 @@ export default function SubRequestPanel({
    * offered as an optional pick when posting a request, since only a
    * character the requester owns can go through phase-2 approval. */
   myCharacters: { id: string; name: string }[];
+  /** Backlog #29: the campaign's own location field, shown as the
+   * placeholder/fallback for the optional per-request override below --
+   * every listed request also carries this same value as
+   * campaignLocation, but a fresh, not-yet-posted request has no summary
+   * of its own to read it from yet. */
+  campaignLocation: string;
 }) {
   const [requests, setRequests] = useState<SubRequestSummary[]>([]);
   const [placementsById, setPlacementsById] = useState<Record<string, SubPlacementSummary[]>>({});
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState("");
   const [characterId, setCharacterId] = useState("");
+  const [neededAt, setNeededAt] = useState("");
+  const [location, setLocation] = useState("");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, string>>({});
@@ -84,10 +100,20 @@ export default function SubRequestPanel({
   async function post() {
     setPosting(true);
     setError(null);
+    // datetime-local gives a value in the browser's own local time with
+    // no timezone info -- new Date(...) interprets it as local time, and
+    // toISOString() converts that to the UTC instant the server stores,
+    // same conversion ScheduleForm's save() does for next_session_at.
+    const neededAtIso = neededAt ? new Date(neededAt).toISOString() : undefined;
     const res = await fetch(`/api/campaigns/${campaignId}/subs`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note, characterId: characterId || undefined }),
+      body: JSON.stringify({
+        note,
+        characterId: characterId || undefined,
+        neededAt: neededAtIso,
+        location: location.trim() || undefined,
+      }),
     });
     setPosting(false);
     const data = await res.json().catch(() => ({}));
@@ -97,6 +123,8 @@ export default function SubRequestPanel({
     }
     setNote("");
     setCharacterId("");
+    setNeededAt("");
+    setLocation("");
     await load();
   }
 
@@ -248,6 +276,28 @@ export default function SubRequestPanel({
             placeholder="e.g. Can't make it Sept 20th, need someone to run my rogue for one session."
             className="rounded border border-black/20 px-3 py-2 text-sm dark:border-white/20 dark:bg-transparent"
           />
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <label className="flex flex-1 flex-col gap-1 text-xs">
+              Needed for (optional)
+              <input
+                type="datetime-local"
+                value={neededAt}
+                onChange={(e) => setNeededAt(e.target.value)}
+                className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+              />
+            </label>
+            <label className="flex flex-1 flex-col gap-1 text-xs">
+              Location override (optional)
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                maxLength={200}
+                placeholder={campaignLocation || "Same as campaign"}
+                className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+              />
+            </label>
+          </div>
           {myCharacters.length > 0 && (
             <label className="flex flex-col gap-1 text-xs">
               Character needing a sub (optional -- only a named character can go through
@@ -300,6 +350,22 @@ export default function SubRequestPanel({
               {r.characterName && (
                 <p className="mt-1 text-xs text-black/60 dark:text-white/60">
                   For character: {r.characterName}
+                </p>
+              )}
+              {r.needed_at && (
+                <p className="mt-1 text-xs text-black/60 dark:text-white/60">
+                  Needed for: {new Date(r.needed_at).toLocaleString()}
+                  {NEEDED_AT_STATUS_LABEL[r.neededAtStatus] && (
+                    <span className="ml-1 text-red-600">
+                      ({NEEDED_AT_STATUS_LABEL[r.neededAtStatus]})
+                    </span>
+                  )}
+                </p>
+              )}
+              {(r.location || r.campaignLocation) && (
+                <p className="mt-1 text-xs text-black/60 dark:text-white/60">
+                  Location: {r.location || r.campaignLocation}
+                  {!r.location && " (campaign default)"}
                 </p>
               )}
               {r.note && <p className="mt-1">{r.note}</p>}

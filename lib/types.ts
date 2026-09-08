@@ -280,6 +280,21 @@ export interface SubRequest {
    * directly (phase 1) -- it never enters the phase-2 approval flow. */
   character_id: string | null;
   note: string;
+  /** Backlog #29: nullable ISO-8601 timestamp for the specific session
+   * this sub is needed for, mirroring campaigns.next_session_at -- see
+   * lib/schedule.ts's computeScheduleStatus(), reused as-is to derive an
+   * upcoming/past-due status for this date too (see SubRequestSummary's
+   * neededAtStatus below). Null means the requester didn't give a
+   * specific date/time -- the free-text note might still mention one in
+   * prose, but there's nothing structured to sort/filter on. */
+  needed_at: string | null;
+  /** Backlog #29: an explicit per-request override of the campaign's own
+   * location field. Null (the common, default case) means "use the
+   * campaign's location" -- see SubRequestSummary's campaignLocation,
+   * which always carries that fallback value for display. Only set when
+   * the requester explicitly types a different location for this
+   * specific session (e.g. a one-off at a different table/venue). */
+  location: string | null;
   status: SubRequestStatus;
   created_at: string;
   updated_at: string;
@@ -300,10 +315,19 @@ export interface SubVolunteer {
 export interface SubRequestSummary extends SubRequest {
   campaignTitle: string;
   campaignSystem: string;
+  /** Backlog #29: the campaign's own location field, always included so
+   * the UI can show it as the effective location whenever this request's
+   * own `location` override is null -- see the field's doc comment above. */
+  campaignLocation: string;
   requesterName: string;
   characterName: string | null;
   volunteerCount: number;
   viewerHasVolunteered: boolean;
+  /** Backlog #29: computeScheduleStatus() (lib/schedule.ts) applied to
+   * needed_at -- "unscheduled" when needed_at is null, otherwise
+   * "upcoming"/"past-due" the same UTC-safe way campaigns.next_session_at
+   * is judged. */
+  neededAtStatus: ScheduleStatus;
 }
 
 export interface SubVolunteerWithName extends SubVolunteer {

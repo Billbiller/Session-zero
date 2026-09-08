@@ -4,6 +4,7 @@ import { getCampaign } from "./campaigns";
 import { getCharacter } from "./characters";
 import { hasPrivateAccess } from "./access";
 import { notify } from "./notifications";
+import { computeScheduleStatus } from "./schedule";
 import type {
   SubRequest,
   SubRequestStatus,
@@ -16,6 +17,10 @@ export class SubRequestError extends Error {}
 
 const MAX_NOTE = 500;
 const MAX_MESSAGE = 500;
+// Backlog #29: matches MAX_LOCATION in lib/profiles.ts -- same coarse,
+// free-text location convention, just scoped to a single sub request's
+// override instead of a whole profile.
+const MAX_LOCATION = 200;
 
 export function isRequesterOrDm(request: SubRequest, userId: string): boolean {
   if (request.requester_id === userId) return true;
@@ -41,12 +46,23 @@ export function getSubRequest(id: string): SubRequest | null {
  * character owner" as always the same person (see isRequesterOrDm and
  * lib/subPlacements.ts), rather than needing a separate owner concept. A
  * request with no character stays phase-1-only: it can be marked
- * filled/cancelled directly, but never enters the approval workflow. */
+ * filled/cancelled directly, but never enters the approval workflow.
+ *
+ * Backlog #29: neededAt is an optional ISO-8601 timestamp for the
+ * specific session this request is covering, validated the same way
+ * lib/schedule.ts's updateSchedule() validates campaigns.next_session_at
+ * (must parse to a real date; empty/omitted stays null). location is an
+ * optional override of the campaign's own location field -- most
+ * requests don't need one, since listSubRequestsForCampaign/
+ * listOpenSubRequests always carry the campaign's location as a fallback
+ * (see withContext's campaignLocation below) for exactly that reason. */
 export function createSubRequest(
   campaignId: string,
   requesterId: string,
   note: string,
-  characterId?: string | null
+  characterId?: string | null,
+  neededAt?: string | null,
+  location?: string | null
 ): SubRequest {
   const campaign = getCampaign(campaignId);
   if (!campaign) throw new SubRequestError("Campaign not found.");
@@ -71,6 +87,19 @@ export function createSubRequest(
     }
     resolvedCharacterId = characterId;
   }
+  let resolvedNeededAt: string | null = null;
+  if (neededAt) {
+    const parsed = new Date(neededAt);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new SubRequestError("Invalid date.");
+    }
+    resolvedNeededAt = neededAt;
+  }
+  const trimmedLocation = (location ?? "").trim();
+  if (trimmedLocation.length > MAX_LOCATION) {
+    throw new SubRequestError(`Location can't be longer than ${MAX_LOCATION} characters.`);
+  }
+  const resolvedLocation = trimmedLocation || null;
   const now = new Date().toISOString();
   const request: SubRequest = {
     id: uuidv4(),
@@ -78,13 +107,15 @@ export function createSubRequest(
     requester_id: requesterId,
     character_id: resolvedCharacterId,
     note: trimmed,
+    needed_at: resolvedNeededAt,
+    location: resolvedLocation,
     status: "open",
     created_at: now,
     updated_at: now,
   };
   db.prepare(
-    `INSERT INTO sub_requests (id, campaign_id, requester_id, character_id, note, status, created_at, updated_at)
-     VALUES (@id, @campaign_id, @requester_id, @character_id, @note, @status, @created_at, @updated_at)`
+    `INSERT INTO sub_requests (id, campaign_id, requester_id, character_id, note, needed_at, location, status, created_at, updated_at)
+     VALUES (@id, @campaign_id, @requester_id, @character_id, @note, @needed_at, @location, @status, @created_at, @updated_at)`
   ).run(request);
   return request;
 }
@@ -102,7 +133,14 @@ function volunteerCountFor(requestId: string): number {
  * and each request's volunteer count, plus whether the given viewer (or
  * no one, if signed out) has already volunteered. viewerId is compared
  * against an impossible value ("") when null rather than branching the
- * query, since no real user id is ever an empty string. */
+ * query, since no real user id is ever an empty string.
+ *
+ * Backlog #29: campaignLocation always carries the campaign's own
+ * location field, so a caller can render "location.location ??
+ * campaignLocation" without a second lookup, and neededAtStatus reuses
+ * computeScheduleStatus() (lib/schedule.ts) so a request's specific date
+ * is judged upcoming/past-due the exact same UTC-safe way
+ * campaigns.next_session_at already is. */
 function withContext(rows: SubRequest[], viewerId: string | null): SubRequestSummary[] {
   return rows.map((row) => {
     const campaign = getCampaign(row.campaign_id);
@@ -119,10 +157,12 @@ function withContext(rows: SubRequest[], viewerId: string | null): SubRequestSum
       ...row,
       campaignTitle: campaign?.title ?? "Unknown campaign",
       campaignSystem: campaign?.system ?? "",
+      campaignLocation: campaign?.location ?? "",
       requesterName: requester?.display_name ?? "Unknown",
       characterName: character?.name ?? null,
       volunteerCount: volunteerCountFor(row.id),
       viewerHasVolunteered,
+      neededAtStatus: computeScheduleStatus(row.needed_at),
     };
   });
 }

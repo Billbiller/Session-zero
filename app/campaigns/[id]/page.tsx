@@ -223,6 +223,7 @@ export default async function CampaignDetailPage({
                 .map((c) => ({ id: c.id, name: c.name }))
             : []
         }
+        campaignLocation={campaign.location}
       />
 
       {access && (

@@ -255,3 +255,109 @@ describe("sub requests (backlog #20 phase 1)", () => {
     expect(() => setSubRequestStatus(request.id, stranger.id, "filled")).toThrow(SubRequestError);
   });
 });
+
+describe("sub requests carry a specific date/time and location (backlog #29)", () => {
+  it("defaults needed_at and location to null when omitted", () => {
+    const { dm, campaign } = setUpCampaignWithPlayer(
+      "sub-dm19@example.com",
+      "sub-player19@example.com"
+    );
+    const request = createSubRequest(campaign.id, dm.id, "note");
+    expect(request.needed_at).toBeNull();
+    expect(request.location).toBeNull();
+  });
+
+  it("accepts an optional neededAt and location override, included on the created request", () => {
+    const { dm, campaign } = setUpCampaignWithPlayer(
+      "sub-dm20@example.com",
+      "sub-player20@example.com"
+    );
+    const neededAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const request = createSubRequest(
+      campaign.id,
+      dm.id,
+      "note",
+      null,
+      neededAt,
+      "A different table than usual"
+    );
+    expect(request.needed_at).toBe(neededAt);
+    expect(request.location).toBe("A different table than usual");
+  });
+
+  it("rejects an invalid neededAt", () => {
+    const { dm, campaign } = setUpCampaignWithPlayer(
+      "sub-dm21@example.com",
+      "sub-player21@example.com"
+    );
+    expect(() =>
+      createSubRequest(campaign.id, dm.id, "note", null, "not-a-real-date")
+    ).toThrow(SubRequestError);
+  });
+
+  it("rejects an over-length location override", () => {
+    const { dm, campaign } = setUpCampaignWithPlayer(
+      "sub-dm22@example.com",
+      "sub-player22@example.com"
+    );
+    expect(() =>
+      createSubRequest(campaign.id, dm.id, "note", null, null, "x".repeat(201))
+    ).toThrow(SubRequestError);
+  });
+
+  it("trims a blank location override down to null rather than storing whitespace", () => {
+    const { dm, campaign } = setUpCampaignWithPlayer(
+      "sub-dm23@example.com",
+      "sub-player23@example.com"
+    );
+    const request = createSubRequest(campaign.id, dm.id, "note", null, null, "   ");
+    expect(request.location).toBeNull();
+  });
+
+  it("carries the campaign's own location as campaignLocation in listings, regardless of any override", () => {
+    const dm = signUp("DM", "sub-dm24@example.com", "testpassword123");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      location: "Austin, TX",
+    });
+    const noOverride = createSubRequest(campaign.id, dm.id, "note");
+    const [noOverrideSummary] = listOpenSubRequests(null).filter((r) => r.id === noOverride.id);
+    expect(noOverrideSummary.campaignLocation).toBe("Austin, TX");
+    expect(noOverrideSummary.location).toBeNull();
+
+    const withOverride = createSubRequest(campaign.id, dm.id, "note2", null, null, "Bob's house");
+    const [overrideSummary] = listOpenSubRequests(null).filter((r) => r.id === withOverride.id);
+    expect(overrideSummary.campaignLocation).toBe("Austin, TX");
+    expect(overrideSummary.location).toBe("Bob's house");
+  });
+
+  it("computes neededAtStatus the same UTC-safe way computeScheduleStatus judges campaigns.next_session_at", () => {
+    const { dm, campaign } = setUpCampaignWithPlayer(
+      "sub-dm25@example.com",
+      "sub-player25@example.com"
+    );
+    const noDate = createSubRequest(campaign.id, dm.id, "note1");
+    const future = createSubRequest(
+      campaign.id,
+      dm.id,
+      "note2",
+      null,
+      new Date(Date.now() + 60_000).toISOString()
+    );
+    const past = createSubRequest(
+      campaign.id,
+      dm.id,
+      "note3",
+      null,
+      new Date(Date.now() - 60_000).toISOString()
+    );
+    const byId = Object.fromEntries(listOpenSubRequests(null).map((r) => [r.id, r]));
+    expect(byId[noDate.id].neededAtStatus).toBe("unscheduled");
+    expect(byId[future.id].neededAtStatus).toBe("upcoming");
+    expect(byId[past.id].neededAtStatus).toBe("past-due");
+  });
+});

@@ -235,6 +235,18 @@ CREATE TABLE IF NOT EXISTS sub_requests (
   -- filled/cancelled directly with no owner or custody to hand off.
   character_id TEXT REFERENCES characters(id),
   note TEXT NOT NULL DEFAULT '',
+  -- Backlog #29: nullable ISO-8601 timestamp for the specific session this
+  -- sub is needed for, mirroring campaigns.next_session_at -- see
+  -- lib/schedule.ts's computeScheduleStatus(), reused as-is here to derive
+  -- an upcoming/past-due status for this date too. Null means the
+  -- requester didn't give a specific date/time (only the free-text note).
+  needed_at TEXT,
+  -- Backlog #29: a per-request override of the campaign's own location
+  -- field. Null (the common case) means "use the campaign's location" --
+  -- most campaigns already have one, and a sub only needs a different
+  -- value for something like a one-off at a different table/venue than
+  -- usual. Only set when the requester explicitly types an override.
+  location TEXT,
   status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','filled','cancelled')),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -664,6 +676,18 @@ if (!campaignColumns.some((c) => c.name === "session_format")) {
 }
 if (!profileColumns.some((c) => c.name === "session_format_preference")) {
   db.exec("ALTER TABLE profiles ADD COLUMN session_format_preference TEXT");
+}
+
+// Lightweight migrations for databases created before sub requests carried
+// a specific date/time and location (backlog #29). New databases already
+// get these columns from the CREATE TABLE statement above. Reuses the
+// subRequestColumns snapshot taken above (captured before any ALTER TABLE
+// on this table ran, so it correctly never contains these columns either).
+if (!subRequestColumns.some((c) => c.name === "needed_at")) {
+  db.exec("ALTER TABLE sub_requests ADD COLUMN needed_at TEXT");
+}
+if (!subRequestColumns.some((c) => c.name === "location")) {
+  db.exec("ALTER TABLE sub_requests ADD COLUMN location TEXT");
 }
 
 export default db;

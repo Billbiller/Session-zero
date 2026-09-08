@@ -39,6 +39,20 @@ export default async function SubsPage() {
                 {r.requesterName}
               </Link>
             </p>
+            {r.needed_at && (
+              <p className="mt-2 text-xs text-black/60 dark:text-white/60">
+                Needed for: {new Date(r.needed_at).toLocaleString()}
+                {r.neededAtStatus === "past-due" && (
+                  <span className="ml-1 text-red-600">(past due)</span>
+                )}
+              </p>
+            )}
+            {(r.location || r.campaignLocation) && (
+              <p className="mt-1 text-xs text-black/60 dark:text-white/60">
+                Location: {r.location || r.campaignLocation}
+                {!r.location && " (campaign default)"}
+              </p>
+            )}
             {r.note && <p className="mt-2">{r.note}</p>}
             <p className="mt-1 text-xs text-black/60 dark:text-white/60">
               {r.volunteerCount} volunteer{r.volunteerCount === 1 ? "" : "s"} so far
