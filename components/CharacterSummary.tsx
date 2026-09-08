@@ -17,6 +17,7 @@ export default function CharacterSummary({
   pilotName,
   canEndSub,
   onEndSubDone,
+  hideSheetLink,
 }: {
   character: Character;
   linkedCampaign?: { id: string; title: string } | null;
@@ -37,6 +38,13 @@ export default function CharacterSummary({
    * (CharacterManager) that wants to re-load its own state instead of a
    * full router.refresh(). */
   onEndSubDone?: () => void;
+  /** Backlog #49: suppresses the "View / print character sheet" link --
+   * set by the character sheet page itself (app/characters/[id]/page.tsx)
+   * so it doesn't link to itself, the same "omit when redundant here"
+   * pattern linkedCampaign's own doc comment already established. Always
+   * print:hidden regardless, since it's app navigation, not character
+   * content -- it has no business appearing on a printed sheet. */
+  hideSheetLink?: boolean;
 }) {
   return (
     <div className="flex gap-3">
@@ -85,6 +93,13 @@ export default function CharacterSummary({
             Playing in{" "}
             <Link href={`/campaigns/${linkedCampaign.id}`} className="underline">
               {linkedCampaign.title}
+            </Link>
+          </p>
+        )}
+        {!hideSheetLink && (
+          <p className="text-xs print:hidden">
+            <Link href={`/characters/${character.id}`} className="underline">
+              View / print character sheet
             </Link>
           </p>
         )}

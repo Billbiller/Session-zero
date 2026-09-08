@@ -17,8 +17,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <NavBar user={user ? { displayName: user.display_name, isAdmin: admin } : null} />
-        <main className="flex-1 mx-auto w-full max-w-4xl px-4 py-6">
+        {/* Backlog #49: the nav chrome has no business appearing on a
+            printed character sheet (app/characters/[id]/page.tsx). */}
+        <div className="print:hidden">
+          <NavBar user={user ? { displayName: user.display_name, isAdmin: admin } : null} />
+        </div>
+        <main className="flex-1 mx-auto w-full max-w-4xl px-4 py-6 print:max-w-none print:p-0">
           {children}
         </main>
       </body>
