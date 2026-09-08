@@ -15,12 +15,20 @@ export default async function BoardsIndexPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Community boards</h1>
-        <p className="mt-1 max-w-2xl text-sm text-black/60 dark:text-white/60">
-          Topic-based discussion, not tied to any one campaign -- anyone can read a board; sign in
-          to start a thread or reply.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Community boards</h1>
+          <p className="mt-1 max-w-2xl text-sm text-black/60 dark:text-white/60">
+            Topic-based discussion, not tied to any one campaign -- anyone can read a board; sign in
+            to start a thread or reply.
+          </p>
+        </div>
+        <Link
+          href="/boards/search"
+          className="shrink-0 rounded border border-black/20 px-3 py-1.5 text-sm dark:border-white/20"
+        >
+          Search boards
+        </Link>
       </div>
 
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">

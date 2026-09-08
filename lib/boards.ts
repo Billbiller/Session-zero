@@ -3,6 +3,7 @@ import db from "./db";
 import { getUserById } from "./auth";
 import { notify } from "./notifications";
 import { isSiteAdmin } from "./access";
+import { escapeLikePattern } from "./campaigns";
 import { BOARD_TOPICS, BOARD_INFO } from "./types";
 import type {
   BoardSlug,
@@ -437,4 +438,78 @@ export function listReportedContent(): ReportedBoardPost[] {
   });
 
   return entries.map((entry) => entry.post);
+}
+
+/** Backlog #52: a single search result -- a matching thread enriched the
+ * same way listThreads()'s items are, plus whether the query matched the
+ * thread's own title/body (`matchedInThread: true`) or was only found
+ * inside one of its replies (`matchedInThread: false`). A reply isn't
+ * independently browsable/linkable the way a thread is, so a reply-only
+ * match still surfaces its parent thread -- the searcher lands on the
+ * thread and can read the matching reply in context, rather than getting
+ * zero results for a question that was actually answered in a reply. */
+export interface BoardSearchResultItem extends BoardThreadWithAuthor {
+  matchedInThread: boolean;
+}
+
+/** Cross-board keyword search (backlog #52): as the four boards accumulate
+ * threads, there was no way to search across them at all -- a user had to
+ * guess which board a relevant past thread might live on and page through
+ * it by hand. Mirrors lib/campaigns.ts's listCampaigns() `q` keyword
+ * search exactly (case-insensitive substring, escapeLikePattern-escaped so
+ * `%`/`_` in a query are treated as literal characters, same
+ * page/pageSize/total pagination shape) plus one addition: the match can
+ * also come from any reply on the thread, not just the thread's own
+ * title/body, via a correlated EXISTS subquery against board_replies --
+ * otherwise a real answer sitting in a reply would never surface at all.
+ *
+ * An empty/whitespace-only query returns { items: [], total: 0 } rather
+ * than every thread on every board -- this is a search, not a second
+ * "browse everything" view (that's what /boards + each board's own page
+ * are already for). Optional boardSlug scopes the search to one board
+ * (used by a per-board search box, if one is ever added); an unrecognized
+ * slug is silently ignored rather than erroring, matching this file's
+ * existing isBoardSlug-guard convention elsewhere (e.g. getBoard). */
+export function searchBoards(
+  q: string,
+  opts: { boardSlug?: string; page?: number; pageSize?: number } = {}
+): { items: BoardSearchResultItem[]; total: number } {
+  const keyword = q.trim();
+  const page = opts.page ?? 1;
+  const pageSize = opts.pageSize ?? 20;
+  if (!keyword) return { items: [], total: 0 };
+
+  const pattern = `%${escapeLikePattern(keyword.toLowerCase())}%`;
+  const where = [
+    `(LOWER(bt.title) LIKE @q ESCAPE '\\' OR LOWER(bt.body) LIKE @q ESCAPE '\\' OR EXISTS (
+      SELECT 1 FROM board_replies br WHERE br.thread_id = bt.id AND LOWER(br.body) LIKE @q ESCAPE '\\'
+    ))`,
+  ];
+  const params: Record<string, unknown> = { q: pattern };
+  if (opts.boardSlug && isBoardSlug(opts.boardSlug)) {
+    where.push("bt.board_slug = @boardSlug");
+    params.boardSlug = opts.boardSlug;
+  }
+  const whereClause = where.join(" AND ");
+
+  const total = (
+    db.prepare(`SELECT COUNT(*) as count FROM board_threads bt WHERE ${whereClause}`).get(
+      params
+    ) as { count: number }
+  ).count;
+  const rows = db
+    .prepare(
+      `SELECT bt.* FROM board_threads bt WHERE ${whereClause}
+       ORDER BY bt.created_at DESC, bt.rowid DESC LIMIT @pageSize OFFSET @offset`
+    )
+    .all({ ...params, pageSize, offset: (page - 1) * pageSize }) as BoardThread[];
+
+  const lowerKeyword = keyword.toLowerCase();
+  const items = rows.map((row) => {
+    const matchedInThread =
+      row.title.toLowerCase().includes(lowerKeyword) || row.body.toLowerCase().includes(lowerKeyword);
+    return { ...enrichThread(row), matchedInThread };
+  });
+
+  return { items, total };
 }

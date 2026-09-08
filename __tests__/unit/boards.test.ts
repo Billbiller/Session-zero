@@ -23,6 +23,7 @@ import {
   hasReportedThread,
   hasReportedReply,
   listReportedContent,
+  searchBoards,
 } from "@/lib/boards";
 
 function makeUser(prefix: string) {
@@ -489,6 +490,133 @@ describe("community discussion boards (backlog #37)", () => {
       expect(queue.some((item) => item.kind === "reply" && item.id === reply.id)).toBe(false);
       const threadEntry = queue.find((item) => item.kind === "thread" && item.id === thread.id);
       expect(threadEntry?.reportCount).toBe(1);
+    });
+  });
+
+  describe("board search (backlog #52)", () => {
+    it("returns no results for an empty or whitespace-only query, without touching the database", () => {
+      makeUser("bs-setup");
+      expect(searchBoards("")).toEqual({ items: [], total: 0 });
+      expect(searchBoards("   ")).toEqual({ items: [], total: 0 });
+    });
+
+    it("matches a thread's own title case-insensitively", () => {
+      const user = makeUser("bs1");
+      const thread = createThread("new-player-questions", user.id, {
+        title: "How do Fireball saves work?",
+        body: "Just wondering about the mechanics.",
+      });
+      const result = searchBoards("fireball");
+      expect(result.items.map((i) => i.id)).toContain(thread.id);
+      expect(result.items.find((i) => i.id === thread.id)?.matchedInThread).toBe(true);
+    });
+
+    it("matches a thread's own body", () => {
+      const user = makeUser("bs2");
+      const thread = createThread("homebrew-showcase", user.id, {
+        title: "My homebrew setting",
+        body: "It's built around a sunken continent called Aveloria.",
+      });
+      const result = searchBoards("Aveloria");
+      expect(result.items.map((i) => i.id)).toContain(thread.id);
+    });
+
+    it("matches a reply's body and flags matchedInThread as false when the thread itself doesn't contain the query", () => {
+      const author = makeUser("bs3a");
+      const replier = makeUser("bs3b");
+      const thread = createThread("lfg-advice", author.id, {
+        title: "Struggling to find a group",
+        body: "Any tips for a first-timer?",
+      });
+      createReply(thread.id, replier.id, "Try posting on r/lfg with a clear pitch, works wonders.");
+
+      const result = searchBoards("r/lfg");
+      const match = result.items.find((i) => i.id === thread.id);
+      expect(match).toBeDefined();
+      expect(match?.matchedInThread).toBe(false);
+    });
+
+    it("does not match an unrelated thread on a different board", () => {
+      const user = makeUser("bs4");
+      createThread("local-meetups", user.id, {
+        title: "Austin monthly meetup",
+        body: "Meeting at the game store on Saturdays.",
+      });
+      const result = searchBoards("xyzzy-not-present-anywhere");
+      expect(result.items).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+
+    it("treats % and _ in the query as literal characters, not SQL wildcards", () => {
+      const user = makeUser("bs5");
+      createThread("new-player-questions", user.id, {
+        title: "Discount question",
+        body: "Does a 50% discount stack with another?",
+      });
+      const literalMatch = searchBoards("50% discount");
+      expect(literalMatch.total).toBe(1);
+      // "50X discount" should NOT match via a wildcarded "%" being treated
+      // as SQL's own any-character wildcard.
+      const noWildcardMatch = searchBoards("50X discount");
+      expect(noWildcardMatch.total).toBe(0);
+    });
+
+    it("scopes results to boardSlug when given, and ignores an unrecognized boardSlug", () => {
+      const user = makeUser("bs6");
+      const thread = createThread("new-player-questions", user.id, {
+        title: "Scoped search marker thread",
+        body: "body text",
+      });
+      createThread("homebrew-showcase", user.id, {
+        title: "Another scoped search marker thread",
+        body: "different body",
+      });
+
+      const scoped = searchBoards("scoped search marker", { boardSlug: "new-player-questions" });
+      expect(scoped.total).toBe(1);
+      expect(scoped.items[0].id).toBe(thread.id);
+
+      const unscoped = searchBoards("scoped search marker", { boardSlug: "not-a-real-board" });
+      expect(unscoped.total).toBe(2);
+    });
+
+    it("paginates correctly (pageSize limits items while total reflects every match), newest first", async () => {
+      const user = makeUser("bs7");
+      const threads = [];
+      for (let i = 0; i < 3; i++) {
+        threads.push(
+          createThread("lfg-advice", user.id, {
+            title: `Pagination marker thread ${i}`,
+            body: "body",
+          })
+        );
+        await new Promise((resolve) => setTimeout(resolve, 2));
+      }
+
+      const page1 = searchBoards("pagination marker thread", { page: 1, pageSize: 2 });
+      expect(page1.total).toBe(3);
+      expect(page1.items).toHaveLength(2);
+      expect(page1.items[0].id).toBe(threads[2].id);
+      expect(page1.items[1].id).toBe(threads[1].id);
+
+      const page2 = searchBoards("pagination marker thread", { page: 2, pageSize: 2 });
+      expect(page2.items).toHaveLength(1);
+      expect(page2.items[0].id).toBe(threads[0].id);
+    });
+
+    it("enriches results with the author's display name and reply count, like listThreads", () => {
+      const author = makeUser("bs8");
+      const replier = makeUser("bs8r");
+      const thread = createThread("new-player-questions", author.id, {
+        title: "Enrichment marker thread",
+        body: "body",
+      });
+      createReply(thread.id, replier.id, "a reply");
+
+      const result = searchBoards("enrichment marker thread");
+      const match = result.items.find((i) => i.id === thread.id);
+      expect(match?.authorName).toBe(author.display_name);
+      expect(match?.replyCount).toBe(1);
     });
   });
 });
