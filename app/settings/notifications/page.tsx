@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 
 interface PrefRow {
   type: string;
@@ -42,7 +43,15 @@ export default function NotificationSettingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">Notification settings</h1>
+      <div>
+        <h1 className="text-2xl font-semibold">Notification settings</h1>
+        <nav className="mt-1 flex gap-3 text-sm underline">
+          <Link href="/settings/notifications" className="font-medium no-underline">
+            Notifications
+          </Link>
+          <Link href="/settings/account">Your data</Link>
+        </nav>
+      </div>
       <p className="text-sm text-black/60 dark:text-white/60">
         Mute any notification type so it&apos;s never created for you again.
       </p>

@@ -1048,3 +1048,84 @@ export interface AttendanceStats {
   attended: number;
   rate: number | null;
 }
+
+/** Backlog #50: a signed-in user's complete self-service data export --
+ * every row across this app's schema that traces back to their own
+ * account, flattened into one JSON-serializable object for download (see
+ * lib/accountExport.ts's getAccountExport() for the full field-by-field
+ * sourcing and claude/progress.md's dated session log entry for the
+ * scope/judgment-call writeup, in particular why full account *deletion*
+ * is explicitly NOT built alongside this export -- a DM-owned campaign
+ * with an active party can't be safely hard-deleted without a product
+ * decision this pass didn't make). `account` never includes
+ * password_hash, matching this file's existing client-safe-types
+ * convention (see User above). Every array is empty (never omitted) for
+ * a brand-new user with no activity, mirroring UserStats' own
+ * all-zero-for-a-new-user convention -- a fresh export is a valid,
+ * fully-shaped document, not a partial one. */
+export interface AccountExportData {
+  exportedAt: string;
+  account: {
+    id: string;
+    displayName: string;
+    email: string;
+    isAdmin: boolean;
+    createdAt: string;
+  };
+  profile: Profile;
+  availabilitySlots: AvailabilitySlot[];
+  notificationPreferences: Record<string, boolean>;
+  characters: Character[];
+  /** Campaigns this user DMs -- the full owned record, not just the
+   * public-facing fields. Campaigns they merely play in show up in
+   * `memberships` below instead (a membership row plus that campaign's
+   * id/title), not duplicated here as a second full Campaign copy. */
+  campaignsAsDm: Campaign[];
+  /** Every membership row for this user across every status (pending,
+   * approved, declined, left) -- broader than lib/profiles.ts's
+   * myCampaigns() (approved-only), since a full data export should
+   * include a join request that was declined too, not just active
+   * memberships. Enriched with the campaign's own title so the export is
+   * readable without cross-referencing ids by hand. */
+  memberships: (Membership & { campaignTitle: string })[];
+  subRequestsPosted: SubRequest[];
+  subVolunteered: SubVolunteer[];
+  /** Every sub placement where this user is either the volunteer or the
+   * request's own owner (the character owner is always the request's
+   * requester -- see lib/subRequests.ts) -- covers both sides of the
+   * approval workflow this user could appear on. */
+  subPlacements: SubPlacement[];
+  directMessagesSent: Message[];
+  directMessagesReceived: Message[];
+  campaignMessagesSent: CampaignMessage[];
+  ratingsGiven: Rating[];
+  ratingsReceived: Rating[];
+  campaignRatingsGiven: CampaignRating[];
+  sessionLogEntriesAuthored: SessionLogEntry[];
+  sessionLogKudosGiven: { entryId: string; createdAt: string }[];
+  notifications: Notification[];
+  following: { userId: string; displayName: string; since: string }[];
+  followers: { userId: string; displayName: string; since: string }[];
+  boardThreadsAuthored: BoardThread[];
+  boardRepliesAuthored: BoardReply[];
+  boardReportsFiled: BoardReport[];
+  /** Public feed events where this user is the actor -- already fully
+   * public elsewhere (see feed_events' own privacy-boundary comment in
+   * lib/db.ts), included here purely for completeness of "everything
+   * this app has recorded about you." */
+  feedEvents: FeedEvent[];
+  sessionRsvps: SessionRsvp[];
+  /** DM-recorded attendance rows *about* this user (did they show up to
+   * a given session log entry) -- present here because it's data this
+   * app holds about the user, even though they didn't create it
+   * themselves; a DM's own attendance-marking activity for their
+   * campaigns isn't separately exported. */
+  sessionLogAttendanceRecorded: SessionLogAttendance[];
+  campaignResourcesUploaded: CampaignResource[];
+  /** DM-only prep tools (initiative tracker entries, NPC notes) for
+   * campaigns this user DMs -- included since they're this user's own
+   * authored content, not shown to anyone else. */
+  initiativeEntriesAsDm: InitiativeEntry[];
+  npcNotesAsDm: NpcNote[];
+  stats: UserStats;
+}

@@ -122,6 +122,11 @@ export default function ProfilePage() {
     <div className="flex max-w-lg flex-col gap-8">
       <div>
         <h1 className="text-2xl font-semibold">Your profile</h1>
+        <p className="mt-1 text-sm">
+          <Link href="/settings/account" className="underline">
+            Download your data
+          </Link>
+        </p>
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 text-sm">
           <label className="flex flex-col gap-1">
             Bio
