@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { signUp } from "@/lib/auth";
 import { BOARD_TOPICS } from "@/lib/types";
+import { listNotifications } from "@/lib/notifications";
+import { setPreference } from "@/lib/notificationPreferences";
 import {
   BoardError,
   isBoardSlug,
@@ -249,5 +251,86 @@ describe("community discussion boards (backlog #37)", () => {
 
     expect(listReplies(threadB.id)).toEqual([]);
     expect(listReplies(threadA.id)).toHaveLength(1);
+  });
+
+  describe("board_reply notifications (backlog #43)", () => {
+    it("notifies the thread's author when someone else replies", () => {
+      const author = makeUser("bd17");
+      const replier = makeUser("bd17r");
+      const thread = createThread("new-player-questions", author.id, {
+        title: "Notify me please",
+        body: "B",
+      });
+
+      createReply(thread.id, replier.id, "here's a reply");
+
+      const notifs = listNotifications(author.id).items.filter(
+        (n) => n.type === "board_reply"
+      );
+      expect(notifs).toHaveLength(1);
+      expect(notifs[0].related_thread_id).toBe(thread.id);
+      expect(notifs[0].message).toContain("bd17r");
+      expect(notifs[0].message).toContain("Notify me please");
+    });
+
+    it("does not notify on a self-reply to your own thread", () => {
+      const author = makeUser("bd18");
+      const thread = createThread("new-player-questions", author.id, { title: "T", body: "B" });
+
+      createReply(thread.id, author.id, "replying to myself");
+
+      const notifs = listNotifications(author.id).items.filter(
+        (n) => n.type === "board_reply"
+      );
+      expect(notifs).toHaveLength(0);
+    });
+
+    it("notifies again on each subsequent reply from someone else (not batched)", () => {
+      const author = makeUser("bd19");
+      const replier = makeUser("bd19r");
+      const thread = createThread("lfg-advice", author.id, { title: "T", body: "B" });
+
+      createReply(thread.id, replier.id, "first");
+      createReply(thread.id, replier.id, "second");
+
+      const notifs = listNotifications(author.id).items.filter(
+        (n) => n.type === "board_reply"
+      );
+      expect(notifs).toHaveLength(2);
+    });
+
+    it("respects a muted board_reply preference", () => {
+      const author = makeUser("bd20");
+      const replier = makeUser("bd20r");
+      setPreference(author.id, "board_reply", false);
+      const thread = createThread("lfg-advice", author.id, { title: "T", body: "B" });
+
+      createReply(thread.id, replier.id, "a reply");
+
+      const notifs = listNotifications(author.id).items.filter(
+        (n) => n.type === "board_reply"
+      );
+      expect(notifs).toHaveLength(0);
+    });
+
+    it("nulls out related_thread_id (rather than breaking) when the thread is later deleted", () => {
+      const author = makeUser("bd21");
+      const replier = makeUser("bd21r");
+      const thread = createThread("homebrew-showcase", author.id, {
+        title: "Doomed thread",
+        body: "B",
+      });
+      createReply(thread.id, replier.id, "a reply");
+
+      deleteThread(thread.id, author.id);
+
+      const notifs = listNotifications(author.id).items.filter(
+        (n) => n.type === "board_reply"
+      );
+      expect(notifs).toHaveLength(1);
+      expect(notifs[0].related_thread_id).toBeNull();
+      // The message itself still names the thread, even once it's gone.
+      expect(notifs[0].message).toContain("Doomed thread");
+    });
   });
 });

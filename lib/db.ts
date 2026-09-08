@@ -93,6 +93,12 @@ CREATE TABLE IF NOT EXISTS notifications (
   -- for every notification type that predates this (they all link via
   -- campaign_id instead, or don't link anywhere).
   related_user_id TEXT REFERENCES users(id),
+  -- Backlog #43 (board reply notifications): a third link target, for a
+  -- board_reply notification -- links to /boards/<slug>/<id> once the
+  -- thread's own board_slug is looked up at read time (see lib/types.ts's
+  -- Notification doc comment). Null for every notification type that
+  -- predates this.
+  related_thread_id TEXT REFERENCES board_threads(id),
   message TEXT NOT NULL,
   read INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
@@ -710,6 +716,18 @@ if (!campaignColumns.some((c) => c.name === "starting_level")) {
 }
 if (!campaignColumns.some((c) => c.name === "tone_tags")) {
   db.exec("ALTER TABLE campaigns ADD COLUMN tone_tags TEXT NOT NULL DEFAULT '[]'");
+}
+
+// Lightweight migration for databases created before board reply
+// notifications existed (backlog #43). New databases already get this
+// column from the CREATE TABLE statement above. Reuses the
+// notificationColumns snapshot taken above (captured before any ALTER
+// TABLE on this table ran, so it correctly never contains this column
+// either). No REFERENCES constraint on the migrated column, matching how
+// related_user_id was migrated above -- SQLite's ALTER TABLE ADD COLUMN
+// doesn't support adding a new FK constraint on an existing table.
+if (!notificationColumns.some((c) => c.name === "related_thread_id")) {
+  db.exec("ALTER TABLE notifications ADD COLUMN related_thread_id TEXT");
 }
 
 export default db;

@@ -20,13 +20,20 @@ export {
  * links to the sender's conversation (/messages/<relatedUserId>) rather
  * than a campaign. Defaults to null so every pre-existing call site
  * (which only ever passes the first four positional args) is unaffected.
+ *
+ * relatedThreadId (backlog #43) is a third, board-shaped link target --
+ * a board_reply notification links to /boards/<slug>/<relatedThreadId>
+ * once the thread's board_slug is looked up at read time (see
+ * GET /api/notifications). Defaults to null for the same reason
+ * relatedUserId does above.
  */
 export function notify(
   userId: string,
   type: NotificationType,
   campaignId: string | null,
   message: string,
-  relatedUserId: string | null = null
+  relatedUserId: string | null = null,
+  relatedThreadId: string | null = null
 ): Notification | null {
   if (!isEnabled(userId, type)) return null;
   const notification: Notification = {
@@ -35,13 +42,14 @@ export function notify(
     type,
     campaign_id: campaignId,
     related_user_id: relatedUserId,
+    related_thread_id: relatedThreadId,
     message,
     read: 0,
     created_at: new Date().toISOString(),
   };
   db.prepare(
-    `INSERT INTO notifications (id, user_id, type, campaign_id, related_user_id, message, read, created_at)
-     VALUES (@id, @user_id, @type, @campaign_id, @related_user_id, @message, @read, @created_at)`
+    `INSERT INTO notifications (id, user_id, type, campaign_id, related_user_id, related_thread_id, message, read, created_at)
+     VALUES (@id, @user_id, @type, @campaign_id, @related_user_id, @related_thread_id, @message, @read, @created_at)`
   ).run(notification);
   // Push the fresh unread count to any open SSE stream for this user (see
   // notificationEvents.ts + app/api/notifications/stream/route.ts) so the

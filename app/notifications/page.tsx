@@ -2,10 +2,17 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import type { Notification } from "@/lib/types";
+import type { Notification, BoardSlug } from "@/lib/types";
+
+// Backlog #43: GET /api/notifications enriches each raw Notification row
+// with a computed boardSlug (looked up from related_thread_id at read
+// time -- see that route for why it isn't stored on the row itself).
+interface NotificationRow extends Notification {
+  boardSlug: BoardSlug | null;
+}
 
 export default function NotificationsPage() {
-  const [items, setItems] = useState<Notification[]>([]);
+  const [items, setItems] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -68,6 +75,18 @@ export default function NotificationsPage() {
                       &middot;{" "}
                       <Link href={`/campaigns/${n.campaign_id}`} className="underline">
                         View campaign
+                      </Link>
+                    </>
+                  )}
+                  {n.related_thread_id && n.boardSlug && (
+                    <>
+                      {" "}
+                      &middot;{" "}
+                      <Link
+                        href={`/boards/${n.boardSlug}/${n.related_thread_id}`}
+                        className="underline"
+                      >
+                        View thread
                       </Link>
                     </>
                   )}

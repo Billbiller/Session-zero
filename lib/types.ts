@@ -162,6 +162,7 @@ export const NOTIFICATION_TYPES = [
   "campaign_chat_message",
   "campaign_resource_uploaded",
   "session_reminder",
+  "board_reply",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -185,6 +186,7 @@ export const NOTIFICATION_LABELS: Record<NotificationType, string> = {
   campaign_chat_message: "Someone posts in your table's group chat",
   campaign_resource_uploaded: "A new file is added to your campaign's resource vault",
   session_reminder: "A reminder as your next scheduled session approaches",
+  board_reply: "Someone replies to your discussion board thread",
 };
 
 export interface Notification {
@@ -197,6 +199,15 @@ export interface Notification {
    * message_received notification links to /messages/<related_user_id>.
    * Null for every notification type that predates backlog #31. */
   related_user_id: string | null;
+  /** Backlog #43 (board reply notifications): a third, board-shaped link
+   * target for a notification that isn't campaign- or user-shaped -- a
+   * board_reply notification links to /boards/<slug>/<related_thread_id>.
+   * The slug itself isn't stored here (it's looked up from the thread at
+   * read time, mirroring lib/boards.ts's own enrich-on-read convention for
+   * authorName/replyCount) so a deleted thread doesn't leave stale data
+   * behind, just a null lookup. Null for every notification type that
+   * predates this. */
+  related_thread_id: string | null;
   message: string;
   read: number; // 0 | 1
   created_at: string;

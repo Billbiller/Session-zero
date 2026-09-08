@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import db from "./db";
 import { getUserById } from "./auth";
+import { notify } from "./notifications";
 import { BOARD_TOPICS, BOARD_INFO } from "./types";
 import type {
   BoardSlug,
@@ -164,6 +165,16 @@ export function deleteThread(threadId: string, userId: string): void {
   const thread = getThreadRow(threadId);
   if (!thread) throw new BoardError("Thread not found.");
   requireAuthor(thread.author_id, userId, "thread");
+  // Backlog #43: a notifications row may reference this thread
+  // (related_thread_id REFERENCES board_threads(id)) -- null that link out
+  // rather than deleting the notification itself, same convention as
+  // lib/characters.ts's deleteCharacter() nulling feed_events.character_id.
+  // The notification's message already has the thread's title baked in as
+  // plain text at creation time, so it stays meaningful once the thread
+  // itself is gone.
+  db.prepare(
+    "UPDATE notifications SET related_thread_id = NULL WHERE related_thread_id = ?"
+  ).run(threadId);
   db.prepare("DELETE FROM board_replies WHERE thread_id = ?").run(threadId);
   db.prepare("DELETE FROM board_threads WHERE id = ?").run(threadId);
 }
@@ -194,7 +205,21 @@ export function getReply(replyId: string): BoardReply | null {
 
 /** Posts a reply to a thread. Any signed-in user may reply, including the
  * thread's own author -- no relationship gate, same reasoning as
- * createThread above. */
+ * createThread above.
+ *
+ * Notification (backlog #43): the thread's own author is notified on
+ * every reply from someone else -- not batched/first-unread-only like
+ * lib/campaignMessages.ts's campaign_chat_message, since a discussion
+ * board thread sees far lower reply volume than a live table chat (the
+ * closer precedent is lib/messages.ts's message_received, which also
+ * notifies on every message with no batching). No notification on a
+ * self-reply (the author replying to their own thread). This closes the
+ * gap backlog #37's own session log entry explicitly flagged: posting a
+ * thread gave no way to know anyone had replied to it. Only the thread's
+ * original author is notified, not every other participant in the
+ * thread -- that's the concrete gap this item names; a broader
+ * "subscribe to a thread" notification model is a separate, bigger
+ * feature this pass doesn't attempt. */
 export function createReply(threadId: string, authorId: string, body: string): BoardReply {
   const thread = getThreadRow(threadId);
   if (!thread) throw new BoardError("Thread not found.");
@@ -212,6 +237,20 @@ export function createReply(threadId: string, authorId: string, body: string): B
     `INSERT INTO board_replies (id, thread_id, author_id, body, created_at, updated_at)
      VALUES (@id, @thread_id, @author_id, @body, @created_at, @updated_at)`
   ).run(reply);
+
+  if (thread.author_id !== authorId) {
+    const replier = getUserById(authorId);
+    const boardName = BOARD_INFO[thread.board_slug].name;
+    notify(
+      thread.author_id,
+      "board_reply",
+      null,
+      `${replier?.display_name ?? "Someone"} replied to your thread "${thread.title}" on ${boardName}.`,
+      null,
+      threadId
+    );
+  }
+
   return reply;
 }
 

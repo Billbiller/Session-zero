@@ -9,6 +9,7 @@ import {
   markAllRead,
 } from "@/lib/notifications";
 import { setPreference } from "@/lib/notificationPreferences";
+import { createThread } from "@/lib/boards";
 
 describe("notifications", () => {
   it("creates a notification and counts it as unread", () => {
@@ -65,5 +66,28 @@ describe("notifications", () => {
     const result = notify(user.id, "schedule_updated", null, "not muted");
     expect(result).not.toBeNull();
     expect(getUnreadCount(user.id)).toBe(1);
+  });
+
+  it("accepts an optional relatedThreadId (backlog #43), defaulting to null when omitted", () => {
+    const user = signUp("Gina", "n8@example.com", "testpassword123");
+    const withoutThread = notify(user.id, "join_requested", null, "no thread here");
+    expect(withoutThread!.related_thread_id).toBeNull();
+    // related_thread_id is a real FK to board_threads(id) (foreign_keys is
+    // ON), so this needs an actual thread row to point at -- lib/boards.ts's
+    // own tests cover the full notify-on-reply flow; this test just checks
+    // notify() itself plumbs the argument through correctly.
+    const thread = createThread("new-player-questions", user.id, {
+      title: "T",
+      body: "B",
+    });
+    const withThread = notify(
+      user.id,
+      "board_reply",
+      null,
+      "someone replied",
+      null,
+      thread.id
+    );
+    expect(withThread!.related_thread_id).toBe(thread.id);
   });
 });
