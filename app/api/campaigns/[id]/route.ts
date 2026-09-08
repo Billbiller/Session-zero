@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getUserById } from "@/lib/auth";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
 import db from "@/lib/db";
-import { DANGER_LEVELS, SESSION_FORMATS, type Membership } from "@/lib/types";
+import { CAMPAIGN_TONE_TAGS, DANGER_LEVELS, SESSION_FORMATS, type Membership } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +53,10 @@ const updateSchema = z.object({
   newPlayerFriendly: z.boolean().optional(),
   // undefined = leave unchanged; null = clear; a recognized format = set it.
   sessionFormat: z.enum(SESSION_FORMATS).nullable().optional(),
+  // undefined = leave unchanged; null/empty string = clear; free text = set it.
+  startingLevel: z.string().trim().max(100).nullable().optional(),
+  // undefined = leave unchanged; a provided array replaces the whole list.
+  toneTags: z.array(z.enum(CAMPAIGN_TONE_TAGS)).max(5).optional(),
 });
 
 export async function PATCH(

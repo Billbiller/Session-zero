@@ -1,4 +1,5 @@
 import db from "./db";
+import { rowToCampaign, type CampaignRow } from "./campaigns";
 import { SESSION_FORMAT_PREFERENCES, type Campaign, type Profile, type SessionFormatPreference } from "./types";
 
 export class ProfileError extends Error {}
@@ -130,20 +131,24 @@ export interface MyCampaigns {
 /** Campaigns a user is DMing, and campaigns they're an active (approved)
  * player in — the data behind the "My campaigns" view on the profile page. */
 export function myCampaigns(userId: string): MyCampaigns {
-  const dming = db
-    .prepare(
-      "SELECT * FROM campaigns WHERE dm_id = ? ORDER BY created_at DESC, rowid DESC"
-    )
-    .all(userId) as Campaign[];
+  const dming = (
+    db
+      .prepare(
+        "SELECT * FROM campaigns WHERE dm_id = ? ORDER BY created_at DESC, rowid DESC"
+      )
+      .all(userId) as CampaignRow[]
+  ).map(rowToCampaign);
 
-  const playing = db
-    .prepare(
-      `SELECT campaigns.* FROM campaigns
-       JOIN memberships ON memberships.campaign_id = campaigns.id
-       WHERE memberships.user_id = ? AND memberships.status = 'approved'
-       ORDER BY memberships.updated_at DESC, memberships.rowid DESC`
-    )
-    .all(userId) as Campaign[];
+  const playing = (
+    db
+      .prepare(
+        `SELECT campaigns.* FROM campaigns
+         JOIN memberships ON memberships.campaign_id = campaigns.id
+         WHERE memberships.user_id = ? AND memberships.status = 'approved'
+         ORDER BY memberships.updated_at DESC, memberships.rowid DESC`
+      )
+      .all(userId) as CampaignRow[]
+  ).map(rowToCampaign);
 
   return { dming, playing };
 }

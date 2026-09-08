@@ -2,12 +2,14 @@ import { describe, it, expect } from "vitest";
 import { signUp } from "@/lib/auth";
 import {
   createCampaign,
+  getCampaign,
   updateCampaign,
   listCampaigns,
   approvedHeadcount,
   setCancelled,
   manualReopen,
   CampaignError,
+  CAMPAIGN_TONE_TAGS,
 } from "@/lib/campaigns";
 import { requestJoin, approveRequest } from "@/lib/memberships";
 
@@ -586,5 +588,276 @@ describe("campaigns", () => {
 
     const newest = listCampaigns({ system: sys, sort: "newest" });
     expect(newest.items.map((c) => c.title)).toEqual(["Mango", "Apple", "Zebra"]);
+  });
+
+  // Backlog #30: free-text starting level.
+  it("defaults a new campaign's starting_level to null and lets it be set on create", () => {
+    const dm = makeDm("dm26@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(campaign.starting_level).toBeNull();
+
+    const leveled = createCampaign({
+      dmId: dm.id,
+      title: "T2",
+      description: "",
+      system: "S",
+      capacity: 4,
+      startingLevel: "  Level 3  ",
+    });
+    expect(leveled.starting_level).toBe("Level 3");
+  });
+
+  it("rejects an over-length starting_level on create", () => {
+    const dm = makeDm("dm27@example.com");
+    expect(() =>
+      createCampaign({
+        dmId: dm.id,
+        title: "T",
+        description: "",
+        system: "S",
+        capacity: 4,
+        startingLevel: "x".repeat(101),
+      })
+    ).toThrow(CampaignError);
+  });
+
+  it("lets the DM set, change, and clear starting_level via update", () => {
+    const dm = makeDm("dm28@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+
+    const set = updateCampaign(campaign.id, dm.id, { startingLevel: "Tier 2" });
+    expect(set.starting_level).toBe("Tier 2");
+
+    const changed = updateCampaign(campaign.id, dm.id, { startingLevel: "Level 10" });
+    expect(changed.starting_level).toBe("Level 10");
+
+    const cleared = updateCampaign(campaign.id, dm.id, { startingLevel: null });
+    expect(cleared.starting_level).toBeNull();
+
+    const clearedByBlank = updateCampaign(campaign.id, dm.id, { startingLevel: "  " });
+    expect(clearedByBlank.starting_level).toBeNull();
+  });
+
+  it("rejects an over-length starting_level on update", () => {
+    const dm = makeDm("dm29@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(() =>
+      updateCampaign(campaign.id, dm.id, { startingLevel: "x".repeat(101) })
+    ).toThrow(CampaignError);
+  });
+
+  it("leaves starting_level untouched when omitted from an update", () => {
+    const dm = makeDm("dm30@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      startingLevel: "Level 5",
+    });
+    const updated = updateCampaign(campaign.id, dm.id, { title: "New title" });
+    expect(updated.starting_level).toBe("Level 5");
+  });
+
+  // Backlog #30: curated multi-select tone/style tags.
+  it("defaults a new campaign's tone_tags to an empty array and lets it be set on create", () => {
+    const dm = makeDm("dm31@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(campaign.tone_tags).toEqual([]);
+
+    const toned = createCampaign({
+      dmId: dm.id,
+      title: "T2",
+      description: "",
+      system: "S",
+      capacity: 4,
+      toneTags: ["horror", "heavy-combat"],
+    });
+    expect(toned.tone_tags).toEqual(["horror", "heavy-combat"]);
+  });
+
+  it("rejects a tone tag that isn't in CAMPAIGN_TONE_TAGS, on create and update", () => {
+    const dm = makeDm("dm32@example.com");
+    expect(() =>
+      createCampaign({
+        dmId: dm.id,
+        title: "T",
+        description: "",
+        system: "S",
+        capacity: 4,
+        toneTags: ["not-a-real-tag"],
+      })
+    ).toThrow(CampaignError);
+
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T2",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(() =>
+      updateCampaign(campaign.id, dm.id, { toneTags: ["not-a-real-tag"] })
+    ).toThrow(CampaignError);
+  });
+
+  it("rejects more than the max allowed tone tags", () => {
+    const dm = makeDm("dm33@example.com");
+    const tooMany = [...CAMPAIGN_TONE_TAGS].slice(0, 6);
+    expect(() =>
+      createCampaign({
+        dmId: dm.id,
+        title: "T",
+        description: "",
+        system: "S",
+        capacity: 4,
+        toneTags: tooMany,
+      })
+    ).toThrow(CampaignError);
+  });
+
+  it("lets the DM set, change, and clear tone_tags via update", () => {
+    const dm = makeDm("dm34@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+
+    const set = updateCampaign(campaign.id, dm.id, { toneTags: ["comedic", "exploration"] });
+    expect(set.tone_tags).toEqual(["comedic", "exploration"]);
+
+    const changed = updateCampaign(campaign.id, dm.id, { toneTags: ["horror"] });
+    expect(changed.tone_tags).toEqual(["horror"]);
+
+    const cleared = updateCampaign(campaign.id, dm.id, { toneTags: [] });
+    expect(cleared.tone_tags).toEqual([]);
+  });
+
+  it("leaves tone_tags untouched when omitted from an update", () => {
+    const dm = makeDm("dm35@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      toneTags: ["mystery-investigation"],
+    });
+    const updated = updateCampaign(campaign.id, dm.id, { title: "New title" });
+    expect(updated.tone_tags).toEqual(["mystery-investigation"]);
+  });
+
+  it("persists tone_tags correctly across a fresh read (round-trips through JSON storage)", () => {
+    const dm = makeDm("dm36@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      toneTags: ["horror", "one-shot-friendly"],
+    });
+    const fetched = getCampaign(campaign.id);
+    expect(fetched?.tone_tags).toEqual(["horror", "one-shot-friendly"]);
+  });
+
+  it("filters listed campaigns by an any-of match on tone_tags", () => {
+    const dm = makeDm("dm37@example.com");
+    const sys = "Unique Tone System A";
+    createCampaign({
+      dmId: dm.id,
+      title: "Horror Game",
+      description: "",
+      system: sys,
+      capacity: 4,
+      toneTags: ["horror"],
+    });
+    createCampaign({
+      dmId: dm.id,
+      title: "Comedy Game",
+      description: "",
+      system: sys,
+      capacity: 4,
+      toneTags: ["comedic"],
+    });
+    createCampaign({
+      dmId: dm.id,
+      title: "Horror-Comedy Game",
+      description: "",
+      system: sys,
+      capacity: 4,
+      toneTags: ["horror", "comedic"],
+    });
+    createCampaign({
+      dmId: dm.id,
+      title: "Political Game",
+      description: "",
+      system: sys,
+      capacity: 4,
+      toneTags: ["political-intrigue"],
+    });
+
+    const all = listCampaigns({ system: sys });
+    expect(all.total).toBe(4);
+
+    // Any-of, not all-of: selecting both "horror" and "comedic" matches
+    // every campaign carrying at least one of them, including the one
+    // that carries neither alone but both together, but not the
+    // political-intrigue-only one.
+    const horrorOrComedic = listCampaigns({ system: sys, toneTags: ["horror", "comedic"] });
+    expect(horrorOrComedic.total).toBe(3);
+    expect(horrorOrComedic.items.map((c) => c.title).sort()).toEqual(
+      ["Comedy Game", "Horror Game", "Horror-Comedy Game"].sort()
+    );
+
+    const politicalOnly = listCampaigns({ system: sys, toneTags: ["political-intrigue"] });
+    expect(politicalOnly.total).toBe(1);
+    expect(politicalOnly.items[0].title).toBe("Political Game");
+  });
+
+  it("ignores an unrecognized tone tag in the browse filter rather than erroring", () => {
+    const dm = makeDm("dm38@example.com");
+    const sys = "Unique Tone System B";
+    createCampaign({
+      dmId: dm.id,
+      title: "Any Game",
+      description: "",
+      system: sys,
+      capacity: 4,
+    });
+
+    // An unrecognized tag alone means "no real filter applied" -- the
+    // browse page shouldn't 500 or silently return zero results just
+    // because a stale/tampered query string had a bogus tag in it.
+    const result = listCampaigns({ system: sys, toneTags: ["not-a-real-tag"] });
+    expect(result.total).toBe(1);
   });
 });

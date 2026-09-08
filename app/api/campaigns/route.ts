@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createCampaign, listCampaigns, type CampaignSort } from "@/lib/campaigns";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
-import { SESSION_FORMATS, type SessionFormat } from "@/lib/types";
+import { CAMPAIGN_TONE_TAGS, SESSION_FORMATS, type SessionFormat } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,11 @@ export async function GET(request: NextRequest) {
   const location = searchParams.get("location") || undefined;
   const newPlayerFriendly = searchParams.get("newPlayerFriendly") === "true" || undefined;
   const sessionFormat = parseSessionFormat(searchParams.get("sessionFormat"));
+  // Backlog #30: any-of tag filter, repeated query params (?toneTags=horror
+  // &toneTags=comedic) -- listCampaigns itself silently drops anything not
+  // in CAMPAIGN_TONE_TAGS, matching parseSessionFormat's "invalid filter
+  // value doesn't 400 a GET" precedent above.
+  const toneTags = searchParams.getAll("toneTags");
   const sort = (searchParams.get("sort") as CampaignSort) || undefined;
   const page = Number(searchParams.get("page") || "1");
   const pageSize = Number(searchParams.get("pageSize") || "10");
@@ -28,6 +33,7 @@ export async function GET(request: NextRequest) {
     location,
     newPlayerFriendly,
     sessionFormat,
+    toneTags: toneTags.length > 0 ? toneTags : undefined,
     sort,
     page,
     pageSize,
@@ -43,6 +49,8 @@ const createSchema = z.object({
   location: z.string().trim().max(200).optional(),
   newPlayerFriendly: z.boolean().optional(),
   sessionFormat: z.enum(SESSION_FORMATS).optional(),
+  startingLevel: z.string().trim().max(100).optional(),
+  toneTags: z.array(z.enum(CAMPAIGN_TONE_TAGS)).max(5).optional(),
 });
 
 export async function POST(request: NextRequest) {

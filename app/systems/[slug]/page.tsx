@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getCuratedSystem, campaignsForSystem } from "@/lib/systems";
 import { approvedHeadcount } from "@/lib/campaigns";
 import { getUserById } from "@/lib/auth";
+import { CAMPAIGN_TONE_TAG_LABELS } from "@/lib/types";
 
 const PAGE_SIZE = 10;
 
@@ -82,6 +83,19 @@ export default async function SystemHubPage({
                   {!campaign.accepting_requests && " (closed to new requests)"}
                   {campaign.location && <> &middot; {campaign.location}</>}
                 </p>
+                {campaign.starting_level && (
+                  <span className="mt-1 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20">
+                    Starting level: {campaign.starting_level}
+                  </span>
+                )}
+                {campaign.tone_tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="mt-1 ml-2 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20"
+                  >
+                    {CAMPAIGN_TONE_TAG_LABELS[tag]}
+                  </span>
+                ))}
                 {campaign.description && <p className="mt-1 text-sm">{campaign.description}</p>}
               </li>
             );

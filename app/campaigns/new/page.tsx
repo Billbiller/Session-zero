@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { SESSION_FORMATS, SESSION_FORMAT_LABELS, type SessionFormat } from "@/lib/types";
+import {
+  CAMPAIGN_TONE_TAGS,
+  CAMPAIGN_TONE_TAG_LABELS,
+  SESSION_FORMATS,
+  SESSION_FORMAT_LABELS,
+  type CampaignToneTag,
+  type SessionFormat,
+} from "@/lib/types";
 
 export default function NewCampaignPage() {
   const [title, setTitle] = useState("");
@@ -12,9 +19,17 @@ export default function NewCampaignPage() {
   const [location, setLocation] = useState("");
   const [newPlayerFriendly, setNewPlayerFriendly] = useState(false);
   const [sessionFormat, setSessionFormat] = useState<SessionFormat | "">("");
+  const [startingLevel, setStartingLevel] = useState("");
+  const [toneTags, setToneTags] = useState<CampaignToneTag[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
+
+  function toggleToneTag(tag: CampaignToneTag) {
+    setToneTags((current) =>
+      current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,6 +46,8 @@ export default function NewCampaignPage() {
         location,
         newPlayerFriendly,
         sessionFormat: sessionFormat || undefined,
+        startingLevel: startingLevel || undefined,
+        toneTags,
       }),
     });
     setSubmitting(false);
@@ -114,6 +131,31 @@ export default function NewCampaignPage() {
             ))}
           </select>
         </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Starting level
+          <input
+            value={startingLevel}
+            onChange={(e) => setStartingLevel(e.target.value)}
+            maxLength={100}
+            placeholder="e.g. Level 3, Tier 2, or a narrative milestone"
+            className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+          />
+        </label>
+        <fieldset className="flex flex-col gap-1 text-sm">
+          <legend>Tone / style (pick any that fit)</legend>
+          <div className="flex flex-wrap gap-3">
+            {CAMPAIGN_TONE_TAGS.map((tag) => (
+              <label key={tag} className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={toneTags.includes(tag)}
+                  onChange={() => toggleToneTag(tag)}
+                />
+                {CAMPAIGN_TONE_TAG_LABELS[tag]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"

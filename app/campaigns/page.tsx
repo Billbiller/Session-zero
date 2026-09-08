@@ -4,7 +4,14 @@ import { getUserById } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getProfile } from "@/lib/profiles";
 import DiscoverDeck, { type DiscoverCard } from "@/components/DiscoverDeck";
-import { SESSION_FORMATS, SESSION_FORMAT_LABELS, type SessionFormat } from "@/lib/types";
+import {
+  CAMPAIGN_TONE_TAGS,
+  CAMPAIGN_TONE_TAG_LABELS,
+  SESSION_FORMATS,
+  SESSION_FORMAT_LABELS,
+  type CampaignToneTag,
+  type SessionFormat,
+} from "@/lib/types";
 
 const PAGE_SIZE = 10;
 // The deck shows every matching campaign one at a time rather than paging
@@ -22,6 +29,7 @@ export default async function CampaignsPage({
     location?: string;
     newPlayerFriendly?: string;
     sessionFormat?: string;
+    toneTags?: string | string[];
     sort?: string;
     page?: string;
     view?: string;
@@ -36,6 +44,17 @@ export default async function CampaignsPage({
     params.sessionFormat && (SESSION_FORMATS as readonly string[]).includes(params.sessionFormat)
       ? (params.sessionFormat as SessionFormat)
       : undefined;
+  // Backlog #30: repeated ?toneTags=horror&toneTags=comedic query params --
+  // Next.js's searchParams gives a bare string when only one is present, so
+  // normalize to an array first. Only recognized tags are kept for the
+  // checkbox defaultChecked state and the query links below; listCampaigns
+  // itself also silently drops anything unrecognized (belt and suspenders,
+  // matching sessionFormat's own precedent above).
+  const toneTags = (
+    Array.isArray(params.toneTags) ? params.toneTags : params.toneTags ? [params.toneTags] : []
+  ).filter((tag): tag is CampaignToneTag =>
+    (CAMPAIGN_TONE_TAGS as readonly string[]).includes(tag)
+  );
   const sort = (params.sort as CampaignSort) || "newest";
   const page = Number(params.page || "1");
   const view = params.view === "discover" ? "discover" : "list";
@@ -46,6 +65,7 @@ export default async function CampaignsPage({
     location,
     newPlayerFriendly,
     sessionFormat,
+    toneTags: toneTags.length > 0 ? toneTags : undefined,
     sort,
     page,
     pageSize: view === "discover" ? DISCOVER_BATCH_SIZE : PAGE_SIZE,
@@ -79,7 +99,7 @@ export default async function CampaignsPage({
             <Link
               href={{
                 pathname: "/campaigns",
-                query: { system, q, location, newPlayerFriendly, sessionFormat, sort },
+                query: { system, q, location, newPlayerFriendly, sessionFormat, toneTags, sort },
               }}
               className={`px-3 py-1.5 ${view === "list" ? "bg-black text-white dark:bg-white dark:text-black" : ""}`}
             >
@@ -88,7 +108,16 @@ export default async function CampaignsPage({
             <Link
               href={{
                 pathname: "/campaigns",
-                query: { system, q, location, newPlayerFriendly, sessionFormat, sort, view: "discover" },
+                query: {
+                  system,
+                  q,
+                  location,
+                  newPlayerFriendly,
+                  sessionFormat,
+                  toneTags,
+                  sort,
+                  view: "discover",
+                },
               }}
               className={`px-3 py-1.5 ${view === "discover" ? "bg-black text-white dark:bg-white dark:text-black" : ""}`}
             >
@@ -168,6 +197,22 @@ export default async function CampaignsPage({
           />
           New-player friendly only
         </label>
+        <fieldset className="flex flex-col gap-1">
+          <legend>Tone / style (any of)</legend>
+          <div className="flex flex-wrap gap-3">
+            {CAMPAIGN_TONE_TAGS.map((tag) => (
+              <label key={tag} className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  name="toneTags"
+                  value={tag}
+                  defaultChecked={toneTags.includes(tag)}
+                />
+                {CAMPAIGN_TONE_TAG_LABELS[tag]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <button
           type="submit"
           className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20"
@@ -182,7 +227,15 @@ export default async function CampaignsPage({
           <Link
             href={{
               pathname: "/campaigns",
-              query: { system, q, location, sessionFormat, sort, newPlayerFriendly: "true" },
+              query: {
+                system,
+                q,
+                location,
+                sessionFormat,
+                toneTags,
+                sort,
+                newPlayerFriendly: "true",
+              },
             }}
             className="underline"
           >
@@ -209,6 +262,8 @@ export default async function CampaignsPage({
               location: campaign.location,
               danger_level: campaign.danger_level,
               session_format: campaign.session_format,
+              starting_level: campaign.starting_level,
+              tone_tags: campaign.tone_tags,
               new_player_friendly: campaign.new_player_friendly,
               accepting_requests: campaign.accepting_requests,
               cancelled: campaign.cancelled,
@@ -250,11 +305,24 @@ export default async function CampaignsPage({
                       {SESSION_FORMAT_LABELS[campaign.session_format]}
                     </span>
                   )}
+                  {campaign.starting_level && (
+                    <span className="mt-1 ml-2 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20">
+                      Starting level: {campaign.starting_level}
+                    </span>
+                  )}
                   {!!campaign.new_player_friendly && (
                     <span className="mt-1 ml-2 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20">
                       New-player friendly
                     </span>
                   )}
+                  {campaign.tone_tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="mt-1 ml-2 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20"
+                    >
+                      {CAMPAIGN_TONE_TAG_LABELS[tag]}
+                    </span>
+                  ))}
                   {campaign.description && (
                     <p className="mt-1 text-sm">{campaign.description}</p>
                   )}
@@ -270,7 +338,16 @@ export default async function CampaignsPage({
                   key={p}
                   href={{
                     pathname: "/campaigns",
-                    query: { system, q, location, newPlayerFriendly, sessionFormat, sort, page: p },
+                    query: {
+                      system,
+                      q,
+                      location,
+                      newPlayerFriendly,
+                      sessionFormat,
+                      toneTags,
+                      sort,
+                      page: p,
+                    },
                   }}
                   className={
                     p === page

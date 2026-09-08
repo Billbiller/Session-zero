@@ -2,14 +2,28 @@ import { v4 as uuidv4 } from "uuid";
 import db from "./db";
 import { notify } from "./notifications";
 import {
+  CAMPAIGN_TONE_TAGS,
   DANGER_LEVELS,
   SESSION_FORMATS,
   type Campaign,
+  type CampaignToneTag,
   type DangerLevel,
   type SessionFormat,
 } from "./types";
 
 export class CampaignError extends Error {}
+
+export { CAMPAIGN_TONE_TAGS };
+
+// Backlog #29's sub_requests.location precedent for a short, coarse
+// free-text field; starting level is even shorter in practice ("Level 3",
+// "Tier 2", "Session 0"), but the cap is generous rather than exact.
+const MAX_STARTING_LEVEL = 100;
+// Matches the cap other curated tag lists in this app use (e.g.
+// CAMPAIGN_RATING_TAGS' MAX_TAGS) -- here it's meaningfully below the full
+// CAMPAIGN_TONE_TAGS vocabulary (8), forcing a DM to pick the tags that
+// actually describe the table rather than checking every box.
+const MAX_TONE_TAGS = 5;
 
 function isKnownDangerLevel(value: string): value is DangerLevel {
   return (DANGER_LEVELS as readonly string[]).includes(value);
@@ -17,6 +31,50 @@ function isKnownDangerLevel(value: string): value is DangerLevel {
 
 function isKnownSessionFormat(value: string): value is SessionFormat {
   return (SESSION_FORMATS as readonly string[]).includes(value);
+}
+
+function isKnownToneTag(value: string): value is CampaignToneTag {
+  return (CAMPAIGN_TONE_TAGS as readonly string[]).includes(value);
+}
+
+/** Validates a tone-tag list against the closed CAMPAIGN_TONE_TAGS
+ * vocabulary and the MAX_TONE_TAGS cap -- the exact validation shape
+ * lib/campaignRatings.ts's rateCampaign uses for CAMPAIGN_RATING_TAGS.
+ * Throws CampaignError on the first problem found. */
+function validateToneTags(tags: string[]): void {
+  if (tags.length > MAX_TONE_TAGS) {
+    throw new CampaignError(`You can select at most ${MAX_TONE_TAGS} tone tags.`);
+  }
+  for (const tag of tags) {
+    if (!isKnownToneTag(tag)) {
+      throw new CampaignError(`"${tag}" isn't a valid campaign tone tag.`);
+    }
+  }
+}
+
+// Exported so any other module reading raw `campaigns` rows directly
+// (rather than going through this file's own getCampaign/listCampaigns)
+// can parse tone_tags the same way -- see lib/profiles.ts's myCampaigns.
+export interface CampaignRow extends Omit<Campaign, "tone_tags"> {
+  tone_tags: string;
+}
+
+/** Parses the JSON-encoded tone_tags column into a real array -- the same
+ * parse-on-read convention already established for ratings.tags/
+ * campaign_ratings.tags (see lib/ratings.ts/lib/campaignRatings.ts's own
+ * rowToRating). Every raw `SELECT * FROM campaigns` read in this file goes
+ * through this so a caller never sees the raw JSON string. Falls back to
+ * an empty array on malformed JSON rather than throwing, matching the
+ * same defensive fallback those files use. */
+export function rowToCampaign(row: CampaignRow): Campaign {
+  let tone_tags: CampaignToneTag[];
+  try {
+    const parsed = JSON.parse(row.tone_tags);
+    tone_tags = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    tone_tags = [];
+  }
+  return { ...row, tone_tags };
 }
 
 export function approvedHeadcount(campaignId: string): number {
@@ -43,6 +101,14 @@ export function createCampaign(input: {
    * SESSION_FORMATS' doc comment in lib/types.ts. Defaults to null
    * (unset), same as danger_level. */
   sessionFormat?: SessionFormat;
+  /** Backlog #30: free-text starting level/rank -- see Campaign.
+   * starting_level's doc comment in lib/types.ts. Defaults to null
+   * (unset), same as danger_level/location. */
+  startingLevel?: string;
+  /** Backlog #30: curated multi-select tone/style tags -- see
+   * Campaign.tone_tags' doc comment in lib/types.ts. Defaults to an
+   * empty array. */
+  toneTags?: string[];
 }): Campaign {
   if (!Number.isInteger(input.capacity) || input.capacity < 1) {
     throw new CampaignError("Capacity must be a positive integer.");
@@ -50,6 +116,12 @@ export function createCampaign(input: {
   if (input.sessionFormat !== undefined && !isKnownSessionFormat(input.sessionFormat)) {
     throw new CampaignError("Not a recognized session format.");
   }
+  const trimmedStartingLevel = (input.startingLevel ?? "").trim();
+  if (trimmedStartingLevel.length > MAX_STARTING_LEVEL) {
+    throw new CampaignError(`Starting level can't be longer than ${MAX_STARTING_LEVEL} characters.`);
+  }
+  const toneTags = input.toneTags ?? [];
+  validateToneTags(toneTags);
   const now = new Date().toISOString();
   const campaign: Campaign = {
     id: uuidv4(),
@@ -65,23 +137,25 @@ export function createCampaign(input: {
     location: (input.location ?? "").trim(),
     new_player_friendly: input.newPlayerFriendly ? 1 : 0,
     session_format: input.sessionFormat ?? null,
+    starting_level: trimmedStartingLevel || null,
+    tone_tags: toneTags as CampaignToneTag[],
     created_at: now,
     updated_at: now,
   };
   db.prepare(
     `INSERT INTO campaigns
-      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, new_player_friendly, session_format, created_at, updated_at)
+      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, new_player_friendly, session_format, starting_level, tone_tags, created_at, updated_at)
      VALUES
-      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @new_player_friendly, @session_format, @created_at, @updated_at)`
-  ).run(campaign);
+      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @new_player_friendly, @session_format, @starting_level, @tone_tags, @created_at, @updated_at)`
+  ).run({ ...campaign, tone_tags: JSON.stringify(toneTags) });
   return campaign;
 }
 
 export function getCampaign(id: string): Campaign | null {
   const row = db.prepare("SELECT * FROM campaigns WHERE id = ?").get(id) as
-    | Campaign
+    | CampaignRow
     | undefined;
-  return row ?? null;
+  return row ? rowToCampaign(row) : null;
 }
 
 export function updateCampaign(
@@ -102,6 +176,15 @@ export function updateCampaign(
     /** undefined = leave unchanged; null = clear; a SessionFormat = set
      * it -- same three-state convention as dangerLevel above. */
     sessionFormat: SessionFormat | null;
+    /** undefined = leave unchanged; null/empty-string = clear; free text =
+     * set it -- same three-state convention as dangerLevel/sessionFormat
+     * above, just with free text instead of an enum. */
+    startingLevel: string | null;
+    /** undefined = leave unchanged, matching every other field here. A
+     * provided array always replaces the whole tag list (no partial
+     * add/remove), the same full-replace convention rateCampaign/
+     * rateCampaignParticipant already use for their own tags. */
+    toneTags: string[];
   }>
 ): Campaign {
   const campaign = getCampaign(id);
@@ -130,6 +213,18 @@ export function updateCampaign(
   ) {
     throw new CampaignError("Not a recognized session format.");
   }
+  let nextStartingLevel = campaign.starting_level;
+  if (updates.startingLevel !== undefined) {
+    const trimmed = (updates.startingLevel ?? "").trim();
+    if (trimmed.length > MAX_STARTING_LEVEL) {
+      throw new CampaignError(`Starting level can't be longer than ${MAX_STARTING_LEVEL} characters.`);
+    }
+    nextStartingLevel = trimmed || null;
+  }
+  if (updates.toneTags !== undefined) {
+    validateToneTags(updates.toneTags);
+  }
+  const nextToneTags = (updates.toneTags ?? campaign.tone_tags) as CampaignToneTag[];
   const next: Campaign = {
     ...campaign,
     title: updates.title !== undefined ? updates.title.trim() : campaign.title,
@@ -147,14 +242,17 @@ export function updateCampaign(
         : campaign.new_player_friendly,
     session_format:
       updates.sessionFormat !== undefined ? updates.sessionFormat : campaign.session_format,
+    starting_level: nextStartingLevel,
+    tone_tags: nextToneTags,
     updated_at: new Date().toISOString(),
   };
   db.prepare(
     `UPDATE campaigns SET title=@title, description=@description, system=@system,
      capacity=@capacity, danger_level=@danger_level, location=@location,
      new_player_friendly=@new_player_friendly, session_format=@session_format,
+     starting_level=@starting_level, tone_tags=@tone_tags,
      updated_at=@updated_at WHERE id=@id`
-  ).run(next);
+  ).run({ ...next, tone_tags: JSON.stringify(nextToneTags) });
   return next;
 }
 
@@ -241,6 +339,15 @@ export function listCampaigns(opts: {
    * with, the default in-person-favoring *ranking* below (which never
    * excludes anything -- this filter is the only thing here that does). */
   sessionFormat?: SessionFormat;
+  /** Backlog #30: any-of match against the curated, multi-select
+   * tone_tags list -- a campaign matches if it carries at least one of
+   * the given tags, not all of them (a viewer picking "horror" and
+   * "comedic" wants either kind of table, not one that's somehow both).
+   * Unrecognized tags are simply ignored rather than erroring the whole
+   * browse page -- see parseSessionFormat's precedent in
+   * app/api/campaigns/route.ts for the same "invalid filter value is
+   * silently dropped, not a 400" shape applied to a GET/browse filter. */
+  toneTags?: string[];
   sort?: CampaignSort;
   page?: number;
   pageSize?: number;
@@ -284,6 +391,22 @@ export function listCampaigns(opts: {
     where.push("session_format = @sessionFormat");
     params.sessionFormat = opts.sessionFormat;
   }
+  // Backlog #30: tone_tags is a JSON-encoded array (e.g. '["horror",
+  // "comedic"]'), so an any-of match is a substring LIKE against each
+  // selected tag's quoted form, OR'd together -- no json_each dependency
+  // needed, and safe against false-substring-matches because every match
+  // is anchored by the JSON string's own quote characters and the curated
+  // vocabulary has no tag that's a substring of another. Only recognized
+  // tags reach this filter (see listCampaigns' toneTags doc comment above).
+  const toneTags = (opts.toneTags ?? []).filter(isKnownToneTag);
+  if (toneTags.length > 0) {
+    const clauses = toneTags.map((tag, i) => {
+      const key = `toneTag${i}`;
+      params[key] = `%"${escapeLikePattern(tag)}"%`;
+      return `tone_tags LIKE @${key} ESCAPE '\\'`;
+    });
+    where.push(`(${clauses.join(" OR ")})`);
+  }
   if (!opts.includeCancelled) {
     where.push("cancelled = 0");
   }
@@ -318,11 +441,12 @@ export function listCampaigns(opts: {
       .get(params) as { count: number }
   ).count;
 
-  const items = db
+  const rows = db
     .prepare(
       `SELECT * FROM campaigns ${whereClause} ORDER BY ${orderBy} LIMIT @limit OFFSET @offset`
     )
-    .all({ ...params, limit: pageSize, offset: (page - 1) * pageSize }) as Campaign[];
+    .all({ ...params, limit: pageSize, offset: (page - 1) * pageSize }) as CampaignRow[];
+  const items = rows.map(rowToCampaign);
 
   return { items, total };
 }

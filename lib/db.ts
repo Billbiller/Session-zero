@@ -56,6 +56,16 @@ CREATE TABLE IF NOT EXISTS campaigns (
   -- SESSION_FORMATS doc comment for the full reasoning. Null (unset) is
   -- the default, same as danger_level.
   session_format TEXT CHECK (session_format IS NULL OR session_format IN ('in_person','remote','hybrid')),
+  -- Backlog #30: free-text starting level/rank -- see lib/types.ts's
+  -- Campaign.starting_level doc comment for why this is text, not an
+  -- integer. Null means the DM hasn't said.
+  starting_level TEXT,
+  -- Backlog #30: curated multi-select tone/style tags, JSON-encoded --
+  -- see lib/types.ts's CAMPAIGN_TONE_TAGS/Campaign.tone_tags doc comments
+  -- for the closed-vocabulary-but-multi-select reasoning, and
+  -- lib/campaigns.ts's rowToCampaign for the parse-on-read convention
+  -- already established by ratings.tags/campaign_ratings.tags.
+  tone_tags TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -688,6 +698,18 @@ if (!subRequestColumns.some((c) => c.name === "needed_at")) {
 }
 if (!subRequestColumns.some((c) => c.name === "location")) {
   db.exec("ALTER TABLE sub_requests ADD COLUMN location TEXT");
+}
+
+// Lightweight migrations for databases created before campaigns carried a
+// starting level and tone tags (backlog #30). New databases already get
+// these columns from the CREATE TABLE statement above. Reuses the
+// campaignColumns snapshot taken above (captured before any ALTER TABLE on
+// this table ran, so it correctly never contains these columns either).
+if (!campaignColumns.some((c) => c.name === "starting_level")) {
+  db.exec("ALTER TABLE campaigns ADD COLUMN starting_level TEXT");
+}
+if (!campaignColumns.some((c) => c.name === "tone_tags")) {
+  db.exec("ALTER TABLE campaigns ADD COLUMN tone_tags TEXT NOT NULL DEFAULT '[]'");
 }
 
 export default db;

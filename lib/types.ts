@@ -77,9 +77,60 @@ export interface Campaign {
    * existed default to null via the ALTER TABLE migration in lib/db.ts,
    * same as danger_level did. */
   session_format: SessionFormat | null;
+  /** Backlog #30: free-text starting level/rank, not a rigid integer --
+   * systems vary too much in how they express this ("Level 3" vs. "Tier
+   * 2" vs. a narrative milestone like "just past the prologue") for a
+   * number to be honest across every system this app supports. Follows
+   * the same nullable-free-text-column convention as sub_requests.location
+   * (backlog #29) -- null means the DM hasn't said, trimmed non-empty text
+   * otherwise. See MAX_STARTING_LEVEL in lib/campaigns.ts for the length
+   * cap. */
+  starting_level: string | null;
+  /** Backlog #30: curated multi-select tone/style tags -- a campaign can
+   * genuinely be more than one of these at once (e.g. both "horror" and
+   * "heavy-combat"), which is why this is a tag list rather than a single
+   * closed enum like danger_level/session_format. Stored as a JSON-encoded
+   * array in a TEXT column, parsed on read (see rowToCampaign in
+   * lib/campaigns.ts) -- the exact pattern already established for
+   * ratings.tags/campaign_ratings.tags. Validated against
+   * CAMPAIGN_TONE_TAGS and capped at MAX_TONE_TAGS (lib/campaigns.ts);
+   * always an array, defaulting to empty rather than null so callers never
+   * need a null-check before iterating it. */
+  tone_tags: CampaignToneTag[];
   created_at: string;
   updated_at: string;
 }
+
+/** Backlog #30: curated, closed vocabulary for a campaign's tone/style
+ * tags -- multi-select (see Campaign.tone_tags' own doc comment for why
+ * this is a tag list, not a single enum). Deliberately a fixed, curated
+ * set (not free text) so the campaign browse filter can offer a real
+ * checkbox list and match reliably, the same "curated over free-text"
+ * trade-off already made for CAMPAIGN_RATING_TAGS/DM_RATING_TAGS/
+ * PLAYER_RATING_TAGS above. */
+export const CAMPAIGN_TONE_TAGS = [
+  "horror",
+  "heavy-combat",
+  "roleplay-focused",
+  "political-intrigue",
+  "comedic",
+  "mystery-investigation",
+  "exploration",
+  "one-shot-friendly",
+] as const;
+
+export type CampaignToneTag = (typeof CAMPAIGN_TONE_TAGS)[number];
+
+export const CAMPAIGN_TONE_TAG_LABELS: Record<CampaignToneTag, string> = {
+  horror: "Horror",
+  "heavy-combat": "Heavy combat",
+  "roleplay-focused": "Roleplay-focused",
+  "political-intrigue": "Political intrigue",
+  comedic: "Comedic",
+  "mystery-investigation": "Mystery / investigation",
+  exploration: "Exploration",
+  "one-shot-friendly": "One-shot friendly",
+};
 
 export type MembershipStatus = "pending" | "approved" | "declined" | "left";
 
