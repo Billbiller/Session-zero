@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listOpenSubRequests } from "@/lib/subRequests";
+import { listOpenSubRequests, type SubRequestSort } from "@/lib/subRequests";
 import { getCurrentUser } from "@/lib/currentUser";
 import SubVolunteerAction from "@/components/SubVolunteerAction";
 
@@ -8,10 +8,24 @@ import SubVolunteerAction from "@/components/SubVolunteerAction";
  * one place, so someone doesn't have to already know a campaign exists to
  * offer to help it out for a session. Posting a request happens from the
  * campaign's own page (SubRequestPanel), since only a DM or active member
- * of that campaign has a session to fill. */
-export default async function SubsPage() {
+ * of that campaign has a session to fill.
+ *
+ * Backlog #51: as the pool grows, "newest posted" alone said nothing
+ * about which requests are actually time-sensitive. Defaults to
+ * soonest-needed-first with past-due requests hidden (both explicit
+ * opt-outs via query params, matching /campaigns' filter-form
+ * conventions), rather than silently pre-filtering with no way back. */
+export default async function SubsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sort?: string; includePastDue?: string }>;
+}) {
+  const params = await searchParams;
+  const sort: SubRequestSort = params.sort === "newest" ? "newest" : "soonest";
+  const includePastDue = params.includePastDue === "true";
+
   const viewer = await getCurrentUser();
-  const requests = listOpenSubRequests(viewer?.id ?? null);
+  const requests = listOpenSubRequests(viewer?.id ?? null, { sort, includePastDue });
 
   return (
     <div className="flex max-w-lg flex-col gap-4">
@@ -21,6 +35,30 @@ export default async function SubsPage() {
           Campaigns across Session Zero that need someone to fill in for a session.
         </p>
       </div>
+
+      <form className="flex flex-wrap items-end gap-3 text-sm" method="get">
+        <label className="flex flex-col gap-1">
+          Sort
+          <select
+            name="sort"
+            defaultValue={sort}
+            className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+          >
+            <option value="soonest">Soonest needed</option>
+            <option value="newest">Newest posted</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2 pb-2">
+          <input type="checkbox" name="includePastDue" value="true" defaultChecked={includePastDue} />
+          Show past-due requests
+        </label>
+        <button
+          type="submit"
+          className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20"
+        >
+          Apply
+        </button>
+      </form>
 
       <ul className="flex flex-col gap-4 text-sm">
         {requests.map((r) => (
@@ -70,6 +108,16 @@ export default async function SubsPage() {
           <li className="text-black/60 dark:text-white/60">
             No open sub requests right now — check back later, or post one from your own
             campaign&apos;s page if you need a sub yourself.
+            {!includePastDue && (
+              <>
+                {" "}
+                (Past-due requests are hidden by default —{" "}
+                <Link href={{ pathname: "/subs", query: { sort, includePastDue: "true" } }} className="underline">
+                  show them
+                </Link>
+                .)
+              </>
+            )}
           </li>
         )}
       </ul>

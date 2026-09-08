@@ -355,9 +355,100 @@ describe("sub requests carry a specific date/time and location (backlog #29)", (
       null,
       new Date(Date.now() - 60_000).toISOString()
     );
-    const byId = Object.fromEntries(listOpenSubRequests(null).map((r) => [r.id, r]));
+    // Backlog #51: past-due requests are hidden by default, so this needs
+    // an explicit includePastDue: true to see all three.
+    const byId = Object.fromEntries(
+      listOpenSubRequests(null, { includePastDue: true }).map((r) => [r.id, r])
+    );
     expect(byId[noDate.id].neededAtStatus).toBe("unscheduled");
     expect(byId[future.id].neededAtStatus).toBe("upcoming");
     expect(byId[past.id].neededAtStatus).toBe("past-due");
+  });
+});
+
+describe("sub-request pool sort/filter (backlog #51)", () => {
+  it("hides past-due requests by default but includes them with includePastDue: true", () => {
+    const { dm, campaign } = setUpCampaignWithPlayer(
+      "sub-dm26@example.com",
+      "sub-player26@example.com"
+    );
+    const past = createSubRequest(
+      campaign.id,
+      dm.id,
+      "past one",
+      null,
+      new Date(Date.now() - 60_000).toISOString()
+    );
+    const upcoming = createSubRequest(
+      campaign.id,
+      dm.id,
+      "upcoming one",
+      null,
+      new Date(Date.now() + 60_000).toISOString()
+    );
+
+    const defaultIds = listOpenSubRequests(null).map((r) => r.id);
+    expect(defaultIds).not.toContain(past.id);
+    expect(defaultIds).toContain(upcoming.id);
+
+    const allIds = listOpenSubRequests(null, { includePastDue: true }).map((r) => r.id);
+    expect(allIds).toContain(past.id);
+    expect(allIds).toContain(upcoming.id);
+  });
+
+  it("never treats an unscheduled (no needed_at) request as past-due", () => {
+    const { dm, campaign } = setUpCampaignWithPlayer(
+      "sub-dm27@example.com",
+      "sub-player27@example.com"
+    );
+    const unscheduled = createSubRequest(campaign.id, dm.id, "no date");
+    expect(listOpenSubRequests(null).map((r) => r.id)).toContain(unscheduled.id);
+  });
+
+  it("sorts soonest-needed first by default, with undated requests after every dated one", () => {
+    const { dm, campaign } = setUpCampaignWithPlayer(
+      "sub-dm28@example.com",
+      "sub-player28@example.com"
+    );
+    const later = createSubRequest(
+      campaign.id,
+      dm.id,
+      "later",
+      null,
+      new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+    );
+    const sooner = createSubRequest(
+      campaign.id,
+      dm.id,
+      "sooner",
+      null,
+      new Date(Date.now() + 60 * 1000).toISOString()
+    );
+    const undated = createSubRequest(campaign.id, dm.id, "undated");
+
+    const ids = listOpenSubRequests(null)
+      .map((r) => r.id)
+      .filter((id) => [later.id, sooner.id, undated.id].includes(id));
+    expect(ids).toEqual([sooner.id, later.id, undated.id]);
+  });
+
+  it("sorts newest-posted-first when sort: 'newest' is given, ignoring needed_at", () => {
+    const { dm, campaign } = setUpCampaignWithPlayer(
+      "sub-dm29@example.com",
+      "sub-player29@example.com"
+    );
+    const first = createSubRequest(
+      campaign.id,
+      dm.id,
+      "first, needed soon",
+      null,
+      new Date(Date.now() + 60 * 1000).toISOString()
+    );
+    const second = createSubRequest(campaign.id, dm.id, "second, posted later");
+
+    const ids = listOpenSubRequests(null, { sort: "newest" })
+      .map((r) => r.id)
+      .filter((id) => [first.id, second.id].includes(id));
+    expect(ids).toEqual([second.id, first.id]);
   });
 });

@@ -183,14 +183,56 @@ export function listSubRequestsForCampaign(
   return withContext(rows, viewerId);
 }
 
+/** Backlog #51: how the app-wide pool (and, via listSubRequestsForCampaign
+ * callers that want it, a single campaign's panel) can be ordered --
+ * "soonest" surfaces the most time-sensitive asks first, "newest" is the
+ * original newest-posted-first behavior. */
+export type SubRequestSort = "soonest" | "newest";
+
+export interface ListOpenSubRequestsOptions {
+  sort?: SubRequestSort;
+  /** When false (the default), a request whose needed_at has already
+   * passed is left out of the pool entirely -- a stale "needed by
+   * yesterday" ask left open (the requester forgot to mark it
+   * filled/cancelled) shouldn't clutter a growing pool. A request with no
+   * needed_at at all is never considered past-due here, matching
+   * neededAtStatus's own "unscheduled" (not "past-due") classification. */
+  includePastDue?: boolean;
+}
+
 /** The app-wide browsable volunteer pool: every currently-open request
- * across every campaign, newest first. */
-export function listOpenSubRequests(viewerId: string | null): SubRequestSummary[] {
-  const rows = db
-    .prepare(
-      "SELECT * FROM sub_requests WHERE status = 'open' ORDER BY created_at DESC, rowid DESC"
-    )
-    .all() as SubRequest[];
+ * across every campaign.
+ *
+ * Backlog #51: defaults to "soonest-needed first, past-due hidden" --
+ * the more useful default as the pool grows past a handful of requests --
+ * rather than the original "newest posted" order, which said nothing
+ * about urgency. Both are explicit opt-outs via options, not a breaking
+ * change to any existing caller's *access* pattern (viewerId-only calls
+ * still work; they just get the new, more useful default ordering). */
+export function listOpenSubRequests(
+  viewerId: string | null,
+  options: ListOpenSubRequestsOptions = {}
+): SubRequestSummary[] {
+  const sort = options.sort ?? "soonest";
+  const includePastDue = options.includePastDue ?? false;
+
+  const orderBy =
+    sort === "soonest"
+      ? // Dated requests first, soonest needed_at first; requests with no
+        // date (no urgency signal at all) sort after every dated one, by
+        // newest-posted among themselves.
+        "ORDER BY (needed_at IS NULL) ASC, needed_at ASC, created_at DESC, rowid DESC"
+      : "ORDER BY created_at DESC, rowid DESC";
+
+  const rows = includePastDue
+    ? (db
+        .prepare(`SELECT * FROM sub_requests WHERE status = 'open' ${orderBy}`)
+        .all() as SubRequest[])
+    : (db
+        .prepare(
+          `SELECT * FROM sub_requests WHERE status = 'open' AND (needed_at IS NULL OR needed_at >= ?) ${orderBy}`
+        )
+        .all(new Date().toISOString()) as SubRequest[]);
   return withContext(rows, viewerId);
 }
 
