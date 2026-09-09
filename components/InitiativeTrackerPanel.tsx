@@ -178,6 +178,7 @@ export default function InitiativeTrackerPanel({ campaignId }: { campaignId: str
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       placeholder="Name"
+                      aria-label="Combatant name"
                       className="min-w-32 flex-1 rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                     />
                     <input
@@ -185,12 +186,14 @@ export default function InitiativeTrackerPanel({ campaignId }: { campaignId: str
                       value={editInitiative}
                       onChange={(e) => setEditInitiative(e.target.value)}
                       placeholder="Init."
+                      aria-label="Initiative"
                       className="w-20 rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                     />
                     <input
                       value={editHp}
                       onChange={(e) => setEditHp(e.target.value)}
                       placeholder="HP (e.g. 18/24)"
+                      aria-label="HP"
                       className="w-32 rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                     />
                   </div>
@@ -198,6 +201,7 @@ export default function InitiativeTrackerPanel({ campaignId }: { campaignId: str
                     value={editNotes}
                     onChange={(e) => setEditNotes(e.target.value)}
                     placeholder="Notes / conditions"
+                    aria-label="Notes / conditions"
                     rows={2}
                     className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                   />
@@ -228,7 +232,7 @@ export default function InitiativeTrackerPanel({ campaignId }: { campaignId: str
                       <button
                         disabled={busy || i === 0}
                         onClick={() => move(entry.id, "up")}
-                        aria-label="Move up"
+                        aria-label={`Move ${entry.name} up`}
                         className="rounded border border-black/20 px-1.5 disabled:opacity-30 dark:border-white/20"
                       >
                         ↑
@@ -236,7 +240,7 @@ export default function InitiativeTrackerPanel({ campaignId }: { campaignId: str
                       <button
                         disabled={busy || i === entries.length - 1}
                         onClick={() => move(entry.id, "down")}
-                        aria-label="Move down"
+                        aria-label={`Move ${entry.name} down`}
                         className="rounded border border-black/20 px-1.5 disabled:opacity-30 dark:border-white/20"
                       >
                         ↓

@@ -67,6 +67,7 @@ export default function NotificationSettingsPage() {
                 type="checkbox"
                 checked={row.enabled}
                 onChange={(e) => toggle(row.type, e.target.checked)}
+                aria-label={row.label}
               />
               {row.enabled ? "On" : "Muted"}
             </label>

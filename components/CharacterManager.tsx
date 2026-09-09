@@ -264,6 +264,7 @@ export default function CharacterManager({
               type="file"
               accept="image/png,image/jpeg,image/webp,image/gif"
               onChange={(e) => handlePortraitFile(e.target.files?.[0], form, setForm)}
+              aria-label="Upload a character portrait picture"
               className="text-xs"
             />
             {form.portraitDataUrl && (

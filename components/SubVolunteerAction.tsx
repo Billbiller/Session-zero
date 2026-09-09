@@ -75,6 +75,7 @@ export default function SubVolunteerAction({
             onChange={(e) => setMessage(e.target.value)}
             maxLength={500}
             placeholder="Optional note to the requester"
+            aria-label="Note to the requester (optional)"
             className="flex-1 rounded border border-black/20 px-2 py-1 text-xs dark:border-white/20 dark:bg-transparent"
           />
           <button

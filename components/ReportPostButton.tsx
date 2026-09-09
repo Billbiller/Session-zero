@@ -66,6 +66,7 @@ export default function ReportPostButton({
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="Reason (optional)"
+          aria-label="Reason for reporting (optional)"
           maxLength={500}
           className="rounded border border-black/10 px-2 py-0.5 dark:border-white/10 dark:bg-black"
         />

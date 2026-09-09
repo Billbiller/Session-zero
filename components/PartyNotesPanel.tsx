@@ -52,6 +52,7 @@ export default function PartyNotesPanel({
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={6}
+            aria-label="Party notes"
             className="rounded border border-black/20 px-3 py-2 text-sm dark:border-white/20 dark:bg-transparent"
           />
           <div className="flex gap-2 text-sm">

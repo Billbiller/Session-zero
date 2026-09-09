@@ -101,6 +101,7 @@ export default function RatingsPanel({
                       type="button"
                       onClick={() => setStars(n)}
                       aria-pressed={stars >= n}
+                      aria-label={`${n} star${n === 1 ? "" : "s"}`}
                       className={`text-2xl leading-none ${stars >= n ? "" : "opacity-30"}`}
                     >
                       ★

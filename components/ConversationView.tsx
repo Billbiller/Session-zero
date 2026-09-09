@@ -106,6 +106,7 @@ export default function ConversationView({ otherUserId }: { otherUserId: string 
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Write a message..."
+          aria-label="Write a message"
           rows={3}
           maxLength={4000}
           className="rounded border border-black/10 p-2 text-sm dark:border-white/10 dark:bg-transparent"

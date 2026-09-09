@@ -274,6 +274,7 @@ export default function SubRequestPanel({
             rows={2}
             maxLength={500}
             placeholder="e.g. Can't make it Sept 20th, need someone to run my rogue for one session."
+            aria-label="Sub request note"
             className="rounded border border-black/20 px-3 py-2 text-sm dark:border-white/20 dark:bg-transparent"
           />
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -443,6 +444,7 @@ export default function SubRequestPanel({
                         rows={2}
                         maxLength={500}
                         placeholder="Guardrails for whoever runs this character (e.g. no permanent death, ask before spending our one rare potion)"
+                        aria-label="Guardrails note for whoever runs this character"
                         className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                       />
                       <div className="flex gap-2">
@@ -523,6 +525,7 @@ export default function SubRequestPanel({
                         }
                         maxLength={500}
                         placeholder="Optional note to the requester"
+                        aria-label="Note to the requester (optional)"
                         className="flex-1 rounded border border-black/20 px-2 py-1 text-xs dark:border-white/20 dark:bg-transparent"
                       />
                       <button

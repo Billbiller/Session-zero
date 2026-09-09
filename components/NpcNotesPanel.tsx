@@ -117,12 +117,14 @@ export default function NpcNotesPanel({ campaignId }: { campaignId: string }) {
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     placeholder="Name"
+                    aria-label="NPC name"
                     className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                   />
                   <textarea
                     value={editNotes}
                     onChange={(e) => setEditNotes(e.target.value)}
                     placeholder="Notes"
+                    aria-label="NPC notes"
                     rows={3}
                     className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                   />
@@ -165,12 +167,14 @@ export default function NpcNotesPanel({ campaignId }: { campaignId: string }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="NPC name"
+          aria-label="NPC name"
           className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
         />
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Notes (optional)"
+          aria-label="NPC notes"
           rows={2}
           className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
         />

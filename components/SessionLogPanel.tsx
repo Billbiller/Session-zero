@@ -221,6 +221,7 @@ export default function SessionLogPanel({
             onChange={(e) => setNewContent(e.target.value)}
             rows={3}
             placeholder="What happened this session?"
+            aria-label="New session log entry"
             className="rounded border border-black/20 px-3 py-2 text-sm dark:border-white/20 dark:bg-transparent"
           />
           {partyMembers.length > 0 && (
@@ -266,6 +267,7 @@ export default function SessionLogPanel({
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
                   rows={3}
+                  aria-label="Edit session log entry"
                   className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
                 />
                 <div className="flex gap-2">
@@ -325,6 +327,11 @@ export default function SessionLogPanel({
                     disabled={!viewerId || kudosBusyId === entry.id}
                     aria-pressed={entry.viewerGaveKudos}
                     title={entry.viewerGaveKudos ? "Remove kudos" : "Give kudos"}
+                    aria-label={
+                      entry.viewerGaveKudos
+                        ? `Remove kudos (${entry.kudosCount} given)`
+                        : `Give kudos (${entry.kudosCount} given)`
+                    }
                     className={`ml-auto rounded-full border px-2 py-0.5 disabled:opacity-50 ${
                       entry.viewerGaveKudos
                         ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"

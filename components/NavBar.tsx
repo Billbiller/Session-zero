@@ -221,7 +221,10 @@ export default function NavBar({
               <Link href="/messages" className="relative">
                 Messages
                 {unreadMessageCount > 0 && (
-                  <span className="ml-1 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-xs font-medium text-white">
+                  <span
+                    className="ml-1 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-xs font-medium text-white"
+                    aria-label={`${unreadMessageCount} unread`}
+                  >
                     {unreadMessageCount}
                   </span>
                 )}
@@ -229,7 +232,10 @@ export default function NavBar({
               <Link href="/notifications" className="relative">
                 Notifications
                 {unreadCount > 0 && (
-                  <span className="ml-1 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-xs font-medium text-white">
+                  <span
+                    className="ml-1 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-xs font-medium text-white"
+                    aria-label={`${unreadCount} unread`}
+                  >
                     {unreadCount}
                   </span>
                 )}
@@ -242,6 +248,7 @@ export default function NavBar({
                   <span
                     className="ml-1 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-xs font-medium text-white"
                     title="Unread table chat messages across your campaigns"
+                    aria-label={`${unreadTableChatCount} unread table chat messages`}
                   >
                     {unreadTableChatCount}
                   </span>

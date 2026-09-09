@@ -118,6 +118,7 @@ export default function CampaignChatPanel({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Message the table..."
+          aria-label="Message the table"
           rows={2}
           maxLength={4000}
           className="rounded border border-black/10 p-2 text-sm dark:border-white/10 dark:bg-transparent"

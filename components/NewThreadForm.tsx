@@ -74,6 +74,7 @@ export default function NewThreadForm({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Thread title"
+          aria-label="Thread title"
           maxLength={200}
           className="rounded border border-black/10 p-2 text-sm dark:border-white/10 dark:bg-transparent"
         />
@@ -81,6 +82,7 @@ export default function NewThreadForm({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="What's on your mind?"
+          aria-label="Thread body"
           rows={4}
           maxLength={10000}
           className="rounded border border-black/10 p-2 text-sm dark:border-white/10 dark:bg-transparent"

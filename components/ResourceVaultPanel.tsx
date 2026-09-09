@@ -170,12 +170,14 @@ export default function ResourceVaultPanel({
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       placeholder="Name"
+                      aria-label="Resource name"
                       className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                     />
                     <textarea
                       value={editDescription}
                       onChange={(e) => setEditDescription(e.target.value)}
                       placeholder="Description"
+                      aria-label="Resource description"
                       rows={2}
                       className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                     />
@@ -250,6 +252,7 @@ export default function ResourceVaultPanel({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Name"
+          aria-label="Resource name"
           maxLength={150}
           className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
         />
@@ -257,6 +260,7 @@ export default function ResourceVaultPanel({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Description (optional)"
+          aria-label="Resource description"
           rows={2}
           className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
         />
@@ -264,6 +268,7 @@ export default function ResourceVaultPanel({
           type="file"
           accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,text/plain"
           onChange={(e) => handleFile(e.target.files?.[0])}
+          aria-label="Choose a file to upload"
           className="text-xs"
         />
         {fileLabel && <span className="text-xs text-black/60 dark:text-white/60">Selected: {fileLabel}</span>}

@@ -65,6 +65,7 @@ export default function ReplyForm({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Write a reply..."
+          aria-label="Reply"
           rows={3}
           maxLength={5000}
           className="rounded border border-black/10 p-2 text-sm dark:border-white/10 dark:bg-transparent"

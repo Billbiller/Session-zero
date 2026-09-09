@@ -24,3 +24,32 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Accessibility pass (backlog #53): a visible focus ring on every
+ * interactive element for keyboard users, applied globally rather than
+ * as a per-component Tailwind `focus-visible:` class -- this app has no
+ * shared Button/Input component (every button/link/input is styled ad
+ * hoc inline across dozens of files), so one rule here reaches every
+ * current and future interactive element instead of hand-editing each
+ * one. `:focus-visible` (not plain `:focus`) means a mouse click never
+ * shows the ring, only real keyboard/assistive-tech navigation does. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    outline-color: #60a5fa;
+  }
+}
