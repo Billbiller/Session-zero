@@ -35,6 +35,22 @@ export default async function SystemHubPage({
         <p className="mt-1 max-w-2xl text-sm text-black/60 dark:text-white/60">
           {system.description}
         </p>
+        {system.resources.length > 0 && (
+          <ul className="mt-3 flex flex-wrap gap-3 text-sm">
+            {system.resources.map((resource) => (
+              <li key={resource.url}>
+                <a
+                  href={resource.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-black/70 hover:text-black dark:text-white/70 dark:hover:text-white"
+                >
+                  {resource.label} &#8599;
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">

@@ -781,6 +781,16 @@ export const CURATED_SYSTEMS = [
 
 export type CuratedSystemSlug = (typeof CURATED_SYSTEMS)[number];
 
+/** Backlog #55: a single hand-picked external resource link shown on a
+ * curated system hub page (e.g. the publisher's own site, a free rules
+ * reference, or a Wikipedia overview). Just a label + URL -- there's no
+ * further categorization since the backlog item scoped this to "a
+ * hand-picked set", not a structured/typed resource directory. */
+export interface CuratedSystemResourceLink {
+  label: string;
+  url: string;
+}
+
 export interface CuratedSystemInfo {
   name: string;
   description: string;
@@ -791,6 +801,15 @@ export interface CuratedSystemInfo {
    * anything into `system`, so this can both miss real matches (an
    * unlisted phrasing) and never claims to be exhaustive. */
   aliases: readonly string[];
+  /** Backlog #55 (owner-requested, scoped 2026-09-08): a hand-picked set
+   * of external resources for this system -- the publisher/official site
+   * plus a free rules reference and/or overview, matching the backlog
+   * item's own example ("for 5e: Wizards of the Coast, a DNDBeyond-style
+   * reference, Wikipedia"). Scoped to these six curated hubs only, not
+   * the long tail of free-text `system` values elsewhere in the app --
+   * see the doc comment on CURATED_SYSTEMS above. Every curated system
+   * has at least one entry; order is display order on the hub page. */
+  resources: readonly CuratedSystemResourceLink[];
 }
 
 export const CURATED_SYSTEM_INFO: Record<CuratedSystemSlug, CuratedSystemInfo> = {
@@ -807,36 +826,65 @@ export const CURATED_SYSTEM_INFO: Record<CuratedSystemSlug, CuratedSystemInfo> =
       "dnd5e",
       "5th edition",
     ],
+    resources: [
+      { label: "Wizards of the Coast (publisher)", url: "https://dnd.wizards.com/" },
+      { label: "D&D Beyond (official digital toolset)", url: "https://www.dndbeyond.com/" },
+      { label: "Wikipedia overview", url: "https://en.wikipedia.org/wiki/Dungeons_%26_Dragons" },
+    ],
   },
   "pathfinder-2e": {
     name: "Pathfinder 2nd Edition",
     description:
       "Paizo's crunchy, tactical d20 fantasy system -- deeper character-building options and more structured combat than 5e, from the studio that grew out of the original D&D 3.5e OGL.",
     aliases: ["pathfinder 2e", "pathfinder second edition", "pathfinder 2nd edition", "pf2e", "pf2"],
+    resources: [
+      { label: "Paizo (publisher)", url: "https://paizo.com/pathfinder" },
+      { label: "Archives of Nethys (free rules reference)", url: "https://2e.aonprd.com/" },
+      { label: "Wikipedia overview", url: "https://en.wikipedia.org/wiki/Pathfinder_Roleplaying_Game" },
+    ],
   },
   "call-of-cthulhu": {
     name: "Call of Cthulhu",
     description:
       "Lovecraftian horror investigation using the Basic Roleplaying (BRP) percentile system -- sanity loss, cosmic dread, and mysteries better solved than fought.",
     aliases: ["call of cthulhu", "cthulhu", "coc"],
+    resources: [
+      { label: "Chaosium (publisher)", url: "https://www.chaosium.com/call-of-cthulhu/" },
+      {
+        label: "Wikipedia overview",
+        url: "https://en.wikipedia.org/wiki/Call_of_Cthulhu_(role-playing_game)",
+      },
+    ],
   },
   "vampire-masquerade": {
     name: "Vampire: The Masquerade",
     description:
       "World of Darkness gothic-punk horror -- play a vampire navigating political intrigue, hunger, and humanity, using the Storyteller system.",
     aliases: ["vampire: the masquerade", "vampire the masquerade", "vtm"],
+    resources: [
+      { label: "World of Darkness (publisher)", url: "https://www.worldofdarkness.com/vampire-the-masquerade" },
+      { label: "Wikipedia overview", url: "https://en.wikipedia.org/wiki/Vampire:_The_Masquerade" },
+    ],
   },
   "blades-in-the-dark": {
     name: "Blades in the Dark",
     description:
       "A heist-driven crew of scoundrels in a haunted industrial city, using the Forged in the Dark system -- flashbacks, clocks, and a focus on consequences over dice-fishing.",
     aliases: ["blades in the dark", "bitd", "forged in the dark"],
+    resources: [
+      { label: "Blades in the Dark (official site)", url: "https://bladesinthedark.com/" },
+      { label: "Wikipedia overview", url: "https://en.wikipedia.org/wiki/Blades_in_the_Dark" },
+    ],
   },
   "powered-by-the-apocalypse": {
     name: "Powered by the Apocalypse (PbtA)",
     description:
       "A narrative-first family of systems (Apocalypse World, Monsterhearts, Masks, and many others) built around move-driven fiction rather than simulationist rules.",
     aliases: ["powered by the apocalypse", "pbta", "apocalypse world"],
+    resources: [
+      { label: "Apocalypse World (official site)", url: "https://apocalypse-world.com/" },
+      { label: "Wikipedia overview", url: "https://en.wikipedia.org/wiki/Powered_by_the_Apocalypse" },
+    ],
   },
 };
 

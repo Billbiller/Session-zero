@@ -42,6 +42,29 @@ describe("curated system lookup", () => {
     expect(system?.aliases.length).toBeGreaterThan(0);
   });
 
+  it("gives every curated system at least one external resource link with a real-looking https URL (backlog #55)", () => {
+    const systems = listCuratedSystems();
+    for (const system of systems) {
+      expect(system.resources.length).toBeGreaterThan(0);
+      for (const resource of system.resources) {
+        expect(resource.label.length).toBeGreaterThan(0);
+        expect(resource.url.startsWith("https://")).toBe(true);
+      }
+    }
+  });
+
+  it("exposes resources through getCuratedSystem for a known slug (backlog #55)", () => {
+    const system = getCuratedSystem("call-of-cthulhu");
+    expect(system).not.toBeNull();
+    expect(system?.resources.some((r) => r.label.includes("Chaosium"))).toBe(true);
+  });
+
+  it("gives every curated system a distinct set of resource URLs (no accidental copy-paste across systems) (backlog #55)", () => {
+    const systems = listCuratedSystems();
+    const allUrls = systems.flatMap((s) => s.resources.map((r) => r.url));
+    expect(new Set(allUrls).size).toBe(allUrls.length);
+  });
+
   it("resolves match patterns as [name, ...aliases] for a known slug, and null for an unknown one", () => {
     expect(systemMatchPatterns("not-a-real-system")).toBeNull();
     const patterns = systemMatchPatterns("pathfinder-2e");
