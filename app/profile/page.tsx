@@ -196,6 +196,10 @@ export default function ProfilePage() {
           </label>
           <div className="flex flex-col gap-1">
             <span>Weekly availability (optional, in addition to the note above)</span>
+            <span className="text-xs text-black/60 dark:text-white/60">
+              Click an hour to mark it free, in your own local time -- shown to visitors exactly as
+              you set it (e.g. 6pm-9pm on Tuesdays), not converted to their timezone.
+            </span>
             <AvailabilityGrid
               slots={availabilitySlots}
               onChange={setAvailabilitySlots}

@@ -239,11 +239,30 @@ CREATE INDEX IF NOT EXISTS idx_campaign_ratings_campaign ON campaign_ratings(cam
 -- timezone is stored; treated as the user's own local week. The
 -- search/matching layer that would compare two users' grids is explicitly
 -- deferred to a later phase.
+-- Backlog #27 phase 1's named-block grid. Superseded by backlog #57's
+-- hour-based availability_hours table below -- kept here, unused by any
+-- application code going forward, rather than dropped, matching this
+-- app's never-drop-a-table-or-column convention (see e.g. the free-text
+-- Profile.availability column, kept alongside the structured grid it was
+-- eventually joined by). A pre-existing database's own rows here are
+-- simply never read again; nothing depends on this table anymore.
 CREATE TABLE IF NOT EXISTS availability_slots (
   user_id TEXT NOT NULL REFERENCES users(id),
   day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
   block TEXT NOT NULL CHECK (block IN ('morning','afternoon','evening','night')),
   PRIMARY KEY (user_id, day_of_week, block)
+);
+
+-- Backlog #57: replaces availability_slots' coarse named blocks with a
+-- specific clock hour per cell (0-23, the profile owner's own local
+-- time -- see the doc comment on AvailabilitySlot in lib/types.ts for
+-- the timezone judgment call). Same recurring-weekly-pattern shape and
+-- full-replace-on-save semantics as the table it replaces.
+CREATE TABLE IF NOT EXISTS availability_hours (
+  user_id TEXT NOT NULL REFERENCES users(id),
+  day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+  hour INTEGER NOT NULL CHECK (hour BETWEEN 0 AND 23),
+  PRIMARY KEY (user_id, day_of_week, hour)
 );
 
 -- Phase 1 of backlog #20 (substitute player workflow): a campaign member

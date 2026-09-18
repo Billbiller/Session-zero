@@ -314,14 +314,40 @@ export const AVAILABILITY_DAYS = [
   "Sunday",
 ] as const;
 
-export const AVAILABILITY_BLOCKS = ["morning", "afternoon", "evening", "night"] as const;
-
-export type AvailabilityBlock = (typeof AVAILABILITY_BLOCKS)[number];
-
+/** Backlog #57 (owner-requested, scoped 2026-09-08): replaces the phase-1
+ * named-block grid (morning/afternoon/evening/night, which "read
+ * differently to different people" per the backlog's own text) with
+ * specific clock hours -- the exact "day + hour time-block grid" the
+ * item asks for. `hour` is 0-23 (0 = the 12am-1am hour, 23 = the
+ * 11pm-midnight hour), and marking hour N means "free from N:00 to
+ * N+1:00" -- lib/availability.ts's summarizeAvailabilityByDay() collapses
+ * a contiguous run into a single readable range (e.g. hours 18/19/20
+ * display as "6pm-9pm", matching the backlog's own worked example).
+ *
+ * Timezone decision (the backlog item explicitly calls this out as
+ * needed): hours are stored and displayed exactly as the profile owner
+ * entered them, in the owner's own local time -- there is no per-user
+ * timezone field anywhere else in this app to convert *from*, and adding
+ * one (detection, storage, a picker, DST handling) is a materially
+ * bigger feature than this item's own "so availability means the same
+ * thing to every viewer" framing calls for. "Same thing to every viewer"
+ * is satisfied by replacing a vague word ("evenings") with an
+ * unambiguous clock time -- not by attempting cross-timezone conversion,
+ * which would need data this app doesn't collect. Every place this
+ * renders publicly (see app/players/[id]/page.tsx) says whose local time
+ * it is, so a viewer elsewhere isn't misled into reading it as their own.
+ *
+ * The old block-shaped model (AVAILABILITY_BLOCKS/AvailabilityBlock) and
+ * its `availability_slots` table are retired but deliberately left in
+ * lib/db.ts's schema rather than dropped -- this app never drops
+ * columns/tables, the same reasoning that kept the free-text `availability`
+ * field on Profile in place after phase 1 shipped the structured grid
+ * alongside it. */
 export interface AvailabilitySlot {
   /** 0-6, see AVAILABILITY_DAYS. */
   day: number;
-  block: AvailabilityBlock;
+  /** 0-23, the profile owner's own local clock hour. */
+  hour: number;
 }
 
 /** Phase 1 of backlog #20 (substitute player workflow) -- the request +

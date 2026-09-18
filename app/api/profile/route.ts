@@ -8,7 +8,7 @@ import {
 } from "@/lib/availability";
 import { getUserStats } from "@/lib/stats";
 import { getUnreadCampaignMessageCountsForUser } from "@/lib/campaignMessages";
-import { AVAILABILITY_BLOCKS, SESSION_FORMAT_PREFERENCES } from "@/lib/types";
+import { SESSION_FORMAT_PREFERENCES } from "@/lib/types";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
 
 export const dynamic = "force-dynamic";
@@ -41,17 +41,18 @@ const bodySchema = z.object({
   newToTabletop: z.boolean().optional(),
   // undefined = leave unchanged; null = clear; a recognized value = set it.
   sessionFormatPreference: z.enum(SESSION_FORMAT_PREFERENCES).nullable().optional(),
-  // Full-replace list of weekly availability cells (backlog #27 phase 1).
-  // Omitted entirely leaves the stored grid untouched; an empty array
-  // clears it, same partial-update convention as the rest of this route.
+  // Full-replace list of weekly availability cells (backlog #27 phase 1;
+  // hour granularity added by backlog #57). Omitted entirely leaves the
+  // stored grid untouched; an empty array clears it, same partial-update
+  // convention as the rest of this route. Max 168 = 7 days x 24 hours.
   availabilitySlots: z
     .array(
       z.object({
         day: z.number().int().min(0).max(6),
-        block: z.enum(AVAILABILITY_BLOCKS),
+        hour: z.number().int().min(0).max(23),
       })
     )
-    .max(28)
+    .max(168)
     .optional(),
 });
 

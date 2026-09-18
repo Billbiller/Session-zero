@@ -8,11 +8,10 @@ import { getCampaign } from "@/lib/campaigns";
 import { getUserRatingSummary } from "@/lib/ratings";
 import { getAttendanceStats } from "@/lib/attendance";
 import { getUserStats } from "@/lib/stats";
-import { getAvailabilitySlots } from "@/lib/availability";
+import { getAvailabilitySlots, summarizeAvailabilityByDay } from "@/lib/availability";
 import { isFollowing, followerCount, followingCount } from "@/lib/follows";
 import CharacterSummary from "@/components/CharacterSummary";
 import StatsPanel from "@/components/StatsPanel";
-import AvailabilityGrid from "@/components/AvailabilityGrid";
 import FollowButton from "@/components/FollowButton";
 import { SESSION_FORMAT_PREFERENCE_LABELS } from "@/lib/types";
 
@@ -171,9 +170,24 @@ export default async function PlayerProfilePage({
       {availabilitySlots.length > 0 && (
         <div>
           <h2 className="text-sm font-medium">Weekly availability</h2>
-          <div className="mt-1">
-            <AvailabilityGrid slots={availabilitySlots} />
-          </div>
+          {/* Backlog #57: a plain-language day/time summary rather than
+           * the editable AvailabilityGrid component's own 168-cell visual
+           * grid -- a checkbox grid is efficient to *edit* on /profile,
+           * but a lot for a viewer to decode at a glance just to answer
+           * "when are they free." The "in <name>'s own local time" note
+           * is this item's documented timezone decision (see
+           * AvailabilitySlot's doc comment in lib/types.ts): hours are
+           * never converted to the viewer's own timezone. */}
+          <ul className="mt-1 text-sm">
+            {summarizeAvailabilityByDay(availabilitySlots).map((day) => (
+              <li key={day.day}>
+                <span className="font-medium">{day.dayName}:</span> {day.ranges.join(", ")}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-xs text-black/60 dark:text-white/60">
+            In {user.display_name}&apos;s own local time.
+          </p>
         </div>
       )}
 
