@@ -8,7 +8,7 @@ import {
   systemMatchPatterns,
   campaignsForSystem,
 } from "@/lib/systems";
-import { CURATED_SYSTEMS } from "@/lib/types";
+import { CURATED_SYSTEMS, curatedSystemMatches } from "@/lib/types";
 
 function makeDm(emailPrefix: string) {
   return signUp("DM " + emailPrefix, `${emailPrefix}@example.com`, "testpassword123");
@@ -174,5 +174,18 @@ describe("campaignsForSystem", () => {
     expect(firstPage!.total).toBe(full!.total);
     // Newest first: the second-created campaign should come before the first.
     expect(firstPage!.items[0].title).toBe("Unique Sys Test Page B Vampire");
+  });
+});
+
+describe("curatedSystemMatches (backlog #56's client-safe matcher)", () => {
+  it("matches the curated name and an alias, case-insensitively", () => {
+    expect(curatedSystemMatches("Dungeons & Dragons 5e", "dnd-5e")).toBe(true);
+    expect(curatedSystemMatches("homebrew d&d5e hack", "dnd-5e")).toBe(true);
+  });
+
+  it("does not match a different curated system or an unrelated free-text system", () => {
+    expect(curatedSystemMatches("Pathfinder 2E", "dnd-5e")).toBe(false);
+    expect(curatedSystemMatches("Fate Core (homebrew)", "dnd-5e")).toBe(false);
+    expect(curatedSystemMatches("", "dnd-5e")).toBe(false);
   });
 });

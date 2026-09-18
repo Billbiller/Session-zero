@@ -30,6 +30,7 @@ export async function GET(
     ownerName: owner?.display_name ?? "Unknown player",
     character,
     linkedCampaignTitle: campaign?.title ?? null,
+    sheet5e: character.sheet_5e,
   });
 
   const safeName = character.name.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();

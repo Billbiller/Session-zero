@@ -116,7 +116,7 @@ export default function ProfilePage() {
   const assignableCampaigns = [...dming, ...playing]
     .filter((c) => !c.cancelled)
     .filter((c, i, arr) => arr.findIndex((other) => other.id === c.id) === i)
-    .map((c) => ({ id: c.id, title: c.title }));
+    .map((c) => ({ id: c.id, title: c.title, system: c.system }));
 
   return (
     <div className="flex max-w-lg flex-col gap-8">

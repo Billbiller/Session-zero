@@ -4,6 +4,7 @@ import { getCharacter } from "@/lib/characters";
 import { getUserById } from "@/lib/auth";
 import { getCampaign } from "@/lib/campaigns";
 import CharacterSummary from "@/components/CharacterSummary";
+import Sheet5eSummary from "@/components/Sheet5eSummary";
 import PrintButton from "@/components/PrintButton";
 
 /** Backlog #49: a dedicated, printable/exportable view of a single
@@ -57,6 +58,7 @@ export default async function CharacterSheetPage({
           pilotName={pilot?.display_name ?? null}
           hideSheetLink
         />
+        {character.sheet_5e && <Sheet5eSummary sheet={character.sheet_5e} />}
       </div>
     </div>
   );

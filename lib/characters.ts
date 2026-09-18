@@ -3,12 +3,15 @@ import db from "./db";
 import { getCampaign } from "./campaigns";
 import { hasPrivateAccess } from "./access";
 import { recordCharacterCreated, recordCharacterStatusChanged } from "./feed";
+import { systemMatchPatterns } from "./systems";
+import { Sheet5eError, validateSheet5e } from "./sheet5e";
 import {
   CHARACTER_AVATARS,
   CHARACTER_STATUSES,
   type Character,
   type CharacterStatus,
   type CampaignChronicle,
+  type Sheet5e,
 } from "./types";
 
 export class CharacterError extends Error {}
@@ -77,12 +80,39 @@ function assertCampaignLinkAllowed(campaignId: string, userId: string): void {
   }
 }
 
+// Exported so any other module reading raw `characters` rows directly
+// could parse sheet_5e the same way, mirroring lib/campaigns.ts's own
+// CampaignRow/rowToCampaign for tone_tags -- no other module does this
+// today, but the convention is kept consistent regardless.
+export interface CharacterRow extends Omit<Character, "sheet_5e"> {
+  sheet_5e: string | null;
+}
+
+/** Parses the JSON-encoded sheet_5e column into a real Sheet5e (or null)
+ * -- the same parse-on-read convention already established for
+ * campaigns.tone_tags/ratings.tags (see lib/campaigns.ts's rowToCampaign).
+ * Falls back to null on missing or malformed JSON rather than throwing,
+ * matching that same defensive fallback, so a corrupted or pre-migration
+ * row never crashes a read -- it just renders as "no sheet on file". */
+function rowToCharacter(row: CharacterRow): Character {
+  let sheet_5e: Sheet5e | null = null;
+  if (row.sheet_5e) {
+    try {
+      sheet_5e = JSON.parse(row.sheet_5e) as Sheet5e;
+    } catch {
+      sheet_5e = null;
+    }
+  }
+  return { ...row, sheet_5e };
+}
+
 export function listCharactersForUser(userId: string): Character[] {
-  return db
+  const rows = db
     .prepare(
       "SELECT * FROM characters WHERE user_id = ? ORDER BY created_at DESC, rowid DESC"
     )
-    .all(userId) as Character[];
+    .all(userId) as CharacterRow[];
+  return rows.map(rowToCharacter);
 }
 
 /** Characters linked to a campaign, oldest first — shown alongside the
@@ -91,18 +121,40 @@ export function listCharactersForUser(userId: string): Character[] {
  * visibility (and every character here is already fully public via its
  * owner's /players/[id] page regardless). */
 export function listCharactersForCampaign(campaignId: string): Character[] {
-  return db
+  const rows = db
     .prepare(
       "SELECT * FROM characters WHERE campaign_id = ? ORDER BY created_at ASC, rowid ASC"
     )
-    .all(campaignId) as Character[];
+    .all(campaignId) as CharacterRow[];
+  return rows.map(rowToCharacter);
 }
 
 export function getCharacter(id: string): Character | null {
   const row = db.prepare("SELECT * FROM characters WHERE id = ?").get(id) as
-    | Character
+    | CharacterRow
     | undefined;
-  return row ?? null;
+  return row ? rowToCharacter(row) : null;
+}
+
+/** Backlog #56: whether a character's *currently linked* campaign matches
+ * the curated "dnd-5e" system -- the gate for whether a full 5e stat
+ * block can be set on it at all. Reuses lib/systems.ts's own
+ * systemMatchPatterns() (the same case-insensitive substring patterns
+ * campaignsForSystem()'s SQL LIKE query matches against) rather than a
+ * second, separately-maintained matching rule -- a campaign whose
+ * free-text `system` would show up on the /systems/dnd-5e hub is exactly
+ * the set of campaigns this should say yes to. Takes a campaign id
+ * directly (rather than a Character) so callers mid-update -- about to
+ * change campaign_id in the same call -- can check the *new* value
+ * before it's written. */
+export function isLinkedToDnd5e(campaignId: string | null): boolean {
+  if (!campaignId) return false;
+  const campaign = getCampaign(campaignId);
+  if (!campaign) return false;
+  const patterns = systemMatchPatterns("dnd-5e");
+  if (!patterns) return false;
+  const system = campaign.system.toLowerCase();
+  return patterns.some((pattern) => system.includes(pattern.toLowerCase()));
 }
 
 function validateFields(fields: {
@@ -169,6 +221,36 @@ export interface CharacterCreateInput {
    * back to avatarEmoji). See validatePortraitDataUrl() for size/shape
    * limits. */
   portraitDataUrl?: string | null;
+  /** Backlog #56: an optional full 5e stat block. Omitted/undefined means
+   * no sheet on creation (the common case -- most characters don't start
+   * with one filled in). Providing one requires campaignId (in this same
+   * input) to resolve to a campaign matching the curated "dnd-5e" system
+   * -- see isLinkedToDnd5e() -- or this throws CharacterError. */
+  sheet5e?: Sheet5e | null;
+}
+
+/** Shared by createCharacter/updateCharacter: validates a caller-supplied
+ * sheet5e value's shape/ranges (rewrapping Sheet5eError as CharacterError
+ * so every error this module throws is one type), then enforces the
+ * backlog's own 5e-only gate against whatever campaign id the character
+ * will actually have once this write completes. Returns null unchanged
+ * (clearing/no sheet needs no gate check -- unlinking a sheet can't spoof
+ * anything, the same reasoning assertCampaignLinkAllowed's own doc
+ * comment already gives for unlinking a campaign). */
+function resolveSheet5eForWrite(sheet5e: Sheet5e, resolvedCampaignId: string | null): Sheet5e {
+  let validated: Sheet5e;
+  try {
+    validated = validateSheet5e(sheet5e);
+  } catch (err) {
+    if (err instanceof Sheet5eError) throw new CharacterError(err.message);
+    throw err;
+  }
+  if (!isLinkedToDnd5e(resolvedCampaignId)) {
+    throw new CharacterError(
+      "A full 5e stat block requires linking this character to a Dungeons & Dragons 5th Edition campaign."
+    );
+  }
+  return validated;
 }
 
 export function createCharacter(userId: string, input: CharacterCreateInput): Character {
@@ -192,6 +274,11 @@ export function createCharacter(userId: string, input: CharacterCreateInput): Ch
   const campaignId = input.campaignId ?? null;
   if (campaignId) assertCampaignLinkAllowed(campaignId, userId);
 
+  const sheet_5e =
+    input.sheet5e !== undefined && input.sheet5e !== null
+      ? resolveSheet5eForWrite(input.sheet5e, campaignId)
+      : null;
+
   const now = new Date().toISOString();
   const character: Character = {
     id: uuidv4(),
@@ -208,13 +295,14 @@ export function createCharacter(userId: string, input: CharacterCreateInput): Ch
     // Always null on creation -- only a confirmed sub placement (backlog
     // #20 phase 2, lib/subPlacements.ts) ever sets this.
     temp_pilot_user_id: null,
+    sheet_5e,
     created_at: now,
     updated_at: now,
   };
   db.prepare(
-    `INSERT INTO characters (id, user_id, campaign_id, name, archetype, bio, backstory, avatar_emoji, status, epilogue, portrait_data_url, created_at, updated_at)
-     VALUES (@id, @user_id, @campaign_id, @name, @archetype, @bio, @backstory, @avatar_emoji, @status, @epilogue, @portrait_data_url, @created_at, @updated_at)`
-  ).run(character);
+    `INSERT INTO characters (id, user_id, campaign_id, name, archetype, bio, backstory, avatar_emoji, status, epilogue, portrait_data_url, sheet_5e, created_at, updated_at)
+     VALUES (@id, @user_id, @campaign_id, @name, @archetype, @bio, @backstory, @avatar_emoji, @status, @epilogue, @portrait_data_url, @sheet_5e, @created_at, @updated_at)`
+  ).run({ ...character, sheet_5e: sheet_5e ? JSON.stringify(sheet_5e) : null });
   // Backlog #38: a new character is already public on its owner's
   // /players/[id] page from the moment it's created -- record it so
   // followers can notice, matching the "no new content types, just a
@@ -237,6 +325,12 @@ export interface CharacterUpdateInput {
   /** undefined = leave the existing portrait unchanged; null = remove it
    * (falls back to avatarEmoji); a data: URL = set/replace it. */
   portraitDataUrl?: string | null;
+  /** Backlog #56: undefined = leave the existing sheet unchanged; null =
+   * clear it (always allowed, even if this character isn't currently
+   * 5e-linked -- clearing can't spoof anything); a full Sheet5e = set/
+   * replace it, gated on the character's campaign (after applying any
+   * campaignId change in this same call) matching curated "dnd-5e". */
+  sheet5e?: Sheet5e | null;
 }
 
 export function updateCharacter(
@@ -282,10 +376,15 @@ export function updateCharacter(
     }
   }
 
+  let sheet_5e: Sheet5e | null = current.sheet_5e;
+  if (input.sheet5e !== undefined) {
+    sheet_5e = input.sheet5e === null ? null : resolveSheet5eForWrite(input.sheet5e, campaign_id);
+  }
+
   const updated_at = new Date().toISOString();
   db.prepare(
     `UPDATE characters
-     SET name = ?, archetype = ?, bio = ?, backstory = ?, avatar_emoji = ?, campaign_id = ?, status = ?, epilogue = ?, portrait_data_url = ?, updated_at = ?
+     SET name = ?, archetype = ?, bio = ?, backstory = ?, avatar_emoji = ?, campaign_id = ?, status = ?, epilogue = ?, portrait_data_url = ?, sheet_5e = ?, updated_at = ?
      WHERE id = ?`
   ).run(
     name,
@@ -297,6 +396,7 @@ export function updateCharacter(
     status,
     epilogue,
     portrait_data_url,
+    sheet_5e ? JSON.stringify(sheet_5e) : null,
     updated_at,
     characterId
   );

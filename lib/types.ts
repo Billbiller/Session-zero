@@ -471,6 +471,120 @@ export const CHARACTER_STATUS_LABELS: Record<CharacterStatus, string> = {
   fallen: "Fallen",
 };
 
+/** Backlog #56 (owner-requested, scoped 2026-09-08): the real 5e stat
+ * block, stored only for a character linked to a campaign that matches
+ * the curated "dnd-5e" system (see lib/systems.ts's systemMatchPatterns
+ * and lib/characters.ts's isLinkedToDnd5e -- enforced there, not here).
+ * Explicitly scoped to 5e only, per the backlog item's own text --
+ * every other system keeps today's simpler archetype/bio/backstory
+ * model unchanged; a template-driven sheet for other systems is a
+ * possible future item, not attempted here. */
+export const ABILITY_SCORES_5E = ["str", "dex", "con", "int", "wis", "cha"] as const;
+export type AbilityScore5e = (typeof ABILITY_SCORES_5E)[number];
+
+export const ABILITY_SCORE_5E_LABELS: Record<AbilityScore5e, string> = {
+  str: "Strength",
+  dex: "Dexterity",
+  con: "Constitution",
+  int: "Intelligence",
+  wis: "Wisdom",
+  cha: "Charisma",
+};
+
+export const SKILLS_5E = [
+  "acrobatics",
+  "animal_handling",
+  "arcana",
+  "athletics",
+  "deception",
+  "history",
+  "insight",
+  "intimidation",
+  "investigation",
+  "medicine",
+  "nature",
+  "perception",
+  "performance",
+  "persuasion",
+  "religion",
+  "sleight_of_hand",
+  "stealth",
+  "survival",
+] as const;
+export type Skill5e = (typeof SKILLS_5E)[number];
+
+export const SKILL_5E_LABELS: Record<Skill5e, string> = {
+  acrobatics: "Acrobatics",
+  animal_handling: "Animal Handling",
+  arcana: "Arcana",
+  athletics: "Athletics",
+  deception: "Deception",
+  history: "History",
+  insight: "Insight",
+  intimidation: "Intimidation",
+  investigation: "Investigation",
+  medicine: "Medicine",
+  nature: "Nature",
+  perception: "Perception",
+  performance: "Performance",
+  persuasion: "Persuasion",
+  religion: "Religion",
+  sleight_of_hand: "Sleight of Hand",
+  stealth: "Stealth",
+  survival: "Survival",
+};
+
+/** Each skill's governing ability score, per the 5e rules -- used to
+ * compute a skill's bonus (ability modifier + proficiency bonus if
+ * proficient) in lib/sheet5e.ts. */
+export const SKILL_5E_ABILITY: Record<Skill5e, AbilityScore5e> = {
+  acrobatics: "dex",
+  animal_handling: "wis",
+  arcana: "int",
+  athletics: "str",
+  deception: "cha",
+  history: "int",
+  insight: "wis",
+  intimidation: "cha",
+  investigation: "int",
+  medicine: "wis",
+  nature: "int",
+  perception: "wis",
+  performance: "cha",
+  persuasion: "cha",
+  religion: "int",
+  sleight_of_hand: "dex",
+  stealth: "dex",
+  survival: "wis",
+};
+
+/** The number of spell levels 5e defines (1st through 9th) --
+ * Sheet5e.spellSlots is always exactly this many entries long, index 0 =
+ * 1st-level slots ... index 8 = 9th-level slots. Zero throughout for a
+ * non-caster; the backlog item's own text calls this out as "spell slots
+ * where relevant," not a required field only casters fill in. */
+export const SPELL_SLOT_LEVELS_5E = 9;
+
+export interface Sheet5e {
+  abilityScores: Record<AbilityScore5e, number>;
+  proficiencyBonus: number;
+  savingThrowProficiencies: readonly AbilityScore5e[];
+  skillProficiencies: readonly Skill5e[];
+  armorClass: number;
+  hitPointsMax: number;
+  hitPointsCurrent: number;
+  /** Free-text dice notation, e.g. "3d8". */
+  hitDice: string;
+  /** Free text, matching this app's existing convention for bio/backstory
+   * -- a structured item-by-item inventory (weight, quantity, magic item
+   * flags, etc.) is a larger feature of its own, not what this backlog
+   * item asked for ("an equipment list"), so a DM/player can format it
+   * as a list themselves. */
+  equipment: string;
+  /** Exactly SPELL_SLOT_LEVELS_5E entries, index 0 = 1st level. */
+  spellSlots: readonly number[];
+}
+
 export interface Character {
   id: string;
   user_id: string;
@@ -498,6 +612,14 @@ export interface Character {
    * display marker, cleared by an explicit "end sub" action; this app has
    * no session-duration tracking to clear it automatically. */
   temp_pilot_user_id: string | null;
+  /** Backlog #56: the full 5e stat block, present only for a character
+   * currently linked to a campaign matching the curated "dnd-5e" system
+   * (see lib/characters.ts's isLinkedToDnd5e) -- null otherwise, including
+   * for a character that has one but is later unlinked from its 5e
+   * campaign (the data isn't cleared automatically, but the UI only
+   * offers to view/edit it while currently 5e-linked -- see
+   * CharacterManager's own doc comment for that judgment call). */
+  sheet_5e: Sheet5e | null;
   created_at: string;
   updated_at: string;
 }
@@ -887,6 +1009,26 @@ export const CURATED_SYSTEM_INFO: Record<CuratedSystemSlug, CuratedSystemInfo> =
     ],
   },
 };
+
+/** Pure, client-safe (no DB import) case-insensitive substring check of
+ * whether a campaign's free-text `system` matches a curated system's
+ * name/aliases. Exists for backlog #56: CharacterManager.tsx (a "use
+ * client" component) needs to decide whether to show the 5e stat-block
+ * section for whichever campaign is currently selected in its own form,
+ * but can't import lib/systems.ts's own systemMatchPatterns() for that --
+ * systems.ts pulls in lib/campaigns.ts, which pulls in lib/db.ts's
+ * better-sqlite3 (a native Node addon that can't bundle for the
+ * browser). This is only ever used to decide what to *show*; the actual
+ * write-time enforcement is lib/characters.ts's isLinkedToDnd5e
+ * (server-side), which is free to (and does) use systemMatchPatterns. */
+export function curatedSystemMatches(system: string, slug: CuratedSystemSlug): boolean {
+  const info = CURATED_SYSTEM_INFO[slug];
+  const lower = system.toLowerCase();
+  return (
+    lower.includes(info.name.toLowerCase()) ||
+    info.aliases.some((alias) => lower.includes(alias.toLowerCase()))
+  );
+}
 
 /** Backlog #37: lightweight community discussion boards. The concrete
  * first slice of backlog #25 (clubs/curated community lists), scoped

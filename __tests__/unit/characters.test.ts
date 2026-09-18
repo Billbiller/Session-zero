@@ -11,8 +11,10 @@ import {
   listCharactersForUser,
   listCharactersForCampaign,
   getCampaignChronicle,
+  isLinkedToDnd5e,
   CharacterError,
 } from "@/lib/characters";
+import { defaultSheet5e } from "@/lib/sheet5e";
 
 function makeDm(email: string) {
   return signUp("DM " + email, email, "testpassword123");
@@ -449,5 +451,199 @@ describe("characters", () => {
     const character = createCharacter(user.id, { name: "Steady", portraitDataUrl: dataUrl });
     const updated = updateCharacter(character.id, user.id, { bio: "New bio" });
     expect(updated.portrait_data_url).toBe(dataUrl);
+  });
+
+  // --- backlog #56: 5e stat block ---
+
+  describe("isLinkedToDnd5e", () => {
+    it("is true for a campaign whose system matches the curated dnd-5e patterns", () => {
+      const dm = makeDm("char-5e-link1@example.com");
+      const campaign = createCampaign({
+        dmId: dm.id,
+        title: "T",
+        description: "",
+        system: "Homebrew D&D 5e West Marches",
+        capacity: 4,
+      });
+      expect(isLinkedToDnd5e(campaign.id)).toBe(true);
+    });
+
+    it("is false for a campaign on a different system, an unknown campaign id, or null", () => {
+      const dm = makeDm("char-5e-link2@example.com");
+      const campaign = createCampaign({
+        dmId: dm.id,
+        title: "T",
+        description: "",
+        system: "Pathfinder 2E",
+        capacity: 4,
+      });
+      expect(isLinkedToDnd5e(campaign.id)).toBe(false);
+      expect(isLinkedToDnd5e("no-such-campaign")).toBe(false);
+      expect(isLinkedToDnd5e(null)).toBe(false);
+    });
+  });
+
+  it("rejects a 5e stat block on creation when the character isn't linked to a 5e campaign", () => {
+    const user = signUp("Bard", "char-5e-create1@example.com", "testpassword123");
+    expect(() =>
+      createCharacter(user.id, { name: "No Sheet", sheet5e: defaultSheet5e() })
+    ).toThrow(CharacterError);
+  });
+
+  it("rejects a 5e stat block on creation when linked to a non-5e campaign", () => {
+    const dm = makeDm("char-5e-create2@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "Call of Cthulhu",
+      capacity: 4,
+    });
+    expect(() =>
+      createCharacter(dm.id, { name: "No Sheet", campaignId: campaign.id, sheet5e: defaultSheet5e() })
+    ).toThrow(CharacterError);
+  });
+
+  it("accepts and round-trips a 5e stat block when created linked to a dnd-5e campaign", () => {
+    const dm = makeDm("char-5e-create3@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "D&D 5e",
+      capacity: 4,
+    });
+    const sheet = { ...defaultSheet5e(), armorClass: 17, hitPointsMax: 24, hitPointsCurrent: 24 };
+    const character = createCharacter(dm.id, {
+      name: "Sheeted",
+      campaignId: campaign.id,
+      sheet5e: sheet,
+    });
+    expect(character.sheet_5e).not.toBeNull();
+    expect(character.sheet_5e?.armorClass).toBe(17);
+
+    // Round-trips through the JSON column via a fresh read, not just the
+    // in-memory return value.
+    const reloaded = getCharacter(character.id);
+    expect(reloaded?.sheet_5e?.hitPointsMax).toBe(24);
+  });
+
+  it("rejects an invalid 5e stat block shape even when linked to a dnd-5e campaign", () => {
+    const dm = makeDm("char-5e-create4@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "D&D 5e",
+      capacity: 4,
+    });
+    expect(() =>
+      createCharacter(dm.id, {
+        name: "Bad Sheet",
+        campaignId: campaign.id,
+        sheet5e: { ...defaultSheet5e(), proficiencyBonus: 99 },
+      })
+    ).toThrow(CharacterError);
+  });
+
+  it("has no sheet by default when campaignId is a dnd-5e campaign but sheet5e is omitted", () => {
+    const dm = makeDm("char-5e-create5@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "D&D 5e",
+      capacity: 4,
+    });
+    const character = createCharacter(dm.id, { name: "Blank", campaignId: campaign.id });
+    expect(character.sheet_5e).toBeNull();
+  });
+
+  it("lets an update add a 5e stat block once the character is linked to a dnd-5e campaign", () => {
+    const dm = makeDm("char-5e-update1@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "D&D 5e",
+      capacity: 4,
+    });
+    const character = createCharacter(dm.id, { name: "Growing", campaignId: campaign.id });
+    const updated = updateCharacter(character.id, dm.id, { sheet5e: defaultSheet5e() });
+    expect(updated.sheet_5e).not.toBeNull();
+  });
+
+  it("rejects adding a 5e stat block via update when not linked to a dnd-5e campaign", () => {
+    const user = signUp("Loner", "char-5e-update2@example.com", "testpassword123");
+    const character = createCharacter(user.id, { name: "Unlinked" });
+    expect(() => updateCharacter(character.id, user.id, { sheet5e: defaultSheet5e() })).toThrow(
+      CharacterError
+    );
+  });
+
+  it("always allows clearing a 5e stat block via update, even when no longer 5e-linked", () => {
+    const dm = makeDm("char-5e-update3@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "D&D 5e",
+      capacity: 4,
+    });
+    const character = createCharacter(dm.id, {
+      name: "Unlinking",
+      campaignId: campaign.id,
+      sheet5e: defaultSheet5e(),
+    });
+    // Unlink from the 5e campaign entirely -- the existing sheet data is
+    // left in place (see the doc comment on Character.sheet_5e), but
+    // clearing it explicitly must still be allowed regardless.
+    const unlinked = updateCharacter(character.id, dm.id, { campaignId: null });
+    expect(unlinked.sheet_5e).not.toBeNull();
+    const cleared = updateCharacter(character.id, dm.id, { sheet5e: null });
+    expect(cleared.sheet_5e).toBeNull();
+  });
+
+  it("leaves an existing 5e stat block untouched when omitted from an update", () => {
+    const dm = makeDm("char-5e-update4@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "D&D 5e",
+      capacity: 4,
+    });
+    const character = createCharacter(dm.id, {
+      name: "Steady",
+      campaignId: campaign.id,
+      sheet5e: { ...defaultSheet5e(), armorClass: 15 },
+    });
+    const updated = updateCharacter(character.id, dm.id, { bio: "New bio" });
+    expect(updated.sheet_5e?.armorClass).toBe(15);
+  });
+
+  it("lets an update change the campaign link and set a 5e stat block in the same call", () => {
+    const dm = makeDm("char-5e-update5@example.com");
+    const nonFiveE = createCampaign({
+      dmId: dm.id,
+      title: "T1",
+      description: "",
+      system: "Pathfinder 2E",
+      capacity: 4,
+    });
+    const fiveE = createCampaign({
+      dmId: dm.id,
+      title: "T2",
+      description: "",
+      system: "Dungeons and Dragons 5e",
+      capacity: 4,
+    });
+    const character = createCharacter(dm.id, { name: "Switching", campaignId: nonFiveE.id });
+    const updated = updateCharacter(character.id, dm.id, {
+      campaignId: fiveE.id,
+      sheet5e: defaultSheet5e(),
+    });
+    expect(updated.campaign_id).toBe(fiveE.id);
+    expect(updated.sheet_5e).not.toBeNull();
   });
 });

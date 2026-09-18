@@ -182,6 +182,11 @@ CREATE TABLE IF NOT EXISTS characters (
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','retired','fallen')),
   epilogue TEXT NOT NULL DEFAULT '',
   portrait_data_url TEXT,
+  -- Backlog #56: the full 5e stat block, JSON-encoded (see lib/types.ts's
+  -- Sheet5e / lib/sheet5e.ts's validateSheet5e). Null for a character not
+  -- carrying one (every non-5e character, plus a 5e-linked one that
+  -- hasn't filled theirs in yet).
+  sheet_5e TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -705,6 +710,16 @@ if (!characterColumns.some((c) => c.name === "portrait_data_url")) {
 // this app has no session-duration tracking to clear it automatically.
 if (!characterColumns.some((c) => c.name === "temp_pilot_user_id")) {
   db.exec("ALTER TABLE characters ADD COLUMN temp_pilot_user_id TEXT");
+}
+
+// Lightweight migration for databases created before the 5e character
+// sheet existed (backlog #56). New databases already get this column from
+// the CREATE TABLE statement above. Nullable JSON text -- see
+// lib/types.ts's Sheet5e and lib/characters.ts's rowToCharacter for the
+// parse-on-read convention this reuses (matching campaigns.tone_tags/
+// ratings.tags's own established pattern).
+if (!characterColumns.some((c) => c.name === "sheet_5e")) {
+  db.exec("ALTER TABLE characters ADD COLUMN sheet_5e TEXT");
 }
 const subRequestColumns = db.prepare("PRAGMA table_info(sub_requests)").all() as { name: string }[];
 if (!subRequestColumns.some((c) => c.name === "character_id")) {
