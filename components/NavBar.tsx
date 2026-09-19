@@ -218,6 +218,7 @@ export default function NavBar({
             <>
               <Link href="/campaigns/new">New campaign</Link>
               <Link href="/feed">Feed</Link>
+              <Link href="/friends">Friends</Link>
               <Link href="/messages" className="relative">
                 Messages
                 {unreadMessageCount > 0 && (

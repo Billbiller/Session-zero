@@ -10,9 +10,11 @@ import { getAttendanceStats } from "@/lib/attendance";
 import { getUserStats } from "@/lib/stats";
 import { getAvailabilitySlots, summarizeAvailabilityByDay } from "@/lib/availability";
 import { isFollowing, followerCount, followingCount } from "@/lib/follows";
+import { areFriends, getFriendshipStatus } from "@/lib/friends";
 import CharacterSummary from "@/components/CharacterSummary";
 import StatsPanel from "@/components/StatsPanel";
 import FollowButton from "@/components/FollowButton";
+import FriendButton from "@/components/FriendButton";
 import { SESSION_FORMAT_PREFERENCE_LABELS } from "@/lib/types";
 
 function reputationLine(label: string, summary: { average: number | null; count: number; tagCounts: Record<string, number> }) {
@@ -95,6 +97,16 @@ export default async function PlayerProfilePage({
   const followers = followerCount(id);
   const followees = followingCount(id);
   const viewerIsFollowing = viewer && !isOwnProfile ? isFollowing(viewer.id, id) : false;
+  // Backlog #59: viewer-relative friend status drives FriendButton, and
+  // separately gates the Location field below to friends-only. A
+  // signed-out visitor or a user viewing their own page is never
+  // "friends" with the subject for either purpose -- getFriendshipStatus
+  // already returns "self"/"none" appropriately, but the two checks stay
+  // as explicit separate booleans (rather than deriving canSeeLocation
+  // from friendshipStatus) since isOwnProfile always sees their own
+  // location regardless of friendship state.
+  const friendshipStatus = viewer ? getFriendshipStatus(viewer.id, id) : "none";
+  const canSeeLocation = isOwnProfile || (!!viewer && areFriends(viewer.id, id));
 
   return (
     <div className="flex max-w-lg flex-col gap-4">
@@ -118,6 +130,7 @@ export default async function PlayerProfilePage({
         <div className="flex items-center gap-2">
           {viewer && !isOwnProfile && (
             <>
+              <FriendButton userId={id} initialStatus={friendshipStatus} />
               <FollowButton userId={id} initiallyFollowing={viewerIsFollowing} />
               <Link
                 href={`/messages/${id}`}
@@ -191,10 +204,27 @@ export default async function PlayerProfilePage({
         </div>
       )}
 
-      {profile.location && (
+      {/* Backlog #59: the first profile field gated to friends-only --
+          location is the most privacy-sensitive of the freeform profile
+          fields (see Profile.location's own "deliberately-imprecise"
+          doc comment on lib/types.ts, which is about *scope*, not
+          *audience*: even a coarse "Austin, TX" is still more than a
+          stranger needs). Everything else on this page (bio, systems,
+          weekly availability, characters, reputation/attendance stats)
+          stays fully public, matching backlog #59's own scope note that
+          this is "some," not all, profile/activity content. */}
+      {profile.location && canSeeLocation && (
         <div>
           <h2 className="text-sm font-medium">Location</h2>
           <p className="text-sm">{profile.location}</p>
+        </div>
+      )}
+      {profile.location && !canSeeLocation && (
+        <div>
+          <h2 className="text-sm font-medium">Location</h2>
+          <p className="text-sm text-black/60 dark:text-white/60">
+            Only visible to friends.
+          </p>
         </div>
       )}
 

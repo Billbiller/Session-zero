@@ -603,6 +603,37 @@ CREATE TABLE IF NOT EXISTS follows (
 CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows(follower_id);
 CREATE INDEX IF NOT EXISTS idx_follows_followed ON follows(followed_id);
 
+-- Backlog #59: a mutual friend relationship layered on top of the
+-- existing one-way follow (#38) and open 1:1 messaging (#31). A single
+-- row represents either a pending request (requester_id -> addressee_id,
+-- not yet acted on) or an accepted friendship (direction no longer
+-- meaningful once accepted, but requester_id/addressee_id are kept as
+-- the original request direction rather than normalized/duplicated --
+-- lib/friends.ts always queries both directions). The UNIQUE constraint
+-- is intentionally directional (requester_id, addressee_id), not on an
+-- unordered pair, because lib/friends.ts enforces "at most one row
+-- between any two users, in either direction" itself before insert --
+-- see its own doc comment for why a DB-level constraint can't express
+-- that symmetric rule directly. Declining or cancelling a pending
+-- request deletes the row outright (matching lib/follows.ts's
+-- unfollow() "just remove the relationship" precedent) rather than
+-- keeping a 'declined' status the way memberships does, since a
+-- friendship has no equivalent of a campaign's own capacity/history
+-- that would make re-requesting later meaningfully different from a
+-- first request.
+CREATE TABLE IF NOT EXISTS friendships (
+  id TEXT PRIMARY KEY,
+  requester_id TEXT NOT NULL REFERENCES users(id),
+  addressee_id TEXT NOT NULL REFERENCES users(id),
+  status TEXT NOT NULL CHECK (status IN ('pending', 'accepted')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (requester_id, addressee_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_friendships_requester ON friendships(requester_id);
+CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON friendships(addressee_id);
+
 -- The feed itself: a small, explicit event log written at the exact
 -- moment a feed-worthy event happens (see lib/feed.ts's recordX
 -- functions, called from lib/characters.ts/lib/memberships.ts/

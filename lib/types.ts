@@ -163,6 +163,8 @@ export const NOTIFICATION_TYPES = [
   "campaign_resource_uploaded",
   "session_reminder",
   "board_reply",
+  "friend_request",
+  "friend_request_accepted",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -187,6 +189,8 @@ export const NOTIFICATION_LABELS: Record<NotificationType, string> = {
   campaign_resource_uploaded: "A new file is added to your campaign's resource vault",
   session_reminder: "A reminder as your next scheduled session approaches",
   board_reply: "Someone replies to your discussion board thread",
+  friend_request: "Someone sends you a friend request",
+  friend_request_accepted: "Someone accepts your friend request",
 };
 
 export interface Notification {
@@ -1186,6 +1190,38 @@ export interface Follow {
   followed_id: string;
   created_at: string;
 }
+
+/** Backlog #59: a mutual friend relationship -- see lib/db.ts's
+ * friendships table comment for the "one row, direction = original
+ * request" shape and lib/friends.ts for the enforcement logic. A
+ * 'pending' row is a not-yet-acted-on request from requester_id to
+ * addressee_id; 'accepted' means both users are friends and the
+ * original direction is no longer meaningful for display (see
+ * listFriends(), which returns "the other user" regardless of which
+ * side sent the original request). There's no 'declined' status --
+ * declining or cancelling a pending request deletes the row (see the
+ * table comment for why). */
+export type FriendshipStatus = "pending" | "accepted";
+
+export interface Friendship {
+  id: string;
+  requester_id: string;
+  addressee_id: string;
+  status: FriendshipStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A viewer-relative summary of where things stand between the current
+ * user and some other user -- computed by lib/friends.ts's
+ * getFriendshipStatus(), driving which button/state /players/[id] and
+ * FriendButton show. */
+export type FriendshipViewerStatus =
+  | "self"
+  | "friends"
+  | "request_sent"
+  | "request_received"
+  | "none";
 
 /** See lib/db.ts's feed_events table comment for the full privacy-
  * boundary reasoning -- every event type here surfaces something already

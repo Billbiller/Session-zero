@@ -90,6 +90,22 @@ export default function NotificationsPage() {
                       </Link>
                     </>
                   )}
+                  {/* Backlog #59: friend_request/friend_request_accepted
+                      both carry related_user_id (see lib/friends.ts's
+                      notify() calls) -- /friends is the actionable
+                      surface for both (accept/decline a request, or just
+                      see a newly-accepted friend), so both link there
+                      rather than to the other user's own profile. */}
+                  {n.related_user_id &&
+                    (n.type === "friend_request" || n.type === "friend_request_accepted") && (
+                      <>
+                        {" "}
+                        &middot;{" "}
+                        <Link href="/friends" className="underline">
+                          View friends
+                        </Link>
+                      </>
+                    )}
                 </p>
               </div>
               {!n.read && (
