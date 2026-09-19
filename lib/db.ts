@@ -1,6 +1,8 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
+import bcrypt from "bcryptjs";
+import { v4 as uuidv4 } from "uuid";
 
 function resolveDbPath(): string {
   const configured = process.env.SQLITE_DB_PATH;
@@ -811,6 +813,136 @@ if (!campaignColumns.some((c) => c.name === "tone_tags")) {
 // doesn't support adding a new FK constraint on an existing table.
 if (!notificationColumns.some((c) => c.name === "related_thread_id")) {
   db.exec("ALTER TABLE notifications ADD COLUMN related_thread_id TEXT");
+}
+
+// Backlog #58 (owner-requested): seed a handful of starter threads on
+// each of the four community boards (#37) so a first-time visitor finds
+// something useful from day one, rather than four empty boards. "Author
+// the seed content under a clearly-labeled site/staff account (not
+// impersonating a real user)" per the backlog's own text -- but the
+// backlog #48 admin account only exists when ADMIN_EMAIL is configured
+// and someone actually signs up with it, which is true in few if any
+// environments (including this sandbox), so seeding can't depend on it
+// actually existing. Instead this creates its own dedicated system
+// account (a real users row, clearly labeled "Session Zero Team", with a
+// reserved email nobody can sign up with) purely to attribute this
+// content to -- not tied to is_admin/ADMIN_EMAIL at all. The real owner
+// can still remove/edit any of this content once they *are* a site admin
+// themselves, via backlog #48's own "a site admin may delete any thread"
+// moderation backstop (lib/boards.ts's requireAuthorOrAdmin) -- nobody
+// needs to know this account's password to moderate its posts.
+const SEED_ACCOUNT_EMAIL = "team@sessionzero.internal";
+const SEED_ACCOUNT_DISPLAY_NAME = "Session Zero Team";
+
+/** Returns the seed account's user id, creating the account first if this
+ * is the first time this database has been initialized. The stored
+ * password_hash is a real bcrypt hash of a random, never-recorded value
+ * (not an empty string or placeholder) specifically so a normal sign-in
+ * attempt against this email safely fails a password comparison instead
+ * of risking bcrypt choking on a malformed hash -- nobody is ever meant
+ * to sign in as this account. */
+function ensureSeedAccountId(): string {
+  const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(SEED_ACCOUNT_EMAIL) as
+    | { id: string }
+    | undefined;
+  if (existing) return existing.id;
+
+  const id = uuidv4();
+  db.prepare(
+    `INSERT INTO users (id, display_name, email, password_hash, is_admin, created_at)
+     VALUES (?, ?, ?, ?, 0, ?)`
+  ).run(
+    id,
+    SEED_ACCOUNT_DISPLAY_NAME,
+    SEED_ACCOUNT_EMAIL,
+    bcrypt.hashSync(uuidv4() + uuidv4(), 10),
+    new Date().toISOString()
+  );
+  return id;
+}
+
+// One starter thread's worth of seed content per curated board topic
+// (BOARD_TOPICS in lib/types.ts), written as genuinely useful posts a
+// real staff account might actually write -- not lorem-ipsum
+// placeholders. Two per board, matching the backlog's own "a handful"
+// framing. Deliberately just threads, no seeded replies: a handful of
+// replies all coming from this same single system account would read as
+// the account talking to itself, which undercuts the "not impersonating
+// a real user" instruction more than it helps -- real community replies
+// are what those threads are there to invite.
+const SEED_THREADS: { board_slug: string; title: string; body: string }[] = [
+  {
+    board_slug: "new-player-questions",
+    title: "New to tabletop RPGs? Start here",
+    body: `Welcome! A few things that help on your first night: you don't need your own dice or a character sheet memorized -- most tables have spares, and your GM will walk you through character creation or hand you a pre-made. Bring a notebook if you like taking notes, and don't be afraid to ask "wait, what does that mean?" mid-session; everyone at the table was new once.
+
+You'll also see the phrase "session zero" around here a lot -- it's a conversation before the campaign actually starts, where the table agrees on tone, scheduling, and any lines/veils (things nobody wants to see come up in play). It's also where this app gets its name, since matching people up for that first real conversation is the whole point.`,
+  },
+  {
+    board_slug: "new-player-questions",
+    title: "What actually happens at a first session?",
+    body: `Every table runs it a little differently, but a typical first session looks like: quick introductions (in and out of character), the GM recapping the setting/premise, and then either character creation together or diving straight into play if characters were made ahead of time. It's normal for the first session to feel a little slow while everyone finds their footing -- that's not a sign anything's wrong. If a rule comes up that nobody's sure about, most tables just make a reasonable call in the moment and look it up later rather than stopping to read the rulebook at the table.`,
+  },
+  {
+    board_slug: "homebrew-showcase",
+    title: "Welcome -- share your homebrew here",
+    body: `This board is for house rules, homebrew classes/subclasses, settings, and one-shots you've built for your own table. A couple of norms that keep this useful: mention which base system your homebrew modifies or extends (a house rule only makes sense in context), and keep feedback constructive -- someone posting a first draft of a subclass is looking for playtesting notes, not a takedown. Looking for a group to actually playtest something? The looking-for-group-advice board or the main campaign listings are a better fit than this one.`,
+  },
+  {
+    board_slug: "homebrew-showcase",
+    title: "Example: a simple house rule for critical fumbles",
+    body: `Sharing this as an example of the kind of post that fits here. Instead of a punishing fumble table on a natural 1, we just let the GM introduce one minor, story-appropriate complication -- your torch gutters out, a nearby ally has to duck your swing, your bowstring needs re-tensioning next turn. Nothing that costs an action or damages your gear outright. It keeps a nat 1 feeling notable without turning one unlucky roll into three lost turns. Table's been using it for about a dozen sessions and nobody's complained about "gotcha" fumbles since.`,
+  },
+  {
+    board_slug: "lfg-advice",
+    title: "Writing a campaign pitch that actually fills a table",
+    body: `A few things that seem to consistently help a listing get real interest: name the system and be upfront about session format (in-person, remote, or hybrid) right at the top, give a one-line tone pitch ("low-magic political intrigue," not just "fantasy"), and say what kind of players you're hoping to find (new to the system is fine, but say so explicitly if that's what you want). Long, meandering pitches tend to get skimmed past -- a tight paragraph beats three.`,
+  },
+  {
+    board_slug: "lfg-advice",
+    title: "What to do when a group falls through",
+    body: `It happens to basically everyone eventually, and it's not a reflection on you as a GM or player. If you just need someone to fill in for one session rather than rebuild the whole table, the sub-request pool is worth checking before you do anything more drastic. Otherwise: it's fine to re-post the same pitch again, maybe tightened up based on what didn't land last time, and it's fine to browse open campaigns yourself instead of always being the one recruiting.`,
+  },
+  {
+    board_slug: "local-meetups",
+    title: "Finding (or starting) a local game store meetup",
+    body: `Most local game stores are happy to tell you if they already host an open table night, even if it's not advertised anywhere online -- it's worth just asking next time you're in one. If nothing exists nearby, a single well-posted thread here (or a flyer at the store, if they allow it) is often enough to get one started; you don't need a fully-formed group before you post, just a place and a rough day/time to rally around.`,
+  },
+  {
+    board_slug: "local-meetups",
+    title: "Posting an in-person game? A few tips for a good listing",
+    body: `For safety and comfort, it's generally better to name a neighborhood or venue type (a game store, a library room, a specific cafe) rather than a home address until you've actually met someone -- public first sessions are a reasonable default for a group of strangers. Mentioning accessibility (stairs, parking, noise level) and whether the table is beginner-friendly both save everyone a round of back-and-forth messages later.`,
+  },
+];
+
+// Idempotent: only seeds once, the first time this account doesn't yet
+// exist with any authored threads -- so restarting the server never
+// re-seeds content a site admin has since edited or deleted on purpose.
+// Exported so __tests__/unit/boardSeed.test.ts can call it directly and
+// verify its content; not invoked automatically under NODE_ENV=test (see
+// the guard below the definition) so it doesn't add unexpected extra
+// threads/users to every other test file's own isolated database and
+// throw off their own thread-count assertions (e.g. boards.test.ts's
+// pagination tests, which assume the boards they use start empty).
+export function seedBoardContent(): void {
+  const authorId = ensureSeedAccountId();
+  const alreadySeeded = db
+    .prepare("SELECT COUNT(*) as count FROM board_threads WHERE author_id = ?")
+    .get(authorId) as { count: number };
+  if (alreadySeeded.count > 0) return;
+
+  const now = new Date().toISOString();
+  const insert = db.prepare(
+    `INSERT INTO board_threads (id, board_slug, author_id, title, body, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  );
+  for (const thread of SEED_THREADS) {
+    insert.run(uuidv4(), thread.board_slug, authorId, thread.title, thread.body, now, now);
+  }
+}
+
+if (process.env.NODE_ENV !== "test") {
+  seedBoardContent();
 }
 
 export default db;
