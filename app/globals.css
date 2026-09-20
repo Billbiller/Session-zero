@@ -53,3 +53,19 @@ textarea:focus-visible,
     outline-color: #60a5fa;
   }
 }
+
+/* Home page redesign (backlog #60): a slow, subtle float used on a couple
+ * of decorative hero blobs/icon. Referenced via Tailwind's arbitrary
+ * `animate-[home-blob-float_..._infinite]` utility with the `motion-safe:`
+ * variant, so a user with prefers-reduced-motion set never gets it --
+ * consistent with the accessibility pass in backlog #53. Purely
+ * transform-based (no layout properties) to stay cheap. */
+@keyframes home-blob-float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(10px, -14px) scale(1.05);
+  }
+}
