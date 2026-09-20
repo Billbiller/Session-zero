@@ -4,9 +4,22 @@ import { useEffect, useState, useCallback, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  CAMPAIGN_SETTING_TAGS,
+  CAMPAIGN_SETTING_TAG_LABELS,
+  CAMPAIGN_STRUCTURES,
+  CAMPAIGN_STRUCTURE_LABELS,
+  CAMPAIGN_TONE_TAGS,
+  CAMPAIGN_TONE_TAG_LABELS,
+  DANGER_LEVELS,
+  DANGER_LEVEL_LABELS,
   SESSION_FORMAT_PREFERENCES,
   SESSION_FORMAT_PREFERENCE_LABELS,
   type Campaign,
+  type CampaignSettingTag,
+  type CampaignStructure,
+  type CampaignToneTag,
+  type DangerLevel,
+  type GameplayPillar,
   type Profile,
   type UserStats,
   type AvailabilitySlot,
@@ -15,6 +28,7 @@ import {
 import CharacterManager from "@/components/CharacterManager";
 import StatsPanel from "@/components/StatsPanel";
 import AvailabilityGrid from "@/components/AvailabilityGrid";
+import GameplayFocusRanker from "@/components/GameplayFocusRanker";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -35,6 +49,11 @@ export default function ProfilePage() {
   const [sessionFormatPreference, setSessionFormatPreference] = useState<
     SessionFormatPreference | ""
   >("");
+  const [toneTags, setToneTags] = useState<CampaignToneTag[]>([]);
+  const [settingTags, setSettingTags] = useState<CampaignSettingTag[]>([]);
+  const [structurePreference, setStructurePreference] = useState<CampaignStructure | "">("");
+  const [dangerLevelPreference, setDangerLevelPreference] = useState<DangerLevel | "">("");
+  const [gameplayFocusPreference, setGameplayFocusPreference] = useState<GameplayPillar[]>([]);
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -57,6 +76,11 @@ export default function ProfilePage() {
       setLocation(data.profile.location);
       setNewToTabletop(!!data.profile.new_to_tabletop);
       setSessionFormatPreference(data.profile.session_format_preference ?? "");
+      setToneTags(data.profile.tone_tags ?? []);
+      setSettingTags(data.profile.setting_tags ?? []);
+      setStructurePreference(data.profile.structure_preference ?? "");
+      setDangerLevelPreference(data.profile.danger_level_preference ?? "");
+      setGameplayFocusPreference(data.profile.gameplay_focus_preference ?? []);
       setAvailabilitySlots(data.availabilitySlots ?? []);
       setDming(data.dming ?? []);
       setPlaying(data.playing ?? []);
@@ -74,6 +98,18 @@ export default function ProfilePage() {
     load();
   }, [load]);
 
+  function toggleToneTag(tag: CampaignToneTag) {
+    setToneTags((current) =>
+      current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]
+    );
+  }
+
+  function toggleSettingTag(tag: CampaignSettingTag) {
+    setSettingTags((current) =>
+      current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]
+    );
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -89,6 +125,11 @@ export default function ProfilePage() {
         location,
         newToTabletop,
         sessionFormatPreference: sessionFormatPreference || null,
+        toneTags,
+        settingTags,
+        structurePreference: structurePreference || null,
+        dangerLevelPreference: dangerLevelPreference || null,
+        gameplayFocusPreference,
         availabilitySlots,
       }),
     });
@@ -194,6 +235,71 @@ export default function ProfilePage() {
               ))}
             </select>
           </label>
+          <fieldset className="flex flex-col gap-1">
+            <legend>Tone / style you enjoy (pick any that fit)</legend>
+            <div className="flex flex-wrap gap-3">
+              {CAMPAIGN_TONE_TAGS.map((tag) => (
+                <label key={tag} className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={toneTags.includes(tag)}
+                    onChange={() => toggleToneTag(tag)}
+                  />
+                  {CAMPAIGN_TONE_TAG_LABELS[tag]}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset className="flex flex-col gap-1">
+            <legend>Settings you enjoy (pick any that fit)</legend>
+            <div className="flex flex-wrap gap-3">
+              {CAMPAIGN_SETTING_TAGS.map((tag) => (
+                <label key={tag} className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={settingTags.includes(tag)}
+                    onChange={() => toggleSettingTag(tag)}
+                  />
+                  {CAMPAIGN_SETTING_TAG_LABELS[tag]}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <label className="flex flex-col gap-1">
+            Preferred campaign structure
+            <select
+              value={structurePreference}
+              onChange={(e) => setStructurePreference(e.target.value as CampaignStructure | "")}
+              className="w-fit rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+            >
+              <option value="">Not set</option>
+              {CAMPAIGN_STRUCTURES.map((s) => (
+                <option key={s} value={s}>
+                  {CAMPAIGN_STRUCTURE_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            Preferred lethality/difficulty
+            <select
+              value={dangerLevelPreference}
+              onChange={(e) => setDangerLevelPreference(e.target.value as DangerLevel | "")}
+              className="w-fit rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+            >
+              <option value="">Not set</option>
+              {DANGER_LEVELS.map((level) => (
+                <option key={level} value={level}>
+                  {DANGER_LEVEL_LABELS[level]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <GameplayFocusRanker
+            value={gameplayFocusPreference}
+            onChange={setGameplayFocusPreference}
+            label="Gameplay focus you enjoy most (rank, most important first)"
+          />
           <div className="flex flex-col gap-1">
             <span>Weekly availability (optional, in addition to the note above)</span>
             <span className="text-xs text-black/60 dark:text-white/60">

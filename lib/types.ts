@@ -97,6 +97,24 @@ export interface Campaign {
    * always an array, defaulting to empty rather than null so callers never
    * need a null-check before iterating it. */
   tone_tags: CampaignToneTag[];
+  /** Backlog #64 (owner-requested, live session): the DM-defined half of
+   * the two-sided "what kind of table is this" questionnaire -- see
+   * CAMPAIGN_SETTING_TAGS' own doc comment above for why this is a
+   * separate multi-select from tone_tags rather than folded into it.
+   * Same JSON-in-TEXT-column/parse-on-read shape (rowToCampaign in
+   * lib/campaigns.ts), always an array, defaulting to empty. */
+  setting_tags: CampaignSettingTag[];
+  /** Backlog #64: which of the three pillars of play this table
+   * emphasizes, most-emphasized first -- see GameplayFocusRanking's own
+   * doc comment above. Always an array: either empty (DM hasn't ranked
+   * it) or a full 3-item permutation, never a partial ranking. */
+  gameplay_focus: GameplayFocusRanking;
+  /** Backlog #64: how the campaign's narrative unfolds -- see
+   * CampaignStructure's own doc comment above for why this single enum
+   * is shared with Profile.structure_preference. Null means the DM
+   * hasn't said, same nullable-enum convention as danger_level/
+   * session_format. */
+  structure: CampaignStructure | null;
   created_at: string;
   updated_at: string;
 }
@@ -117,6 +135,14 @@ export const CAMPAIGN_TONE_TAGS = [
   "mystery-investigation",
   "exploration",
   "one-shot-friendly",
+  // Backlog #64: two more overall-mood options, rounding out the
+  // vocabulary toward the owner's own "Overall Tone & Mood" reference
+  // list -- "comedic"/"horror"/"mystery-investigation"/"political-intrigue"
+  // above already covered most of that list, these two fill the
+  // remaining gap (classic good-vs-evil heroics; harsher, morally mixed
+  // survival play) without duplicating an existing tag.
+  "heroic-fantasy",
+  "gritty-realism",
 ] as const;
 
 export type CampaignToneTag = (typeof CAMPAIGN_TONE_TAGS)[number];
@@ -130,6 +156,75 @@ export const CAMPAIGN_TONE_TAG_LABELS: Record<CampaignToneTag, string> = {
   "mystery-investigation": "Mystery / investigation",
   exploration: "Exploration",
   "one-shot-friendly": "One-shot friendly",
+  "heroic-fantasy": "Heroic fantasy",
+  "gritty-realism": "Gritty realism",
+};
+
+/** Backlog #64 (owner-requested, live session): setting/environment tags --
+ * a second, independent curated multi-select alongside CAMPAIGN_TONE_TAGS
+ * above (a campaign's physical backdrop is orthogonal to its mood; a
+ * "wilderness-frontier" table can be "comedic" or "gritty-realism" just as
+ * easily). Same closed-vocabulary, JSON-encoded-array-column shape as
+ * tone_tags throughout -- see CampaignSettingTag/Campaign.setting_tags'
+ * own doc comments below, and MAX_SETTING_TAGS in lib/campaigns.ts. */
+export const CAMPAIGN_SETTING_TAGS = [
+  "high-fantasy",
+  "urban",
+  "wilderness-frontier",
+  "nautical-swashbuckling",
+  "steampunk-magitech",
+  "cosmic-planar",
+] as const;
+
+export type CampaignSettingTag = (typeof CAMPAIGN_SETTING_TAGS)[number];
+
+export const CAMPAIGN_SETTING_TAG_LABELS: Record<CampaignSettingTag, string> = {
+  "high-fantasy": "High fantasy",
+  urban: "Urban",
+  "wilderness-frontier": "Wilderness / frontier",
+  "nautical-swashbuckling": "Nautical / swashbuckling",
+  "steampunk-magitech": "Steampunk / magitech",
+  "cosmic-planar": "Cosmic / planar",
+};
+
+/** Backlog #64: the three classic "pillars of play," stored as a *ranked*
+ * list rather than a multi-select -- unlike tone/setting (where a table
+ * can genuinely be several things at once), gameplay focus is about
+ * relative emphasis, which only a priority order expresses. A
+ * GameplayFocusRanking is always either an empty array (unset -- the DM/
+ * player hasn't said) or a full permutation of all three pillars, most-
+ * emphasized first; see validateGameplayFocus in lib/campaigns.ts for the
+ * enforcement. No drag-and-drop -- move-up/move-down controls, the same
+ * convention this app's initiative tracker already established for
+ * DM-facing reordering. */
+export const GAMEPLAY_PILLARS = ["combat", "roleplay", "exploration"] as const;
+
+export type GameplayPillar = (typeof GAMEPLAY_PILLARS)[number];
+
+export type GameplayFocusRanking = GameplayPillar[];
+
+export const GAMEPLAY_PILLAR_LABELS: Record<GameplayPillar, string> = {
+  combat: "Combat & tactics",
+  roleplay: "Roleplay & social interaction",
+  exploration: "Exploration & discovery",
+};
+
+/** Backlog #64: how the narrative unfolds -- a single closed enum (a
+ * table is one of these, not several), nullable, following the exact
+ * DANGER_LEVELS/SESSION_FORMATS convention (a CHECK-constrained TEXT
+ * column, null meaning "the DM/player hasn't said"). Reused verbatim as
+ * both Campaign.structure (what the table actually is) and
+ * Profile.structure_preference (what a player wants) -- unlike
+ * SessionFormat/SessionFormatPreference, these values describe both
+ * sides equally well, so there is no need for a second, smaller enum. */
+export const CAMPAIGN_STRUCTURES = ["linear", "sandbox", "episodic"] as const;
+
+export type CampaignStructure = (typeof CAMPAIGN_STRUCTURES)[number];
+
+export const CAMPAIGN_STRUCTURE_LABELS: Record<CampaignStructure, string> = {
+  linear: "Linear / driven",
+  sandbox: "Sandbox / open world",
+  episodic: "Episodic",
 };
 
 export type MembershipStatus = "pending" | "approved" | "declined" | "left";
@@ -289,6 +384,27 @@ export interface Profile {
    * logic) -- null means no preference stated, distinct from the
    * explicit "either" value. */
   session_format_preference: SessionFormatPreference | null;
+  /** Backlog #64 (owner-requested, live session): the player-side half of
+   * the two-sided "what kind of table" questionnaire -- "the types of
+   * games they enjoy most," in the owner's own words -- reusing the
+   * exact same curated vocabularies as the campaign side (CAMPAIGN_TONE_
+   * TAGS/CAMPAIGN_SETTING_TAGS/GAMEPLAY_PILLARS/CAMPAIGN_STRUCTURES/
+   * DANGER_LEVELS) so a future matching/ranking feature can compare the
+   * two sides directly without a translation layer. Purely informational/
+   * display for this pass (shown on /players/[id], not wired into any
+   * matching or ranking logic yet) -- the same "phase 1, display only"
+   * scope backlog #41 phase 1's session_format_preference shipped with.
+   * Content-boundary ("Lines & Veils") material was deliberately left out
+   * of this pass -- see the dated session log entry for why. */
+  tone_tags: CampaignToneTag[];
+  setting_tags: CampaignSettingTag[];
+  gameplay_focus_preference: GameplayFocusRanking;
+  structure_preference: CampaignStructure | null;
+  /** A player's own stated lethality/difficulty comfort, reusing
+   * DangerLevel verbatim -- symmetric with a campaign's own danger_level,
+   * which (unlike session_format) already describes a preference just as
+   * naturally as it describes a table, so no separate enum is needed. */
+  danger_level_preference: DangerLevel | null;
   updated_at: string | null;
 }
 

@@ -3,13 +3,21 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  CAMPAIGN_SETTING_TAGS,
+  CAMPAIGN_SETTING_TAG_LABELS,
+  CAMPAIGN_STRUCTURES,
+  CAMPAIGN_STRUCTURE_LABELS,
   CAMPAIGN_TONE_TAGS,
   CAMPAIGN_TONE_TAG_LABELS,
   SESSION_FORMATS,
   SESSION_FORMAT_LABELS,
+  type CampaignSettingTag,
+  type CampaignStructure,
   type CampaignToneTag,
+  type GameplayPillar,
   type SessionFormat,
 } from "@/lib/types";
+import GameplayFocusRanker from "@/components/GameplayFocusRanker";
 
 export default function NewCampaignPage() {
   const [title, setTitle] = useState("");
@@ -21,12 +29,21 @@ export default function NewCampaignPage() {
   const [sessionFormat, setSessionFormat] = useState<SessionFormat | "">("");
   const [startingLevel, setStartingLevel] = useState("");
   const [toneTags, setToneTags] = useState<CampaignToneTag[]>([]);
+  const [settingTags, setSettingTags] = useState<CampaignSettingTag[]>([]);
+  const [structure, setStructure] = useState<CampaignStructure | "">("");
+  const [gameplayFocus, setGameplayFocus] = useState<GameplayPillar[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
   function toggleToneTag(tag: CampaignToneTag) {
     setToneTags((current) =>
+      current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]
+    );
+  }
+
+  function toggleSettingTag(tag: CampaignSettingTag) {
+    setSettingTags((current) =>
       current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]
     );
   }
@@ -48,6 +65,9 @@ export default function NewCampaignPage() {
         sessionFormat: sessionFormat || undefined,
         startingLevel: startingLevel || undefined,
         toneTags,
+        settingTags,
+        structure: structure || undefined,
+        gameplayFocus,
       }),
     });
     setSubmitting(false);
@@ -156,6 +176,37 @@ export default function NewCampaignPage() {
             ))}
           </div>
         </fieldset>
+        <fieldset className="flex flex-col gap-1 text-sm">
+          <legend>Setting (pick any that fit)</legend>
+          <div className="flex flex-wrap gap-3">
+            {CAMPAIGN_SETTING_TAGS.map((tag) => (
+              <label key={tag} className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={settingTags.includes(tag)}
+                  onChange={() => toggleSettingTag(tag)}
+                />
+                {CAMPAIGN_SETTING_TAG_LABELS[tag]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <label className="flex flex-col gap-1 text-sm">
+          Structure
+          <select
+            value={structure}
+            onChange={(e) => setStructure(e.target.value as CampaignStructure | "")}
+            className="w-fit rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+          >
+            <option value="">Not set</option>
+            {CAMPAIGN_STRUCTURES.map((s) => (
+              <option key={s} value={s}>
+                {CAMPAIGN_STRUCTURE_LABELS[s]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <GameplayFocusRanker value={gameplayFocus} onChange={setGameplayFocus} />
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"

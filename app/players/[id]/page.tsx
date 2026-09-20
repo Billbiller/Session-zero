@@ -15,7 +15,14 @@ import CharacterSummary from "@/components/CharacterSummary";
 import StatsPanel from "@/components/StatsPanel";
 import FollowButton from "@/components/FollowButton";
 import FriendButton from "@/components/FriendButton";
-import { SESSION_FORMAT_PREFERENCE_LABELS } from "@/lib/types";
+import {
+  CAMPAIGN_SETTING_TAG_LABELS,
+  CAMPAIGN_STRUCTURE_LABELS,
+  CAMPAIGN_TONE_TAG_LABELS,
+  DANGER_LEVEL_LABELS,
+  GAMEPLAY_PILLAR_LABELS,
+  SESSION_FORMAT_PREFERENCE_LABELS,
+} from "@/lib/types";
 
 function reputationLine(label: string, summary: { average: number | null; count: number; tagCounts: Record<string, number> }) {
   const topTags = Object.entries(summary.tagCounts)
@@ -233,6 +240,63 @@ export default async function PlayerProfilePage({
           <h2 className="text-sm font-medium">In-person or remote?</h2>
           <p className="text-sm">
             {SESSION_FORMAT_PREFERENCE_LABELS[profile.session_format_preference]}
+          </p>
+        </div>
+      )}
+
+      {/* Backlog #64 (owner-requested, live session): the player-side
+       * "types of games they enjoy most" fields -- fully public, same as
+       * everything else on this page besides location (see the
+       * canSeeLocation comment above for that one exception's own
+       * reasoning). Purely informational/display, not wired into any
+       * matching or ranking logic yet. */}
+      {(profile.tone_tags.length > 0 || profile.setting_tags.length > 0) && (
+        <div>
+          <h2 className="text-sm font-medium">Tone &amp; setting they enjoy</h2>
+          <ul className="mt-1 flex flex-wrap gap-2">
+            {profile.tone_tags.map((tag) => (
+              <li
+                key={tag}
+                className="rounded-full border border-black/10 px-2 py-0.5 text-xs dark:border-white/10"
+              >
+                {CAMPAIGN_TONE_TAG_LABELS[tag]}
+              </li>
+            ))}
+            {profile.setting_tags.map((tag) => (
+              <li
+                key={tag}
+                className="rounded-full border border-black/10 px-2 py-0.5 text-xs dark:border-white/10"
+              >
+                {CAMPAIGN_SETTING_TAG_LABELS[tag]}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {profile.gameplay_focus_preference.length > 0 && (
+        <div>
+          <h2 className="text-sm font-medium">Gameplay focus</h2>
+          <p className="text-sm">
+            {profile.gameplay_focus_preference.map((p) => GAMEPLAY_PILLAR_LABELS[p]).join(" > ")}
+          </p>
+        </div>
+      )}
+
+      {(profile.structure_preference || profile.danger_level_preference) && (
+        <div>
+          <h2 className="text-sm font-medium">Campaign preferences</h2>
+          <p className="text-sm">
+            {[
+              profile.structure_preference
+                ? CAMPAIGN_STRUCTURE_LABELS[profile.structure_preference]
+                : null,
+              profile.danger_level_preference
+                ? DANGER_LEVEL_LABELS[profile.danger_level_preference]
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" \u00b7 ")}
           </p>
         </div>
       )}

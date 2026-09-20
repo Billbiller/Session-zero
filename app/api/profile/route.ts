@@ -8,7 +8,14 @@ import {
 } from "@/lib/availability";
 import { getUserStats } from "@/lib/stats";
 import { getUnreadCampaignMessageCountsForUser } from "@/lib/campaignMessages";
-import { SESSION_FORMAT_PREFERENCES } from "@/lib/types";
+import {
+  CAMPAIGN_SETTING_TAGS,
+  CAMPAIGN_STRUCTURES,
+  CAMPAIGN_TONE_TAGS,
+  DANGER_LEVELS,
+  GAMEPLAY_PILLARS,
+  SESSION_FORMAT_PREFERENCES,
+} from "@/lib/types";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +48,15 @@ const bodySchema = z.object({
   newToTabletop: z.boolean().optional(),
   // undefined = leave unchanged; null = clear; a recognized value = set it.
   sessionFormatPreference: z.enum(SESSION_FORMAT_PREFERENCES).nullable().optional(),
+  // Backlog #64 (owner-requested, live session): the player-side "types
+  // of games they enjoy most" fields, mirroring the campaign side's own
+  // schema shapes one-for-one (see app/api/campaigns/route.ts's
+  // createSchema/app/api/campaigns/[id]/route.ts's updateSchema).
+  toneTags: z.array(z.enum(CAMPAIGN_TONE_TAGS)).max(5).optional(),
+  settingTags: z.array(z.enum(CAMPAIGN_SETTING_TAGS)).max(3).optional(),
+  gameplayFocusPreference: z.array(z.enum(GAMEPLAY_PILLARS)).max(3).optional(),
+  structurePreference: z.enum(CAMPAIGN_STRUCTURES).nullable().optional(),
+  dangerLevelPreference: z.enum(DANGER_LEVELS).nullable().optional(),
   // Full-replace list of weekly availability cells (backlog #27 phase 1;
   // hour granularity added by backlog #57). Omitted entirely leaves the
   // stored grid untouched; an empty array clears it, same partial-update

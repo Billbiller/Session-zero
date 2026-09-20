@@ -13,8 +13,11 @@ import { listCharactersForCampaign, getCampaignChronicle } from "@/lib/character
 import { getUnreadCampaignMessageCount } from "@/lib/campaignMessages";
 import db from "@/lib/db";
 import {
+  CAMPAIGN_SETTING_TAG_LABELS,
+  CAMPAIGN_STRUCTURE_LABELS,
   CAMPAIGN_TONE_TAG_LABELS,
   DANGER_LEVEL_LABELS,
+  GAMEPLAY_PILLAR_LABELS,
   SESSION_FORMAT_LABELS,
   type Membership,
   type User,
@@ -165,7 +168,29 @@ export default async function CampaignDetailPage({
               {CAMPAIGN_TONE_TAG_LABELS[tag]}
             </span>
           ))}
+          {campaign.setting_tags.map((tag) => (
+            <span
+              key={tag}
+              className="ml-2 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20"
+            >
+              {CAMPAIGN_SETTING_TAG_LABELS[tag]}
+            </span>
+          ))}
+          {campaign.structure && (
+            <>
+              {" "}
+              &middot;{" "}
+              <span className="rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20">
+                {CAMPAIGN_STRUCTURE_LABELS[campaign.structure]}
+              </span>
+            </>
+          )}
         </p>
+        {campaign.gameplay_focus.length > 0 && (
+          <p className="mt-1 text-xs text-black/60 dark:text-white/60">
+            Focus: {campaign.gameplay_focus.map((p) => GAMEPLAY_PILLAR_LABELS[p]).join(" > ")}
+          </p>
+        )}
         {campaign.description && <p className="mt-2 text-sm">{campaign.description}</p>}
       </div>
 

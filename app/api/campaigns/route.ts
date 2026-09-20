@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createCampaign, listCampaigns, type CampaignSort } from "@/lib/campaigns";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
-import { CAMPAIGN_TONE_TAGS, SESSION_FORMATS, type SessionFormat } from "@/lib/types";
+import {
+  CAMPAIGN_SETTING_TAGS,
+  CAMPAIGN_STRUCTURES,
+  CAMPAIGN_TONE_TAGS,
+  GAMEPLAY_PILLARS,
+  SESSION_FORMATS,
+  type SessionFormat,
+} from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +58,9 @@ const createSchema = z.object({
   sessionFormat: z.enum(SESSION_FORMATS).optional(),
   startingLevel: z.string().trim().max(100).optional(),
   toneTags: z.array(z.enum(CAMPAIGN_TONE_TAGS)).max(5).optional(),
+  settingTags: z.array(z.enum(CAMPAIGN_SETTING_TAGS)).max(3).optional(),
+  gameplayFocus: z.array(z.enum(GAMEPLAY_PILLARS)).max(3).optional(),
+  structure: z.enum(CAMPAIGN_STRUCTURES).optional(),
 });
 
 export async function POST(request: NextRequest) {

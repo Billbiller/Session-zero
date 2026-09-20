@@ -2,12 +2,18 @@ import { v4 as uuidv4 } from "uuid";
 import db from "./db";
 import { notify } from "./notifications";
 import {
+  CAMPAIGN_SETTING_TAGS,
+  CAMPAIGN_STRUCTURES,
   CAMPAIGN_TONE_TAGS,
   DANGER_LEVELS,
+  GAMEPLAY_PILLARS,
   SESSION_FORMATS,
   type Campaign,
+  type CampaignSettingTag,
+  type CampaignStructure,
   type CampaignToneTag,
   type DangerLevel,
+  type GameplayFocusRanking,
   type SessionFormat,
 } from "./types";
 
@@ -24,6 +30,10 @@ const MAX_STARTING_LEVEL = 100;
 // CAMPAIGN_TONE_TAGS vocabulary (8), forcing a DM to pick the tags that
 // actually describe the table rather than checking every box.
 const MAX_TONE_TAGS = 5;
+// Backlog #64: same "force a real choice, don't just check every box"
+// reasoning as MAX_TONE_TAGS above, scaled to the smaller 6-tag
+// CAMPAIGN_SETTING_TAGS vocabulary.
+const MAX_SETTING_TAGS = 3;
 
 function isKnownDangerLevel(value: string): value is DangerLevel {
   return (DANGER_LEVELS as readonly string[]).includes(value);
@@ -52,29 +62,87 @@ function validateToneTags(tags: string[]): void {
   }
 }
 
+function isKnownSettingTag(value: string): value is CampaignSettingTag {
+  return (CAMPAIGN_SETTING_TAGS as readonly string[]).includes(value);
+}
+
+/** Backlog #64: same validation shape as validateToneTags above, against
+ * the separate CAMPAIGN_SETTING_TAGS vocabulary and its own, tighter cap
+ * (MAX_SETTING_TAGS) -- a full 6-tag vocabulary makes a lower cap more
+ * meaningful than tone's 5-of-8. */
+function validateSettingTags(tags: string[]): void {
+  if (tags.length > MAX_SETTING_TAGS) {
+    throw new CampaignError(`You can select at most ${MAX_SETTING_TAGS} setting tags.`);
+  }
+  for (const tag of tags) {
+    if (!isKnownSettingTag(tag)) {
+      throw new CampaignError(`"${tag}" isn't a valid campaign setting tag.`);
+    }
+  }
+}
+
+function isKnownStructure(value: string): value is CampaignStructure {
+  return (CAMPAIGN_STRUCTURES as readonly string[]).includes(value);
+}
+
+/** Backlog #64: a GameplayFocusRanking is either empty (unset) or a full
+ * permutation of GAMEPLAY_PILLARS -- no partial rankings, and no
+ * duplicate/unrecognized pillars. Throws CampaignError on the first
+ * problem found, same convention as the tag validators above. */
+function validateGameplayFocus(ranking: string[]): void {
+  if (ranking.length === 0) return;
+  if (ranking.length !== GAMEPLAY_PILLARS.length) {
+    throw new CampaignError(
+      `Gameplay focus must rank all ${GAMEPLAY_PILLARS.length} pillars, or be left unset.`
+    );
+  }
+  const seen = new Set<string>();
+  for (const pillar of ranking) {
+    if (!(GAMEPLAY_PILLARS as readonly string[]).includes(pillar)) {
+      throw new CampaignError(`"${pillar}" isn't a valid gameplay-focus pillar.`);
+    }
+    if (seen.has(pillar)) {
+      throw new CampaignError(`"${pillar}" can only appear once in a gameplay-focus ranking.`);
+    }
+    seen.add(pillar);
+  }
+}
+
 // Exported so any other module reading raw `campaigns` rows directly
 // (rather than going through this file's own getCampaign/listCampaigns)
 // can parse tone_tags the same way -- see lib/profiles.ts's myCampaigns.
-export interface CampaignRow extends Omit<Campaign, "tone_tags"> {
+export interface CampaignRow
+  extends Omit<Campaign, "tone_tags" | "setting_tags" | "gameplay_focus"> {
   tone_tags: string;
+  setting_tags: string;
+  gameplay_focus: string;
 }
 
-/** Parses the JSON-encoded tone_tags column into a real array -- the same
- * parse-on-read convention already established for ratings.tags/
- * campaign_ratings.tags (see lib/ratings.ts/lib/campaignRatings.ts's own
- * rowToRating). Every raw `SELECT * FROM campaigns` read in this file goes
- * through this so a caller never sees the raw JSON string. Falls back to
- * an empty array on malformed JSON rather than throwing, matching the
- * same defensive fallback those files use. */
-export function rowToCampaign(row: CampaignRow): Campaign {
-  let tone_tags: CampaignToneTag[];
+/** Parses a JSON-encoded array column, falling back to an empty array on
+ * malformed JSON or a non-array value -- the shared implementation behind
+ * rowToCampaign's tone_tags/setting_tags/gameplay_focus parsing below. */
+function parseJsonArrayColumn(value: string): string[] {
   try {
-    const parsed = JSON.parse(row.tone_tags);
-    tone_tags = Array.isArray(parsed) ? parsed : [];
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    tone_tags = [];
+    return [];
   }
-  return { ...row, tone_tags };
+}
+
+/** Parses the JSON-encoded tone_tags/setting_tags/gameplay_focus columns
+ * into real arrays -- the same parse-on-read convention already
+ * established for ratings.tags/campaign_ratings.tags (see
+ * lib/ratings.ts/lib/campaignRatings.ts's own rowToRating). Every raw
+ * `SELECT * FROM campaigns` read in this file goes through this so a
+ * caller never sees a raw JSON string. */
+export function rowToCampaign(row: CampaignRow): Campaign {
+  return {
+    ...row,
+    tone_tags: parseJsonArrayColumn(row.tone_tags) as CampaignToneTag[],
+    setting_tags: parseJsonArrayColumn(row.setting_tags) as CampaignSettingTag[],
+    gameplay_focus: parseJsonArrayColumn(row.gameplay_focus) as GameplayFocusRanking,
+  };
 }
 
 export function approvedHeadcount(campaignId: string): number {
@@ -109,6 +177,19 @@ export function createCampaign(input: {
    * Campaign.tone_tags' doc comment in lib/types.ts. Defaults to an
    * empty array. */
   toneTags?: string[];
+  /** Backlog #64: curated multi-select setting/environment tags -- see
+   * Campaign.setting_tags' doc comment in lib/types.ts. Defaults to an
+   * empty array. */
+  settingTags?: string[];
+  /** Backlog #64: ranked pillars-of-play emphasis -- see
+   * Campaign.gameplay_focus' doc comment in lib/types.ts. Defaults to an
+   * empty array (unranked). */
+  gameplayFocus?: string[];
+  /** Backlog #64: how the narrative unfolds -- see Campaign.structure's
+   * doc comment in lib/types.ts. Defaults to null (unset), settable at
+   * creation time like sessionFormat above (unlike dangerLevel, which is
+   * only settable via updateCampaign after creation). */
+  structure?: CampaignStructure;
 }): Campaign {
   if (!Number.isInteger(input.capacity) || input.capacity < 1) {
     throw new CampaignError("Capacity must be a positive integer.");
@@ -116,12 +197,19 @@ export function createCampaign(input: {
   if (input.sessionFormat !== undefined && !isKnownSessionFormat(input.sessionFormat)) {
     throw new CampaignError("Not a recognized session format.");
   }
+  if (input.structure !== undefined && !isKnownStructure(input.structure)) {
+    throw new CampaignError("Not a recognized campaign structure.");
+  }
   const trimmedStartingLevel = (input.startingLevel ?? "").trim();
   if (trimmedStartingLevel.length > MAX_STARTING_LEVEL) {
     throw new CampaignError(`Starting level can't be longer than ${MAX_STARTING_LEVEL} characters.`);
   }
   const toneTags = input.toneTags ?? [];
   validateToneTags(toneTags);
+  const settingTags = input.settingTags ?? [];
+  validateSettingTags(settingTags);
+  const gameplayFocus = input.gameplayFocus ?? [];
+  validateGameplayFocus(gameplayFocus);
   const now = new Date().toISOString();
   const campaign: Campaign = {
     id: uuidv4(),
@@ -139,15 +227,23 @@ export function createCampaign(input: {
     session_format: input.sessionFormat ?? null,
     starting_level: trimmedStartingLevel || null,
     tone_tags: toneTags as CampaignToneTag[],
+    setting_tags: settingTags as CampaignSettingTag[],
+    gameplay_focus: gameplayFocus as GameplayFocusRanking,
+    structure: input.structure ?? null,
     created_at: now,
     updated_at: now,
   };
   db.prepare(
     `INSERT INTO campaigns
-      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, new_player_friendly, session_format, starting_level, tone_tags, created_at, updated_at)
+      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, new_player_friendly, session_format, starting_level, tone_tags, setting_tags, gameplay_focus, structure, created_at, updated_at)
      VALUES
-      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @new_player_friendly, @session_format, @starting_level, @tone_tags, @created_at, @updated_at)`
-  ).run({ ...campaign, tone_tags: JSON.stringify(toneTags) });
+      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @new_player_friendly, @session_format, @starting_level, @tone_tags, @setting_tags, @gameplay_focus, @structure, @created_at, @updated_at)`
+  ).run({
+    ...campaign,
+    tone_tags: JSON.stringify(toneTags),
+    setting_tags: JSON.stringify(settingTags),
+    gameplay_focus: JSON.stringify(gameplayFocus),
+  });
   return campaign;
 }
 
@@ -185,6 +281,16 @@ export function updateCampaign(
      * add/remove), the same full-replace convention rateCampaign/
      * rateCampaignParticipant already use for their own tags. */
     toneTags: string[];
+    /** Backlog #64: same full-replace convention as toneTags above. */
+    settingTags: string[];
+    /** Backlog #64: same full-replace convention as toneTags above --
+     * either the empty array or a full ranking, validated by
+     * validateGameplayFocus. */
+    gameplayFocus: string[];
+    /** undefined = leave unchanged; null = clear; a CampaignStructure =
+     * set it -- same three-state convention as dangerLevel/sessionFormat
+     * above. */
+    structure: CampaignStructure | null;
   }>
 ): Campaign {
   const campaign = getCampaign(id);
@@ -224,7 +330,22 @@ export function updateCampaign(
   if (updates.toneTags !== undefined) {
     validateToneTags(updates.toneTags);
   }
+  if (updates.settingTags !== undefined) {
+    validateSettingTags(updates.settingTags);
+  }
+  if (updates.gameplayFocus !== undefined) {
+    validateGameplayFocus(updates.gameplayFocus);
+  }
+  if (
+    updates.structure !== undefined &&
+    updates.structure !== null &&
+    !isKnownStructure(updates.structure)
+  ) {
+    throw new CampaignError("Not a recognized campaign structure.");
+  }
   const nextToneTags = (updates.toneTags ?? campaign.tone_tags) as CampaignToneTag[];
+  const nextSettingTags = (updates.settingTags ?? campaign.setting_tags) as CampaignSettingTag[];
+  const nextGameplayFocus = (updates.gameplayFocus ?? campaign.gameplay_focus) as GameplayFocusRanking;
   const next: Campaign = {
     ...campaign,
     title: updates.title !== undefined ? updates.title.trim() : campaign.title,
@@ -244,6 +365,9 @@ export function updateCampaign(
       updates.sessionFormat !== undefined ? updates.sessionFormat : campaign.session_format,
     starting_level: nextStartingLevel,
     tone_tags: nextToneTags,
+    setting_tags: nextSettingTags,
+    gameplay_focus: nextGameplayFocus,
+    structure: updates.structure !== undefined ? updates.structure : campaign.structure,
     updated_at: new Date().toISOString(),
   };
   db.prepare(
@@ -251,8 +375,14 @@ export function updateCampaign(
      capacity=@capacity, danger_level=@danger_level, location=@location,
      new_player_friendly=@new_player_friendly, session_format=@session_format,
      starting_level=@starting_level, tone_tags=@tone_tags,
+     setting_tags=@setting_tags, gameplay_focus=@gameplay_focus, structure=@structure,
      updated_at=@updated_at WHERE id=@id`
-  ).run({ ...next, tone_tags: JSON.stringify(nextToneTags) });
+  ).run({
+    ...next,
+    tone_tags: JSON.stringify(nextToneTags),
+    setting_tags: JSON.stringify(nextSettingTags),
+    gameplay_focus: JSON.stringify(nextGameplayFocus),
+  });
   return next;
 }
 
@@ -287,6 +417,9 @@ export function duplicateCampaign(id: string, dmId: string): Campaign {
     sessionFormat: source.session_format ?? undefined,
     startingLevel: source.starting_level ?? undefined,
     toneTags: source.tone_tags,
+    settingTags: source.setting_tags,
+    gameplayFocus: source.gameplay_focus,
+    structure: source.structure ?? undefined,
   });
   // createCampaign has no dangerLevel parameter -- it's only settable
   // after creation via updateCampaign, matching this app's own existing

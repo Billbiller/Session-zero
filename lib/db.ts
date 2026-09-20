@@ -77,6 +77,16 @@ CREATE TABLE IF NOT EXISTS campaigns (
   -- lib/campaigns.ts's rowToCampaign for the parse-on-read convention
   -- already established by ratings.tags/campaign_ratings.tags.
   tone_tags TEXT NOT NULL DEFAULT '[]',
+  -- Backlog #64 (owner-requested, live session): the rest of the
+  -- DM-defined "what kind of table is this" questionnaire -- see
+  -- lib/types.ts's CAMPAIGN_SETTING_TAGS/GAMEPLAY_PILLARS/
+  -- CAMPAIGN_STRUCTURES doc comments. setting_tags and gameplay_focus
+  -- are JSON-encoded arrays (same tone_tags convention above); structure
+  -- is a plain nullable CHECK-constrained enum column (same
+  -- danger_level/session_format convention).
+  setting_tags TEXT NOT NULL DEFAULT '[]',
+  gameplay_focus TEXT NOT NULL DEFAULT '[]',
+  structure TEXT CHECK (structure IS NULL OR structure IN ('linear','sandbox','episodic')),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -169,6 +179,15 @@ CREATE TABLE IF NOT EXISTS profiles (
   -- preference isn't shaped like a table's actual format. Null (unset) is
   -- the default.
   session_format_preference TEXT CHECK (session_format_preference IS NULL OR session_format_preference IN ('in_person','remote','either')),
+  -- Backlog #64 (owner-requested, live session): the player-side "types
+  -- of games they enjoy most" half of the questionnaire, reusing the
+  -- exact same columns/vocabularies as the campaign side above -- see
+  -- lib/types.ts's Profile.tone_tags doc comment for the full framing.
+  tone_tags TEXT NOT NULL DEFAULT '[]',
+  setting_tags TEXT NOT NULL DEFAULT '[]',
+  gameplay_focus_preference TEXT NOT NULL DEFAULT '[]',
+  structure_preference TEXT CHECK (structure_preference IS NULL OR structure_preference IN ('linear','sandbox','episodic')),
+  danger_level_preference TEXT CHECK (danger_level_preference IS NULL OR danger_level_preference IN ('low-lethality','moderate','high-lethality','deadly-osr')),
   updated_at TEXT
 );
 
@@ -832,6 +851,43 @@ if (!campaignColumns.some((c) => c.name === "starting_level")) {
 }
 if (!campaignColumns.some((c) => c.name === "tone_tags")) {
   db.exec("ALTER TABLE campaigns ADD COLUMN tone_tags TEXT NOT NULL DEFAULT '[]'");
+}
+
+// Lightweight migrations for databases created before the two-sided
+// campaign/player preferences questionnaire existed (backlog #64,
+// owner-requested live session). New databases already get these columns
+// from the CREATE TABLE statements above. Reuses the campaignColumns/
+// profileColumns snapshots taken above (captured before any ALTER TABLE
+// on either table ran, so they correctly never contain these columns
+// either). SQLite can't add a CHECK constraint via ALTER TABLE ADD
+// COLUMN, so the two enum columns (structure/structure_preference/
+// danger_level_preference) are left unconstrained at the schema level for
+// migrated databases -- same caveat as danger_level/session_format
+// above; validation still happens in lib/campaigns.ts/lib/profiles.ts
+// before any write.
+if (!campaignColumns.some((c) => c.name === "setting_tags")) {
+  db.exec("ALTER TABLE campaigns ADD COLUMN setting_tags TEXT NOT NULL DEFAULT '[]'");
+}
+if (!campaignColumns.some((c) => c.name === "gameplay_focus")) {
+  db.exec("ALTER TABLE campaigns ADD COLUMN gameplay_focus TEXT NOT NULL DEFAULT '[]'");
+}
+if (!campaignColumns.some((c) => c.name === "structure")) {
+  db.exec("ALTER TABLE campaigns ADD COLUMN structure TEXT");
+}
+if (!profileColumns.some((c) => c.name === "tone_tags")) {
+  db.exec("ALTER TABLE profiles ADD COLUMN tone_tags TEXT NOT NULL DEFAULT '[]'");
+}
+if (!profileColumns.some((c) => c.name === "setting_tags")) {
+  db.exec("ALTER TABLE profiles ADD COLUMN setting_tags TEXT NOT NULL DEFAULT '[]'");
+}
+if (!profileColumns.some((c) => c.name === "gameplay_focus_preference")) {
+  db.exec("ALTER TABLE profiles ADD COLUMN gameplay_focus_preference TEXT NOT NULL DEFAULT '[]'");
+}
+if (!profileColumns.some((c) => c.name === "structure_preference")) {
+  db.exec("ALTER TABLE profiles ADD COLUMN structure_preference TEXT");
+}
+if (!profileColumns.some((c) => c.name === "danger_level_preference")) {
+  db.exec("ALTER TABLE profiles ADD COLUMN danger_level_preference TEXT");
 }
 
 // Lightweight migration for databases created before board reply

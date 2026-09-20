@@ -6,7 +6,15 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getUserById } from "@/lib/auth";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
 import db from "@/lib/db";
-import { CAMPAIGN_TONE_TAGS, DANGER_LEVELS, SESSION_FORMATS, type Membership } from "@/lib/types";
+import {
+  CAMPAIGN_SETTING_TAGS,
+  CAMPAIGN_STRUCTURES,
+  CAMPAIGN_TONE_TAGS,
+  DANGER_LEVELS,
+  GAMEPLAY_PILLARS,
+  SESSION_FORMATS,
+  type Membership,
+} from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +65,13 @@ const updateSchema = z.object({
   startingLevel: z.string().trim().max(100).nullable().optional(),
   // undefined = leave unchanged; a provided array replaces the whole list.
   toneTags: z.array(z.enum(CAMPAIGN_TONE_TAGS)).max(5).optional(),
+  settingTags: z.array(z.enum(CAMPAIGN_SETTING_TAGS)).max(3).optional(),
+  // Empty array = clear the ranking back to unset; a full 3-item
+  // permutation = set it -- validateGameplayFocus enforces "empty or
+  // full" server-side.
+  gameplayFocus: z.array(z.enum(GAMEPLAY_PILLARS)).max(3).optional(),
+  // undefined = leave unchanged; null = clear; a recognized structure = set it.
+  structure: z.enum(CAMPAIGN_STRUCTURES).nullable().optional(),
 });
 
 export async function PATCH(

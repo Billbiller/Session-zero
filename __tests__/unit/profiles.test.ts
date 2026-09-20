@@ -207,4 +207,133 @@ describe("profiles", () => {
     leaveCampaign(campaign.id, leftPlayer.id);
     expect(myCampaigns(leftPlayer.id).playing).toHaveLength(0);
   });
+
+  // Backlog #64 (owner-requested, live session): the player-side "types of
+  // games they enjoy most" fields, reusing the exact same curated
+  // vocabularies and validation rules as the campaign side (see
+  // __tests__/unit/campaigns.test.ts's own "backlog #64" describe block).
+  it("defaults the new preference fields to empty/null for a brand-new profile", () => {
+    const user = signUp("Pref Default", "profile9-default@example.com", "testpassword123");
+    const profile = getProfile(user.id);
+    expect(profile.tone_tags).toEqual([]);
+    expect(profile.setting_tags).toEqual([]);
+    expect(profile.gameplay_focus_preference).toEqual([]);
+    expect(profile.structure_preference).toBeNull();
+    expect(profile.danger_level_preference).toBeNull();
+  });
+
+  it("sets, changes, and clears tone_tags and setting_tags", () => {
+    const user = signUp("Pref Tags", "profile9-tags@example.com", "testpassword123");
+    const set = upsertProfile(user.id, {
+      toneTags: ["comedic", "exploration"],
+      settingTags: ["urban"],
+    });
+    expect(set.tone_tags).toEqual(["comedic", "exploration"]);
+    expect(set.setting_tags).toEqual(["urban"]);
+
+    const changed = upsertProfile(user.id, { toneTags: ["horror"] });
+    expect(changed.tone_tags).toEqual(["horror"]);
+    expect(changed.setting_tags).toEqual(["urban"]);
+
+    const cleared = upsertProfile(user.id, { toneTags: [], settingTags: [] });
+    expect(cleared.tone_tags).toEqual([]);
+    expect(cleared.setting_tags).toEqual([]);
+  });
+
+  it("rejects an unrecognized tone tag, setting tag, structure, or danger level preference", () => {
+    const user = signUp("Pref Reject", "profile9-reject@example.com", "testpassword123");
+    expect(() =>
+      upsertProfile(user.id, { toneTags: ["not-a-real-tag"] })
+    ).toThrow(ProfileError);
+    expect(() =>
+      upsertProfile(user.id, { settingTags: ["not-a-real-setting"] })
+    ).toThrow(ProfileError);
+    expect(() =>
+      // @ts-expect-error deliberately invalid for this test
+      upsertProfile(user.id, { structurePreference: "not-a-real-structure" })
+    ).toThrow(ProfileError);
+    expect(() =>
+      // @ts-expect-error deliberately invalid for this test
+      upsertProfile(user.id, { dangerLevelPreference: "not-a-real-level" })
+    ).toThrow(ProfileError);
+  });
+
+  it("rejects more than the max allowed tone or setting tags", () => {
+    const user = signUp("Pref Cap", "profile9-cap@example.com", "testpassword123");
+    expect(() =>
+      upsertProfile(user.id, {
+        toneTags: [
+          "horror",
+          "heavy-combat",
+          "roleplay-focused",
+          "political-intrigue",
+          "comedic",
+          "mystery-investigation",
+        ],
+      })
+    ).toThrow(ProfileError);
+    expect(() =>
+      upsertProfile(user.id, {
+        settingTags: ["high-fantasy", "urban", "wilderness-frontier", "cosmic-planar"],
+      })
+    ).toThrow(ProfileError);
+  });
+
+  it("lets structure_preference and danger_level_preference be set, changed, and cleared", () => {
+    const user = signUp("Pref Enum", "profile9-enum@example.com", "testpassword123");
+    const set = upsertProfile(user.id, {
+      structurePreference: "sandbox",
+      dangerLevelPreference: "moderate",
+    });
+    expect(set.structure_preference).toBe("sandbox");
+    expect(set.danger_level_preference).toBe("moderate");
+
+    const changed = upsertProfile(user.id, {
+      structurePreference: "linear",
+      dangerLevelPreference: "deadly-osr",
+    });
+    expect(changed.structure_preference).toBe("linear");
+    expect(changed.danger_level_preference).toBe("deadly-osr");
+
+    const cleared = upsertProfile(user.id, {
+      structurePreference: null,
+      dangerLevelPreference: null,
+    });
+    expect(cleared.structure_preference).toBeNull();
+    expect(cleared.danger_level_preference).toBeNull();
+  });
+
+  it("accepts an empty gameplay_focus_preference but rejects a partial ranking", () => {
+    const user = signUp("Pref Focus", "profile9-focus@example.com", "testpassword123");
+    const empty = upsertProfile(user.id, { gameplayFocusPreference: [] });
+    expect(empty.gameplay_focus_preference).toEqual([]);
+
+    expect(() =>
+      upsertProfile(user.id, { gameplayFocusPreference: ["combat", "roleplay"] })
+    ).toThrow(ProfileError);
+  });
+
+  it("sets a full gameplay_focus_preference ranking and leaves it untouched when omitted", () => {
+    const user = signUp("Pref Focus Full", "profile9-focus-full@example.com", "testpassword123");
+    const set = upsertProfile(user.id, {
+      gameplayFocusPreference: ["roleplay", "exploration", "combat"],
+    });
+    expect(set.gameplay_focus_preference).toEqual(["roleplay", "exploration", "combat"]);
+
+    const updated = upsertProfile(user.id, { bio: "New bio" });
+    expect(updated.gameplay_focus_preference).toEqual(["roleplay", "exploration", "combat"]);
+  });
+
+  it("round-trips all five preference fields through a fresh read", () => {
+    const user = signUp("Pref Roundtrip", "profile9-roundtrip@example.com", "testpassword123");
+    const saved = upsertProfile(user.id, {
+      toneTags: ["mystery-investigation"],
+      settingTags: ["cosmic-planar"],
+      gameplayFocusPreference: ["exploration", "roleplay", "combat"],
+      structurePreference: "episodic",
+      dangerLevelPreference: "low-lethality",
+    });
+    const reread = getProfile(user.id);
+    expect(reread).toEqual(saved);
+  });
 });

@@ -12,6 +12,7 @@ import {
   CampaignError,
   CAMPAIGN_TONE_TAGS,
 } from "@/lib/campaigns";
+import { CAMPAIGN_SETTING_TAGS, GAMEPLAY_PILLARS } from "@/lib/types";
 import { requestJoin, approveRequest } from "@/lib/memberships";
 
 function makeDm(email: string) {
@@ -962,5 +963,248 @@ describe("duplicateCampaign (backlog #47)", () => {
   it("rejects duplicating an unknown campaign id", () => {
     const dm = makeDm("dm-dup6@example.com");
     expect(() => duplicateCampaign("not-a-real-id", dm.id)).toThrow(CampaignError);
+  });
+});
+
+describe("campaign setting tags, structure, and gameplay focus (backlog #64)", () => {
+  it("defaults setting_tags/gameplay_focus to an empty array and structure to null on create", () => {
+    const dm = makeDm("dm-pref1@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(campaign.setting_tags).toEqual([]);
+    expect(campaign.gameplay_focus).toEqual([]);
+    expect(campaign.structure).toBeNull();
+  });
+
+  it("sets setting_tags, structure, and gameplay_focus on create", () => {
+    const dm = makeDm("dm-pref2@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      settingTags: ["urban", "cosmic-planar"],
+      structure: "sandbox",
+      gameplayFocus: ["roleplay", "exploration", "combat"],
+    });
+    expect(campaign.setting_tags).toEqual(["urban", "cosmic-planar"]);
+    expect(campaign.structure).toBe("sandbox");
+    expect(campaign.gameplay_focus).toEqual(["roleplay", "exploration", "combat"]);
+  });
+
+  it("rejects a setting tag that isn't in CAMPAIGN_SETTING_TAGS, on create and update", () => {
+    const dm = makeDm("dm-pref3@example.com");
+    expect(() =>
+      createCampaign({
+        dmId: dm.id,
+        title: "T",
+        description: "",
+        system: "S",
+        capacity: 4,
+        settingTags: ["not-a-real-setting"],
+      })
+    ).toThrow(CampaignError);
+
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T2",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(() =>
+      updateCampaign(campaign.id, dm.id, { settingTags: ["not-a-real-setting"] })
+    ).toThrow(CampaignError);
+  });
+
+  it("rejects more than the max allowed setting tags", () => {
+    const dm = makeDm("dm-pref4@example.com");
+    const tooMany = [...CAMPAIGN_SETTING_TAGS].slice(0, 4);
+    expect(() =>
+      createCampaign({
+        dmId: dm.id,
+        title: "T",
+        description: "",
+        system: "S",
+        capacity: 4,
+        settingTags: tooMany,
+      })
+    ).toThrow(CampaignError);
+  });
+
+  it("rejects an unrecognized campaign structure, on create and update", () => {
+    const dm = makeDm("dm-pref5@example.com");
+    expect(() =>
+      createCampaign({
+        dmId: dm.id,
+        title: "T",
+        description: "",
+        system: "S",
+        capacity: 4,
+        // @ts-expect-error deliberately invalid for this test
+        structure: "not-a-real-structure",
+      })
+    ).toThrow(CampaignError);
+
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T2",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(() =>
+      // @ts-expect-error deliberately invalid for this test
+      updateCampaign(campaign.id, dm.id, { structure: "not-a-real-structure" })
+    ).toThrow(CampaignError);
+  });
+
+  it("lets the DM set, change, and clear structure via update", () => {
+    const dm = makeDm("dm-pref6@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const set = updateCampaign(campaign.id, dm.id, { structure: "episodic" });
+    expect(set.structure).toBe("episodic");
+
+    const changed = updateCampaign(campaign.id, dm.id, { structure: "linear" });
+    expect(changed.structure).toBe("linear");
+
+    const cleared = updateCampaign(campaign.id, dm.id, { structure: null });
+    expect(cleared.structure).toBeNull();
+  });
+
+  it("accepts an empty gameplay_focus (unranked) but rejects a partial ranking", () => {
+    const dm = makeDm("dm-pref7@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      gameplayFocus: [],
+    });
+    expect(campaign.gameplay_focus).toEqual([]);
+
+    expect(() =>
+      createCampaign({
+        dmId: dm.id,
+        title: "T2",
+        description: "",
+        system: "S",
+        capacity: 4,
+        gameplayFocus: ["combat", "roleplay"],
+      })
+    ).toThrow(CampaignError);
+  });
+
+  it("rejects a duplicate pillar and an unrecognized pillar in gameplay_focus", () => {
+    const dm = makeDm("dm-pref8@example.com");
+    expect(() =>
+      createCampaign({
+        dmId: dm.id,
+        title: "T",
+        description: "",
+        system: "S",
+        capacity: 4,
+        gameplayFocus: ["combat", "combat", "roleplay"],
+      })
+    ).toThrow(CampaignError);
+
+    expect(() =>
+      createCampaign({
+        dmId: dm.id,
+        title: "T2",
+        description: "",
+        system: "S",
+        capacity: 4,
+        gameplayFocus: ["combat", "roleplay", "not-a-real-pillar"],
+      })
+    ).toThrow(CampaignError);
+  });
+
+  it("accepts every permutation of GAMEPLAY_PILLARS as a valid ranking", () => {
+    const dm = makeDm("dm-pref9@example.com");
+    const permutations = [
+      ["combat", "roleplay", "exploration"],
+      ["exploration", "combat", "roleplay"],
+      ["roleplay", "exploration", "combat"],
+    ];
+    for (const [i, ranking] of permutations.entries()) {
+      const campaign = createCampaign({
+        dmId: dm.id,
+        title: `Perm ${i}`,
+        description: "",
+        system: "S",
+        capacity: 4,
+        gameplayFocus: ranking,
+      });
+      expect(campaign.gameplay_focus).toEqual(ranking);
+    }
+    expect(GAMEPLAY_PILLARS.length).toBe(3);
+  });
+
+  it("persists setting_tags, structure, and gameplay_focus across a fresh read", () => {
+    const dm = makeDm("dm-pref10@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      settingTags: ["nautical-swashbuckling"],
+      structure: "linear",
+      gameplayFocus: ["combat", "exploration", "roleplay"],
+    });
+    const fetched = getCampaign(campaign.id);
+    expect(fetched?.setting_tags).toEqual(["nautical-swashbuckling"]);
+    expect(fetched?.structure).toBe("linear");
+    expect(fetched?.gameplay_focus).toEqual(["combat", "exploration", "roleplay"]);
+  });
+
+  it("leaves setting_tags, structure, and gameplay_focus untouched when omitted from an update", () => {
+    const dm = makeDm("dm-pref11@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      settingTags: ["urban"],
+      structure: "sandbox",
+      gameplayFocus: ["roleplay", "combat", "exploration"],
+    });
+    const updated = updateCampaign(campaign.id, dm.id, { title: "New title" });
+    expect(updated.setting_tags).toEqual(["urban"]);
+    expect(updated.structure).toBe("sandbox");
+    expect(updated.gameplay_focus).toEqual(["roleplay", "combat", "exploration"]);
+  });
+
+  it("carries setting_tags, structure, and gameplay_focus over on duplicateCampaign", () => {
+    const dm = makeDm("dm-pref12@example.com");
+    const original = createCampaign({
+      dmId: dm.id,
+      title: "Original",
+      description: "",
+      system: "S",
+      capacity: 4,
+      settingTags: ["high-fantasy", "wilderness-frontier"],
+      structure: "episodic",
+      gameplayFocus: ["exploration", "roleplay", "combat"],
+    });
+    const copy = duplicateCampaign(original.id, dm.id);
+    expect(copy.setting_tags).toEqual(["high-fantasy", "wilderness-frontier"]);
+    expect(copy.structure).toBe("episodic");
+    expect(copy.gameplay_focus).toEqual(["exploration", "roleplay", "combat"]);
   });
 });
