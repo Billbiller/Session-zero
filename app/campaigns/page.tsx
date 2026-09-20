@@ -3,6 +3,7 @@ import { listCampaigns, approvedHeadcount, type CampaignSort } from "@/lib/campa
 import { getUserById } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getProfile } from "@/lib/profiles";
+import { getAvailabilitySlots } from "@/lib/availability";
 import DiscoverDeck, { type DiscoverCard } from "@/components/DiscoverDeck";
 import {
   CAMPAIGN_TONE_TAGS,
@@ -81,6 +82,11 @@ export default async function CampaignsPage({
   const viewer = await getCurrentUser();
   const showNewPlayerPrompt =
     !newPlayerFriendly && !!viewer && !!getProfile(viewer.id).new_to_tabletop;
+  // Backlog #27 phase 2: only fetched for the discover view, which is the
+  // only place this is used -- the list view doesn't need it (see
+  // DiscoverDeck.tsx's own comment on why the match itself has to be
+  // computed client-side, in the viewer's own browser).
+  const viewerAvailability = viewer && view === "discover" ? getAvailabilitySlots(viewer.id) : [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -270,8 +276,10 @@ export default async function CampaignsPage({
               capacity: campaign.capacity,
               headcount: approvedHeadcount(campaign.id),
               dmName: getUserById(campaign.dm_id)?.display_name ?? null,
+              next_session_at: campaign.next_session_at,
             })
           )}
+          viewerAvailability={viewerAvailability}
         />
       ) : (
         <>
