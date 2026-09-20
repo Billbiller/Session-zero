@@ -8,6 +8,20 @@ primary_region = 'lax'
 
 [build]
 
+[env]
+  # The Next.js server (`next start`) reads PORT itself and otherwise
+  # defaults to 3000 -- nothing else in this generated config told it to
+  # listen on the 8080 the [http_service] block below routes to, so
+  # without this the app would build and "deploy" but never actually
+  # answer any request.
+  PORT = '8080'
+  # lib/db.ts reads SQLITE_DB_PATH; the Fly launch template generated a
+  # DATABASE_URL env var in the Dockerfile instead, which this app never
+  # reads. Without this, the app falls back to a path under /app (its
+  # working directory) -- which is NOT the /data volume mounted below --
+  # so the database would silently reset on every restart/redeploy.
+  SQLITE_DB_PATH = '/data/session-zero.db'
+
 [[mounts]]
   source = 'data'
   destination = '/data'
@@ -24,7 +38,10 @@ primary_region = 'lax'
   processes = ['app']
 
 [[vm]]
+  # The launch UI generated both `memory` and `memory_mb` here with
+  # conflicting values (1gb vs 512) -- keeping only one, at 1GB, per the
+  # earlier sizing recommendation (256-512MB is tight for Next.js +
+  # better-sqlite3 under real concurrent load).
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 512

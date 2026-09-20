@@ -48,6 +48,9 @@ VOLUME /data
 ENTRYPOINT [ "/app/docker-entrypoint.js" ]
 
 # Start the server by default, this can be overwritten at runtime
+# The actual port (8080) and database path (/data/session-zero.db, on
+# the mounted volume) are set via fly.toml's [env] block, not here --
+# this app reads PORT and SQLITE_DB_PATH (see lib/db.ts), not the
+# DATABASE_URL convention this line originally assumed.
 EXPOSE 3000
-ENV DATABASE_URL="file:///data/sqlite.db"
 CMD [ "npm", "run", "start" ]
