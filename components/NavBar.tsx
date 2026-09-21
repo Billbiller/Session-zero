@@ -212,6 +212,7 @@ export default function NavBar({
         <nav className="flex items-center gap-4 text-sm">
           <Link href="/campaigns">Browse</Link>
           <Link href="/systems">Systems</Link>
+          <Link href="/dice">Dice</Link>
           <Link href="/subs">Find a sub</Link>
           <Link href="/boards">Boards</Link>
           {user && (
