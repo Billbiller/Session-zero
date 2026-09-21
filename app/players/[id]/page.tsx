@@ -22,9 +22,13 @@ import {
   DANGER_LEVEL_LABELS,
   GAMEPLAY_PILLAR_LABELS,
   SESSION_FORMAT_PREFERENCE_LABELS,
+  type RatingReview,
 } from "@/lib/types";
 
-function reputationLine(label: string, summary: { average: number | null; count: number; tagCounts: Record<string, number> }) {
+function reputationLine(
+  label: string,
+  summary: { average: number | null; count: number; tagCounts: Record<string, number>; reviews: RatingReview[] }
+) {
   const topTags = Object.entries(summary.tagCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
@@ -45,6 +49,37 @@ function reputationLine(label: string, summary: { average: number | null; count:
           </p>
           {topTags.length > 0 && (
             <p className="text-xs text-black/60 dark:text-white/60">{topTags.join(" · ")}</p>
+          )}
+          {/* Backlog #65: written reviews, alongside the stars/tags above --
+              additive, the tag system is unchanged. Only ratings with a
+              non-empty comment ever appear here (see RatingReview's own
+              doc comment in lib/types.ts), capped server-side at
+              MAX_REVIEWS_SHOWN (lib/ratings.ts) so this can't grow
+              unbounded for a long-running DM. */}
+          {summary.reviews.length > 0 && (
+            <ul className="mt-2 flex flex-col gap-2">
+              {summary.reviews.map((review, i) => {
+                const rater = getUserById(review.raterId);
+                return (
+                  <li key={i} className="text-xs">
+                    <p className="italic text-black/70 dark:text-white/70">
+                      &ldquo;{review.comment}&rdquo;
+                    </p>
+                    <p className="mt-0.5 text-black/50 dark:text-white/50">
+                      {"★".repeat(review.stars)}
+                      {"☆".repeat(5 - review.stars)} &middot;{" "}
+                      {rater ? (
+                        <Link href={`/players/${review.raterId}`} className="hover:underline">
+                          {rater.display_name}
+                        </Link>
+                      ) : (
+                        "a former member"
+                      )}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </>
       )}

@@ -1,13 +1,17 @@
 import { v4 as uuidv4 } from "uuid";
 import db from "./db";
 import { getCampaign } from "./campaigns";
-import { DM_RATING_TAGS, PLAYER_RATING_TAGS, type Rating, type RateeRole, type RatingSummary } from "./types";
+import { DM_RATING_TAGS, PLAYER_RATING_TAGS, type Rating, type RateeRole, type RatingReview, type RatingSummary } from "./types";
 
 export class RatingError extends Error {}
 
 export { DM_RATING_TAGS, PLAYER_RATING_TAGS };
 
 const MAX_TAGS = 8;
+
+// Backlog #65: same length-cap convention as every other free-text field
+// in this app (see e.g. Profile.bio's MAX_BIO in lib/profiles.ts).
+export const MAX_COMMENT_LENGTH = 500;
 
 interface RatingRow {
   id: string;
@@ -17,6 +21,7 @@ interface RatingRow {
   ratee_role: RateeRole;
   stars: number;
   tags: string;
+  comment: string;
   created_at: string;
   updated_at: string;
 }
@@ -29,7 +34,7 @@ function rowToRating(row: RatingRow): Rating {
   } catch {
     tags = [];
   }
-  return { ...row, tags };
+  return { ...row, tags, comment: row.comment ?? "" };
 }
 
 /**
@@ -67,6 +72,12 @@ function validateStarsAndTags(stars: number, tags: string[], rateeRole: RateeRol
     if (!(allowed as readonly string[]).includes(tag)) {
       throw new RatingError(`"${tag}" isn't a valid tag for rating a ${rateeRole === "dm" ? "DM" : "player"}.`);
     }
+  }
+}
+
+function validateComment(comment: string) {
+  if (comment.length > MAX_COMMENT_LENGTH) {
+    throw new RatingError(`Your review can't be longer than ${MAX_COMMENT_LENGTH} characters.`);
   }
 }
 
@@ -126,7 +137,7 @@ export function rateCampaignParticipant(
   campaignId: string,
   raterId: string,
   rateeId: string,
-  input: { stars: number; tags?: string[] }
+  input: { stars: number; tags?: string[]; comment?: string }
 ): Rating {
   if (raterId === rateeId) {
     throw new RatingError("You can't rate yourself.");
@@ -146,7 +157,9 @@ export function rateCampaignParticipant(
   }
 
   const tags = input.tags ?? [];
+  const comment = (input.comment ?? "").trim();
   validateStarsAndTags(input.stars, tags, rateeRole);
+  validateComment(comment);
 
   const existing = getRating(campaignId, raterId, rateeId);
   const now = new Date().toISOString();
@@ -158,15 +171,17 @@ export function rateCampaignParticipant(
     ratee_role: rateeRole,
     stars: input.stars,
     tags,
+    comment,
     created_at: existing?.created_at ?? now,
     updated_at: now,
   };
   db.prepare(
-    `INSERT INTO ratings (id, campaign_id, rater_id, ratee_id, ratee_role, stars, tags, created_at, updated_at)
-     VALUES (@id, @campaign_id, @rater_id, @ratee_id, @ratee_role, @stars, @tags, @created_at, @updated_at)
+    `INSERT INTO ratings (id, campaign_id, rater_id, ratee_id, ratee_role, stars, tags, comment, created_at, updated_at)
+     VALUES (@id, @campaign_id, @rater_id, @ratee_id, @ratee_role, @stars, @tags, @comment, @created_at, @updated_at)
      ON CONFLICT (campaign_id, rater_id, ratee_id) DO UPDATE SET
        stars = excluded.stars,
        tags = excluded.tags,
+       comment = excluded.comment,
        updated_at = excluded.updated_at`
   ).run({ ...rating, tags: JSON.stringify(tags) });
 
@@ -177,12 +192,28 @@ export function rateCampaignParticipant(
  * since "good DM" and "good player" are different signals. A user with no
  * ratings yet shows as unrated (average: null), not a zero score, so a
  * brand-new member isn't penalized for having no history. */
+// Backlog #65: how many written reviews a reputation display shows at
+// once -- capped so one very-often-rated user (a long-running DM, say)
+// doesn't turn /players/[id] into an unbounded wall of text. Newest
+// first, same "most recent is most relevant" convention as every other
+// capped list in this app (e.g. RatingsPanel's own implicit ordering).
+const MAX_REVIEWS_SHOWN = 10;
+
 export function getUserRatingSummary(userId: string): RatingSummary {
   function summarize(role: RateeRole) {
     const rows = db
-      .prepare("SELECT stars, tags FROM ratings WHERE ratee_id = ? AND ratee_role = ?")
-      .all(userId, role) as { stars: number; tags: string }[];
+      .prepare(
+        "SELECT rater_id, stars, tags, comment, updated_at FROM ratings WHERE ratee_id = ? AND ratee_role = ? ORDER BY updated_at DESC, rowid DESC"
+      )
+      .all(userId, role) as {
+      rater_id: string;
+      stars: number;
+      tags: string;
+      comment: string;
+      updated_at: string;
+    }[];
     const tagCounts: Record<string, number> = {};
+    const reviews: RatingReview[] = [];
     let sum = 0;
     for (const row of rows) {
       sum += row.stars;
@@ -196,11 +227,20 @@ export function getUserRatingSummary(userId: string): RatingSummary {
       for (const tag of tags) {
         tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
       }
+      if (row.comment && reviews.length < MAX_REVIEWS_SHOWN) {
+        reviews.push({
+          raterId: row.rater_id,
+          stars: row.stars,
+          comment: row.comment,
+          updatedAt: row.updated_at,
+        });
+      }
     }
     return {
       average: rows.length > 0 ? sum / rows.length : null,
       count: rows.length,
       tagCounts,
+      reviews,
     };
   }
   return { asDm: summarize("dm"), asPlayer: summarize("player") };

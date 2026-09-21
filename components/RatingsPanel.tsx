@@ -6,8 +6,14 @@ import Section from "@/components/Section";
 interface Target {
   userId: string;
   displayName: string;
-  existing: { stars: number; tags: string[] } | null;
+  existing: { stars: number; tags: string[]; comment: string } | null;
 }
+
+// Backlog #65: same length-cap convention as lib/ratings.ts's own
+// MAX_COMMENT_LENGTH (not imported directly -- this is a client
+// component, and the real enforcement is server-side; this is just the
+// character counter shown while typing).
+const MAX_COMMENT_LENGTH = 500;
 
 export default function RatingsPanel({
   campaignId,
@@ -23,6 +29,7 @@ export default function RatingsPanel({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [stars, setStars] = useState(5);
   const [tags, setTags] = useState<string[]>([]);
+  const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -53,6 +60,7 @@ export default function RatingsPanel({
     setEditingId(target.userId);
     setStars(target.existing?.stars ?? 5);
     setTags(target.existing?.tags ?? []);
+    setComment(target.existing?.comment ?? "");
     setError(null);
     setSavedId(null);
   }
@@ -67,7 +75,7 @@ export default function RatingsPanel({
     const res = await fetch(`/api/campaigns/${campaignId}/ratings`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rateeId, stars, tags }),
+      body: JSON.stringify({ rateeId, stars, tags, comment }),
     });
     setSubmitting(false);
     const data = await res.json().catch(() => ({}));
@@ -124,6 +132,22 @@ export default function RatingsPanel({
                     </button>
                   ))}
                 </div>
+                <div className="flex flex-col gap-1">
+                  <label htmlFor={`comment-${t.userId}`} className="text-xs font-medium">
+                    Review (optional)
+                  </label>
+                  <textarea
+                    id={`comment-${t.userId}`}
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value.slice(0, MAX_COMMENT_LENGTH))}
+                    rows={3}
+                    placeholder="Anything future groups should know?"
+                    className="rounded border border-black/20 px-3 py-1.5 text-sm dark:border-white/20 dark:bg-transparent"
+                  />
+                  <p className="text-xs text-black/50 dark:text-white/50">
+                    {comment.length}/{MAX_COMMENT_LENGTH}
+                  </p>
+                </div>
                 <div className="flex gap-2">
                   <button
                     disabled={submitting}
@@ -142,11 +166,18 @@ export default function RatingsPanel({
                 <div>
                   <p className="font-medium">{t.displayName}</p>
                   {t.existing ? (
-                    <p className="text-xs text-black/60 dark:text-white/60">
-                      Your rating: {"★".repeat(t.existing.stars)}
-                      {"☆".repeat(5 - t.existing.stars)}
-                      {t.existing.tags.length > 0 && ` · ${t.existing.tags.join(", ")}`}
-                    </p>
+                    <>
+                      <p className="text-xs text-black/60 dark:text-white/60">
+                        Your rating: {"★".repeat(t.existing.stars)}
+                        {"☆".repeat(5 - t.existing.stars)}
+                        {t.existing.tags.length > 0 && ` · ${t.existing.tags.join(", ")}`}
+                      </p>
+                      {t.existing.comment && (
+                        <p className="mt-1 text-xs italic text-black/60 dark:text-white/60">
+                          &ldquo;{t.existing.comment}&rdquo;
+                        </p>
+                      )}
+                    </>
                   ) : (
                     <p className="text-xs text-black/60 dark:text-white/60">Not rated yet</p>
                   )}

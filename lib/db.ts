@@ -223,6 +223,9 @@ CREATE TABLE IF NOT EXISTS ratings (
   ratee_role TEXT NOT NULL CHECK (ratee_role IN ('dm','player')),
   stars INTEGER NOT NULL CHECK (stars BETWEEN 1 AND 5),
   tags TEXT NOT NULL DEFAULT '[]',
+  -- Backlog #65: an optional free-text review alongside stars/tags.
+  -- Additive -- the tag system is unchanged.
+  comment TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   UNIQUE (campaign_id, rater_id, ratee_id)
@@ -900,6 +903,15 @@ if (!profileColumns.some((c) => c.name === "danger_level_preference")) {
 // doesn't support adding a new FK constraint on an existing table.
 if (!notificationColumns.some((c) => c.name === "related_thread_id")) {
   db.exec("ALTER TABLE notifications ADD COLUMN related_thread_id TEXT");
+}
+
+// Lightweight migration for databases created before written free-text
+// reviews existed (backlog #65, competitive research vs.
+// StartPlaying.games). New databases already get this column from the
+// CREATE TABLE statement above.
+const ratingColumns = db.prepare("PRAGMA table_info(ratings)").all() as { name: string }[];
+if (!ratingColumns.some((c) => c.name === "comment")) {
+  db.exec("ALTER TABLE ratings ADD COLUMN comment TEXT NOT NULL DEFAULT ''");
 }
 
 // Backlog #58 (owner-requested): seed a handful of starter threads on

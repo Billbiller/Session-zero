@@ -816,13 +816,39 @@ export interface Rating {
   ratee_role: RateeRole;
   stars: number;
   tags: string[];
+  /** Backlog #65: an optional free-text review, alongside the existing
+   * stars/tags -- additive, the tag system is unchanged. Empty string
+   * (never null) when the rater left no comment, matching this app's
+   * existing "NOT NULL DEFAULT ''" convention for optional free-text
+   * columns (see e.g. Character.bio). */
+  comment: string;
   created_at: string;
   updated_at: string;
 }
 
+/** One rating's worth of review data, surfaced on a reputation display --
+ * only ratings with a non-empty `comment` are ever turned into a Review,
+ * so a caller never has to check for an empty string itself. */
+export interface RatingReview {
+  raterId: string;
+  stars: number;
+  comment: string;
+  updatedAt: string;
+}
+
 export interface RatingSummary {
-  asDm: { average: number | null; count: number; tagCounts: Record<string, number> };
-  asPlayer: { average: number | null; count: number; tagCounts: Record<string, number> };
+  asDm: {
+    average: number | null;
+    count: number;
+    tagCounts: Record<string, number>;
+    reviews: RatingReview[];
+  };
+  asPlayer: {
+    average: number | null;
+    count: number;
+    tagCounts: Record<string, number>;
+    reviews: RatingReview[];
+  };
 }
 
 /** Backlog #28: rating the campaign itself, not just the DM/players --

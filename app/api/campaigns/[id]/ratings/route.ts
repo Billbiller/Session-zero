@@ -6,6 +6,7 @@ import {
   RatingError,
   DM_RATING_TAGS,
   PLAYER_RATING_TAGS,
+  MAX_COMMENT_LENGTH,
 } from "@/lib/ratings";
 import { getUserById } from "@/lib/auth";
 import { requireUser, errorResponse } from "@/lib/apiHelpers";
@@ -35,6 +36,7 @@ const bodySchema = z.object({
   rateeId: z.string().min(1),
   stars: z.number().int().min(1).max(5),
   tags: z.array(z.string()).max(8).optional(),
+  comment: z.string().max(MAX_COMMENT_LENGTH).optional(),
 });
 
 export async function POST(
@@ -57,6 +59,7 @@ export async function POST(
     const rating = rateCampaignParticipant(id, auth.user.id, parsed.data.rateeId, {
       stars: parsed.data.stars,
       tags: parsed.data.tags,
+      comment: parsed.data.comment,
     });
     return NextResponse.json({ rating });
   } catch (err) {

@@ -11,6 +11,7 @@ import {
   RatingError,
   DM_RATING_TAGS,
   PLAYER_RATING_TAGS,
+  MAX_COMMENT_LENGTH,
 } from "@/lib/ratings";
 
 function makeDm(email: string) {
@@ -249,5 +250,127 @@ describe("ratings", () => {
     const dmNotifs = listNotifications(dm.id).items.filter((n) => n.type === "rating_prompt");
     expect(playerNotifs).toHaveLength(1);
     expect(dmNotifs).toHaveLength(1);
+  });
+
+  // Backlog #65: written free-text reviews, alongside the existing
+  // star+tag ratings.
+  it("stores and returns a written review alongside stars/tags", () => {
+    const { dm, player, campaign } = setUpCampaignWithPlayer(
+      "rate-dm14@example.com",
+      "rate-player14@example.com"
+    );
+    const rating = rateCampaignParticipant(campaign.id, player.id, dm.id, {
+      stars: 5,
+      tags: ["Great narrator"],
+      comment: "Ran a fantastic campaign, always well prepared.",
+    });
+    expect(rating.comment).toBe("Ran a fantastic campaign, always well prepared.");
+    expect(getRating(campaign.id, player.id, dm.id)?.comment).toBe(
+      "Ran a fantastic campaign, always well prepared."
+    );
+  });
+
+  it("defaults comment to an empty string, never null, when omitted", () => {
+    const { dm, player, campaign } = setUpCampaignWithPlayer(
+      "rate-dm15@example.com",
+      "rate-player15@example.com"
+    );
+    const rating = rateCampaignParticipant(campaign.id, player.id, dm.id, { stars: 4 });
+    expect(rating.comment).toBe("");
+  });
+
+  it("trims surrounding whitespace from a comment", () => {
+    const { dm, player, campaign } = setUpCampaignWithPlayer(
+      "rate-dm16@example.com",
+      "rate-player16@example.com"
+    );
+    const rating = rateCampaignParticipant(campaign.id, player.id, dm.id, {
+      stars: 4,
+      comment: "   Solid table.   ",
+    });
+    expect(rating.comment).toBe("Solid table.");
+  });
+
+  it("rejects a comment longer than MAX_COMMENT_LENGTH", () => {
+    const { dm, player, campaign } = setUpCampaignWithPlayer(
+      "rate-dm17@example.com",
+      "rate-player17@example.com"
+    );
+    const tooLong = "x".repeat(MAX_COMMENT_LENGTH + 1);
+    expect(() =>
+      rateCampaignParticipant(campaign.id, player.id, dm.id, { stars: 4, comment: tooLong })
+    ).toThrow(RatingError);
+    const atLimit = "x".repeat(MAX_COMMENT_LENGTH);
+    expect(() =>
+      rateCampaignParticipant(campaign.id, player.id, dm.id, { stars: 4, comment: atLimit })
+    ).not.toThrow();
+  });
+
+  it("updates the comment on an upsert, same as stars/tags", () => {
+    const { dm, player, campaign } = setUpCampaignWithPlayer(
+      "rate-dm18@example.com",
+      "rate-player18@example.com"
+    );
+    rateCampaignParticipant(campaign.id, player.id, dm.id, { stars: 3, comment: "First pass." });
+    rateCampaignParticipant(campaign.id, player.id, dm.id, { stars: 5, comment: "Revised after finale." });
+    expect(getRating(campaign.id, player.id, dm.id)?.comment).toBe("Revised after finale.");
+  });
+
+  it("only surfaces reviews with a non-empty comment in the rating summary", () => {
+    const dm = makeDm("rate-dm19@example.com");
+    const p1 = signUp("P1", "rate-p1-19@example.com", "testpassword123");
+    const p2 = signUp("P2", "rate-p2-19@example.com", "testpassword123");
+    const campaignA = createCampaign({
+      dmId: dm.id,
+      title: "A",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const campaignB = createCampaign({
+      dmId: dm.id,
+      title: "B",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    approveRequest(requestJoin(campaignA.id, p1.id).id, dm.id);
+    approveRequest(requestJoin(campaignB.id, p2.id).id, dm.id);
+
+    rateCampaignParticipant(campaignA.id, p1.id, dm.id, { stars: 5, comment: "Loved it." });
+    rateCampaignParticipant(campaignB.id, p2.id, dm.id, { stars: 4 }); // no comment
+
+    const summary = getUserRatingSummary(dm.id);
+    expect(summary.asDm.count).toBe(2);
+    expect(summary.asDm.reviews).toHaveLength(1);
+    expect(summary.asDm.reviews[0]).toMatchObject({ raterId: p1.id, stars: 5, comment: "Loved it." });
+  });
+
+  it("orders reviews newest-first", () => {
+    const dm = makeDm("rate-dm20@example.com");
+    const p1 = signUp("P1", "rate-p1-20@example.com", "testpassword123");
+    const p2 = signUp("P2", "rate-p2-20@example.com", "testpassword123");
+    const campaignA = createCampaign({
+      dmId: dm.id,
+      title: "A",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const campaignB = createCampaign({
+      dmId: dm.id,
+      title: "B",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    approveRequest(requestJoin(campaignA.id, p1.id).id, dm.id);
+    approveRequest(requestJoin(campaignB.id, p2.id).id, dm.id);
+
+    rateCampaignParticipant(campaignA.id, p1.id, dm.id, { stars: 3, comment: "First review." });
+    rateCampaignParticipant(campaignB.id, p2.id, dm.id, { stars: 5, comment: "Second review." });
+
+    const summary = getUserRatingSummary(dm.id);
+    expect(summary.asDm.reviews.map((r) => r.comment)).toEqual(["Second review.", "First review."]);
   });
 });
