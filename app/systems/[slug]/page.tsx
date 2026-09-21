@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCuratedSystem, campaignsForSystem } from "@/lib/systems";
 import { approvedHeadcount } from "@/lib/campaigns";
+import { seatsLeftLabel } from "@/lib/campaignCardCopy";
 import { getUserById } from "@/lib/auth";
 import { CAMPAIGN_TONE_TAG_LABELS } from "@/lib/types";
 
@@ -95,7 +96,7 @@ export default async function SystemHubPage({
                   ) : (
                     "Unknown"
                   )}{" "}
-                  &middot; {headcount}/{campaign.capacity} players
+                  &middot; {seatsLeftLabel(headcount, campaign.capacity)}
                   {!campaign.accepting_requests && " (closed to new requests)"}
                   {campaign.location && <> &middot; {campaign.location}</>}
                 </p>

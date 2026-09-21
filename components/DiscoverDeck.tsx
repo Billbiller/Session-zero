@@ -12,6 +12,7 @@ import {
   type SessionFormat,
 } from "@/lib/types";
 import { matchesAvailability } from "@/lib/availabilityMatch";
+import { seatsLeftLabel } from "@/lib/campaignCardCopy";
 
 export interface DiscoverCard {
   id: string;
@@ -157,8 +158,8 @@ export default function DiscoverDeck({
         <h2 className="text-lg font-semibold">{card.title}</h2>
         <p className="mt-1 text-sm text-black/60 dark:text-white/60">
           {card.system}
-          {card.dmName && <> &middot; DM: {card.dmName}</>} &middot; {card.headcount}/
-          {card.capacity} players
+          {card.dmName && <> &middot; DM: {card.dmName}</>} &middot;{" "}
+          {seatsLeftLabel(card.headcount, card.capacity)}
           {card.location && <> &middot; {card.location}</>}
         </p>
         {availabilityMatch !== null && (

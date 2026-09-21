@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listCampaigns, approvedHeadcount, type CampaignSort } from "@/lib/campaigns";
+import { seatsLeftLabel } from "@/lib/campaignCardCopy";
 import { getUserById } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getProfile } from "@/lib/profiles";
@@ -304,7 +305,7 @@ export default async function CampaignsPage({
                     ) : (
                       "Unknown"
                     )}{" "}
-                    &middot; {headcount}/{campaign.capacity} players
+                    &middot; {seatsLeftLabel(headcount, campaign.capacity)}
                     {!campaign.accepting_requests && " (closed to new requests)"}
                     {campaign.location && <> &middot; {campaign.location}</>}
                   </p>
