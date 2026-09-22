@@ -115,6 +115,15 @@ export interface Campaign {
    * hasn't said, same nullable-enum convention as danger_level/
    * session_format. */
   structure: CampaignStructure | null;
+  /** Backlog #67 (competitive research vs. StartPlaying.games): set once
+   * at duplication time by duplicateCampaign (backlog #47), never updated
+   * afterward. Points at the ultimate original a duplication lineage
+   * descends from (flat, not a parent-chain -- see lib/db.ts's own doc
+   * comment on this column). Null for any campaign not created via
+   * duplicateCampaign. Powers the "Related sections / Other tables by
+   * this DM" block on the campaign detail page (lib/campaigns.ts's
+   * listRelatedCampaigns). */
+  duplicated_from_id: string | null;
   created_at: string;
   updated_at: string;
 }

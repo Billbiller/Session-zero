@@ -87,6 +87,18 @@ CREATE TABLE IF NOT EXISTS campaigns (
   setting_tags TEXT NOT NULL DEFAULT '[]',
   gameplay_focus TEXT NOT NULL DEFAULT '[]',
   structure TEXT CHECK (structure IS NULL OR structure IN ('linear','sandbox','episodic')),
+  -- Backlog #67 (competitive research vs. StartPlaying.games): set once,
+  -- at duplication time, by duplicateCampaign (backlog #47) -- never
+  -- updated afterward. Points at the *ultimate* original a lineage of
+  -- duplicates descends from (flat, not a parent-chain): if a copy is
+  -- itself duplicated again, the new copy's duplicated_from_id is set to
+  -- the same root id, not the immediate copy's own id, so every campaign
+  -- in a lineage group can be found with one query regardless of how many
+  -- times it's been re-duplicated. Null for any campaign not created via
+  -- duplicateCampaign (i.e. every campaign created before this column
+  -- existed, and every campaign created directly through /campaigns/new).
+  -- See lib/campaigns.ts's listRelatedCampaigns for the read side.
+  duplicated_from_id TEXT REFERENCES campaigns(id),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -876,6 +888,18 @@ if (!campaignColumns.some((c) => c.name === "gameplay_focus")) {
 }
 if (!campaignColumns.some((c) => c.name === "structure")) {
   db.exec("ALTER TABLE campaigns ADD COLUMN structure TEXT");
+}
+
+// Lightweight migration for databases created before campaign-duplication
+// lineage tracking existed (backlog #67, competitive research vs.
+// StartPlaying.games). New databases already get this column from the
+// CREATE TABLE statement above. Reuses the campaignColumns snapshot taken
+// above. No REFERENCES constraint on the migrated column, matching how
+// sub_requests.character_id/notifications.related_thread_id were migrated
+// above -- SQLite's ALTER TABLE ADD COLUMN doesn't support adding a new FK
+// constraint on an existing table.
+if (!campaignColumns.some((c) => c.name === "duplicated_from_id")) {
+  db.exec("ALTER TABLE campaigns ADD COLUMN duplicated_from_id TEXT");
 }
 if (!profileColumns.some((c) => c.name === "tone_tags")) {
   db.exec("ALTER TABLE profiles ADD COLUMN tone_tags TEXT NOT NULL DEFAULT '[]'");

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getCampaign, approvedHeadcount } from "@/lib/campaigns";
+import { getCampaign, approvedHeadcount, listRelatedCampaigns } from "@/lib/campaigns";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getUserById } from "@/lib/auth";
 import { hasPrivateAccess } from "@/lib/access";
@@ -27,6 +27,7 @@ import DmControls from "@/components/DmControls";
 import JoinLeaveControls from "@/components/JoinLeaveControls";
 import RequestsPanel from "@/components/RequestsPanel";
 import RosterPanel from "@/components/RosterPanel";
+import RelatedCampaignsPanel from "@/components/RelatedCampaignsPanel";
 import ScheduleForm from "@/components/ScheduleForm";
 import PartyNotesPanel from "@/components/PartyNotesPanel";
 import CampaignChatPanel from "@/components/CampaignChatPanel";
@@ -76,6 +77,10 @@ export default async function CampaignDetailPage({
       .all(id) as User[]
   );
   const campaignCharacters = listCharactersForCampaign(id);
+  // Backlog #67: sibling/original campaigns from the same duplication
+  // lineage (backlog #47), if any -- see RelatedCampaignsPanel's own doc
+  // comment for why this is public rather than gated by hasPrivateAccess.
+  const relatedCampaigns = listRelatedCampaigns(id);
   const chronicle = getCampaignChronicle(id);
 
   // Backlog #35: lazy reminder trigger #2 -- the campaign's own detail
@@ -227,6 +232,8 @@ export default async function CampaignDetailPage({
       )}
 
       <RosterPanel dm={dm} members={approvedMembers} />
+
+      <RelatedCampaignsPanel related={relatedCampaigns} />
 
       <Section>
         <div className="mb-2 flex items-center justify-between">

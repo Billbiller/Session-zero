@@ -190,6 +190,11 @@ export function createCampaign(input: {
    * creation time like sessionFormat above (unlike dangerLevel, which is
    * only settable via updateCampaign after creation). */
   structure?: CampaignStructure;
+  /** Backlog #67: set only by duplicateCampaign, to the ultimate original
+   * campaign's id -- see Campaign.duplicated_from_id's doc comment in
+   * lib/types.ts. Not exposed on /campaigns/new; every other caller of
+   * createCampaign leaves this undefined, defaulting to null. */
+  duplicatedFromId?: string;
 }): Campaign {
   if (!Number.isInteger(input.capacity) || input.capacity < 1) {
     throw new CampaignError("Capacity must be a positive integer.");
@@ -230,14 +235,15 @@ export function createCampaign(input: {
     setting_tags: settingTags as CampaignSettingTag[],
     gameplay_focus: gameplayFocus as GameplayFocusRanking,
     structure: input.structure ?? null,
+    duplicated_from_id: input.duplicatedFromId ?? null,
     created_at: now,
     updated_at: now,
   };
   db.prepare(
     `INSERT INTO campaigns
-      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, new_player_friendly, session_format, starting_level, tone_tags, setting_tags, gameplay_focus, structure, created_at, updated_at)
+      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, new_player_friendly, session_format, starting_level, tone_tags, setting_tags, gameplay_focus, structure, duplicated_from_id, created_at, updated_at)
      VALUES
-      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @new_player_friendly, @session_format, @starting_level, @tone_tags, @setting_tags, @gameplay_focus, @structure, @created_at, @updated_at)`
+      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @new_player_friendly, @session_format, @starting_level, @tone_tags, @setting_tags, @gameplay_focus, @structure, @duplicated_from_id, @created_at, @updated_at)`
   ).run({
     ...campaign,
     tone_tags: JSON.stringify(toneTags),
@@ -420,6 +426,12 @@ export function duplicateCampaign(id: string, dmId: string): Campaign {
     settingTags: source.setting_tags,
     gameplayFocus: source.gameplay_focus,
     structure: source.structure ?? undefined,
+    // Backlog #67: flat lineage, not a parent-chain -- a duplicate of a
+    // duplicate still points at the ultimate original (source's own
+    // duplicated_from_id if it has one, otherwise source itself), so
+    // listRelatedCampaigns can find every campaign in the lineage with
+    // one query no matter how many times it's been re-duplicated.
+    duplicatedFromId: source.duplicated_from_id ?? source.id,
   });
   // createCampaign has no dangerLevel parameter -- it's only settable
   // after creation via updateCampaign, matching this app's own existing
@@ -430,6 +442,33 @@ export function duplicateCampaign(id: string, dmId: string): Campaign {
     return updateCampaign(copy.id, dmId, { dangerLevel: source.danger_level });
   }
   return copy;
+}
+
+/** Backlog #67 (competitive research vs. StartPlaying.games): a duplicated
+ * campaign (backlog #47) had no recorded link back to its original --
+ * this surfaces "Other tables by this DM" cross-links on the campaign
+ * detail page. Returns every other campaign in the same duplication
+ * lineage as `id` (the ultimate original, plus every sibling duplicated
+ * from it), oldest first, excluding `id` itself. Returns an empty array
+ * for a campaign with no duplication history at all (never duplicated,
+ * and never itself a duplicate) -- the common case, so callers should
+ * only render a "Related sections" block when this is non-empty. No
+ * separate dm_id filter is needed: duplicateCampaign only ever succeeds
+ * when the caller already owns the original (`source.dm_id !== dmId`
+ * throws), so every campaign in a lineage group necessarily shares one
+ * dm_id already. */
+export function listRelatedCampaigns(id: string): Campaign[] {
+  const self = getCampaign(id);
+  if (!self) return [];
+  const originalId = self.duplicated_from_id ?? self.id;
+  const rows = db
+    .prepare(
+      `SELECT * FROM campaigns
+       WHERE id != @selfId AND (id = @originalId OR duplicated_from_id = @originalId)
+       ORDER BY created_at ASC, rowid ASC`
+    )
+    .all({ selfId: id, originalId }) as CampaignRow[];
+  return rows.map(rowToCampaign);
 }
 
 export function setCancelled(

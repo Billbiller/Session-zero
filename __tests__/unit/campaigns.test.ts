@@ -9,6 +9,7 @@ import {
   setCancelled,
   manualReopen,
   duplicateCampaign,
+  listRelatedCampaigns,
   CampaignError,
   CAMPAIGN_TONE_TAGS,
 } from "@/lib/campaigns";
@@ -963,6 +964,99 @@ describe("duplicateCampaign (backlog #47)", () => {
   it("rejects duplicating an unknown campaign id", () => {
     const dm = makeDm("dm-dup6@example.com");
     expect(() => duplicateCampaign("not-a-real-id", dm.id)).toThrow(CampaignError);
+  });
+});
+
+describe("listRelatedCampaigns (backlog #67)", () => {
+  it("returns an empty array for a campaign that was never duplicated and is not itself a duplicate", () => {
+    const dm = makeDm("dm-rel1@example.com");
+    const solo = createCampaign({
+      dmId: dm.id,
+      title: "Solo Table",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(listRelatedCampaigns(solo.id)).toEqual([]);
+  });
+
+  it("surfaces the copy when queried from the original", () => {
+    const dm = makeDm("dm-rel2@example.com");
+    const original = createCampaign({
+      dmId: dm.id,
+      title: "Original Table",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const copy = duplicateCampaign(original.id, dm.id);
+
+    const related = listRelatedCampaigns(original.id);
+    expect(related.map((c) => c.id)).toEqual([copy.id]);
+  });
+
+  it("surfaces the original when queried from the copy", () => {
+    const dm = makeDm("dm-rel3@example.com");
+    const original = createCampaign({
+      dmId: dm.id,
+      title: "Original Table",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const copy = duplicateCampaign(original.id, dm.id);
+
+    const related = listRelatedCampaigns(copy.id);
+    expect(related.map((c) => c.id)).toEqual([original.id]);
+  });
+
+  it("flattens a duplicate-of-a-duplicate to point at the ultimate original, so every sibling shows up from any member of the lineage", () => {
+    const dm = makeDm("dm-rel4@example.com");
+    const original = createCampaign({
+      dmId: dm.id,
+      title: "Original Table",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const copyA = duplicateCampaign(original.id, dm.id);
+    const copyB = duplicateCampaign(copyA.id, dm.id);
+
+    expect(getCampaign(copyB.id)!.duplicated_from_id).toBe(original.id);
+
+    const fromOriginal = listRelatedCampaigns(original.id).map((c) => c.id).sort();
+    const fromCopyA = listRelatedCampaigns(copyA.id).map((c) => c.id).sort();
+    const fromCopyB = listRelatedCampaigns(copyB.id).map((c) => c.id).sort();
+    expect(fromOriginal).toEqual([copyA.id, copyB.id].sort());
+    expect(fromCopyA).toEqual([original.id, copyB.id].sort());
+    expect(fromCopyB).toEqual([original.id, copyA.id].sort());
+  });
+
+  it("never surfaces an unrelated campaign, even one owned by the same DM", () => {
+    const dm = makeDm("dm-rel5@example.com");
+    const original = createCampaign({
+      dmId: dm.id,
+      title: "Original Table",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const unrelated = createCampaign({
+      dmId: dm.id,
+      title: "Unrelated Table",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const copy = duplicateCampaign(original.id, dm.id);
+
+    const related = listRelatedCampaigns(original.id).map((c) => c.id);
+    expect(related).not.toContain(unrelated.id);
+    expect(related).toEqual([copy.id]);
+  });
+
+  it("returns an empty array for an unknown campaign id", () => {
+    expect(listRelatedCampaigns("not-a-real-id")).toEqual([]);
   });
 });
 
