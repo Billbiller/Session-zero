@@ -99,6 +99,13 @@ CREATE TABLE IF NOT EXISTS campaigns (
   -- existed, and every campaign created directly through /campaigns/new).
   -- See lib/campaigns.ts's listRelatedCampaigns for the read side.
   duplicated_from_id TEXT REFERENCES campaigns(id),
+  -- Backlog #68 (competitive research vs. StartPlaying.games): set by a
+  -- site admin (backlog #48, users.is_admin) to feature this campaign in
+  -- the home page's "Spotlight" section; null = not spotlighted. A
+  -- timestamp rather than a 0/1 flag so it doubles as the ordering key
+  -- (most recently spotlighted first) -- see lib/campaigns.ts's
+  -- setCampaignSpotlight/listSpotlightCampaigns.
+  spotlighted_at TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -900,6 +907,12 @@ if (!campaignColumns.some((c) => c.name === "structure")) {
 // constraint on an existing table.
 if (!campaignColumns.some((c) => c.name === "duplicated_from_id")) {
   db.exec("ALTER TABLE campaigns ADD COLUMN duplicated_from_id TEXT");
+}
+// Backlog #68: admin-curated home-page spotlight. New databases already
+// get this column from the CREATE TABLE statement above; reuses the same
+// campaignColumns snapshot.
+if (!campaignColumns.some((c) => c.name === "spotlighted_at")) {
+  db.exec("ALTER TABLE campaigns ADD COLUMN spotlighted_at TEXT");
 }
 if (!profileColumns.some((c) => c.name === "tone_tags")) {
   db.exec("ALTER TABLE profiles ADD COLUMN tone_tags TEXT NOT NULL DEFAULT '[]'");

@@ -124,6 +124,12 @@ export interface Campaign {
    * this DM" block on the campaign detail page (lib/campaigns.ts's
    * listRelatedCampaigns). */
   duplicated_from_id: string | null;
+  /** Backlog #68 (competitive research vs. StartPlaying.games): when a
+   * site admin (backlog #48) spotlighted this campaign for the home page,
+   * or null if it isn't spotlighted. Only a site admin can set or clear
+   * it (lib/campaigns.ts's setCampaignSpotlight); never copied by
+   * duplicateCampaign. */
+  spotlighted_at: string | null;
   created_at: string;
   updated_at: string;
 }

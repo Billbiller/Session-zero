@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import db from "./db";
 import { notify } from "./notifications";
+import { isSiteAdmin } from "./access";
 import {
   CAMPAIGN_SETTING_TAGS,
   CAMPAIGN_STRUCTURES,
@@ -236,14 +237,15 @@ export function createCampaign(input: {
     gameplay_focus: gameplayFocus as GameplayFocusRanking,
     structure: input.structure ?? null,
     duplicated_from_id: input.duplicatedFromId ?? null,
+    spotlighted_at: null,
     created_at: now,
     updated_at: now,
   };
   db.prepare(
     `INSERT INTO campaigns
-      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, new_player_friendly, session_format, starting_level, tone_tags, setting_tags, gameplay_focus, structure, duplicated_from_id, created_at, updated_at)
+      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, new_player_friendly, session_format, starting_level, tone_tags, setting_tags, gameplay_focus, structure, duplicated_from_id, spotlighted_at, created_at, updated_at)
      VALUES
-      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @new_player_friendly, @session_format, @starting_level, @tone_tags, @setting_tags, @gameplay_focus, @structure, @duplicated_from_id, @created_at, @updated_at)`
+      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @new_player_friendly, @session_format, @starting_level, @tone_tags, @setting_tags, @gameplay_focus, @structure, @duplicated_from_id, @spotlighted_at, @created_at, @updated_at)`
   ).run({
     ...campaign,
     tone_tags: JSON.stringify(toneTags),
@@ -468,6 +470,53 @@ export function listRelatedCampaigns(id: string): Campaign[] {
        ORDER BY created_at ASC, rowid ASC`
     )
     .all({ selfId: id, originalId }) as CampaignRow[];
+  return rows.map(rowToCampaign);
+}
+
+/** Backlog #68 (competitive research vs. StartPlaying.games): a site
+ * admin (backlog #48's users.is_admin -- see lib/access.ts's isSiteAdmin)
+ * can spotlight any campaign, regardless of who DMs it, to feature it in
+ * the home page's "Spotlight" section. Spotlighting an already-spotlighted
+ * campaign refreshes its timestamp (bumping it to the front of the
+ * rotation); clearing it sets the column back to null. Only a site admin
+ * may call this -- a DM can't self-promote their own table this way. */
+export function setCampaignSpotlight(
+  id: string,
+  userId: string,
+  spotlighted: boolean
+): Campaign {
+  if (!isSiteAdmin(userId)) {
+    throw new CampaignError("Only a site admin can spotlight campaigns.");
+  }
+  const campaign = getCampaign(id);
+  if (!campaign) throw new CampaignError("Campaign not found.");
+  const spotlightedAt = spotlighted ? new Date().toISOString() : null;
+  db.prepare("UPDATE campaigns SET spotlighted_at = ? WHERE id = ?").run(spotlightedAt, id);
+  return { ...campaign, spotlighted_at: spotlightedAt };
+}
+
+/** Max campaigns the home page's Spotlight section shows at once. */
+export const SPOTLIGHT_LIMIT = 3;
+
+/** Backlog #68: the campaigns the home page's Spotlight section shows --
+ * spotlighted, not cancelled, and still accepting join requests (a
+ * spotlight pointing at a table nobody can join would be a dead end),
+ * most recently spotlighted first, capped at `limit` (default 3). An
+ * empty result means the home page renders no Spotlight section at all,
+ * the same "don't show a feature nobody can use yet" gate #54 and #27
+ * phase 2 already established. Filtering happens at read time, so a
+ * spotlighted campaign that later fills up or gets cancelled drops out
+ * automatically and reappears if it reopens -- the admin never has to
+ * un-spotlight it by hand. */
+export function listSpotlightCampaigns(limit: number = SPOTLIGHT_LIMIT): Campaign[] {
+  const rows = db
+    .prepare(
+      `SELECT * FROM campaigns
+       WHERE spotlighted_at IS NOT NULL AND cancelled = 0 AND accepting_requests = 1
+       ORDER BY spotlighted_at DESC, rowid DESC
+       LIMIT ?`
+    )
+    .all(Math.max(0, Math.floor(limit))) as CampaignRow[];
   return rows.map(rowToCampaign);
 }
 

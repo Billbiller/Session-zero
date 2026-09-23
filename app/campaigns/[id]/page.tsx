@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getCampaign, approvedHeadcount, listRelatedCampaigns } from "@/lib/campaigns";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getUserById } from "@/lib/auth";
-import { hasPrivateAccess } from "@/lib/access";
+import { hasPrivateAccess, isSiteAdmin } from "@/lib/access";
 import { listRequests } from "@/lib/memberships";
 import { getNotes } from "@/lib/partyNotes";
 import { listEntriesWithKudos } from "@/lib/sessionLog";
@@ -28,6 +28,7 @@ import JoinLeaveControls from "@/components/JoinLeaveControls";
 import RequestsPanel from "@/components/RequestsPanel";
 import RosterPanel from "@/components/RosterPanel";
 import RelatedCampaignsPanel from "@/components/RelatedCampaignsPanel";
+import SpotlightToggle from "@/components/SpotlightToggle";
 import ScheduleForm from "@/components/ScheduleForm";
 import PartyNotesPanel from "@/components/PartyNotesPanel";
 import CampaignChatPanel from "@/components/CampaignChatPanel";
@@ -54,6 +55,8 @@ export default async function CampaignDetailPage({
   const viewer = await getCurrentUser();
   const dm = getUserById(campaign.dm_id);
   const isDm = viewer?.id === campaign.dm_id;
+  // Backlog #68: site admins get a home-page spotlight toggle below.
+  const viewerIsAdmin = viewer ? isSiteAdmin(viewer.id) : false;
   const access = hasPrivateAccess(viewer?.id ?? null, id);
   const headcount = approvedHeadcount(id);
 
@@ -211,6 +214,14 @@ export default async function CampaignDetailPage({
       />
 
       {isDm && <DmControls campaign={campaign} />}
+
+      {viewerIsAdmin && (
+        <SpotlightToggle
+          campaignId={id}
+          spotlighted={!!campaign.spotlighted_at}
+          eligible={!campaign.cancelled && !!campaign.accepting_requests}
+        />
+      )}
 
       {isDm && (
         <>

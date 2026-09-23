@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/currentUser";
+import { getUserById } from "@/lib/auth";
+import { approvedHeadcount, listSpotlightCampaigns } from "@/lib/campaigns";
+import { seatsLeftLabel } from "@/lib/campaignCardCopy";
 
 // Backlog #60: home page redesign. Small inline icon set kept local to this
 // file rather than pulling in an icon library -- this app has no such
@@ -69,6 +72,10 @@ function IconTable({ className }: { className?: string }) {
 
 export default async function Home() {
   const user = await getCurrentUser();
+  // Backlog #68: admin-curated spotlight campaigns, shown to signed-out
+  // visitors only (same audience as the intro copy below). Empty = the
+  // section doesn't render at all.
+  const spotlight = user ? [] : listSpotlightCampaigns();
   return (
     <div className="flex flex-col">
       {/* Hero. Full-bleed via the calc(50%-50vw) trick so it escapes the
@@ -146,6 +153,43 @@ export default async function Home() {
               and everything else the table needs between sessions.
             </p>
           </div>
+
+          {spotlight.length > 0 && (
+            <section aria-labelledby="spotlight-heading">
+              <h2 id="spotlight-heading" className="text-lg font-semibold">
+                Spotlight
+              </h2>
+              <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+                Open tables hand-picked by the Session Zero team.
+              </p>
+              <ul className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {spotlight.map((campaign) => {
+                  const dm = getUserById(campaign.dm_id);
+                  return (
+                    <li
+                      key={campaign.id}
+                      className="flex flex-col gap-1 rounded-xl border border-amber-300/60 bg-amber-50/50 p-5 dark:border-amber-500/30 dark:bg-amber-500/5"
+                    >
+                      <Link
+                        href={`/campaigns/${campaign.id}`}
+                        className="font-medium hover:underline"
+                      >
+                        {campaign.title}
+                      </Link>
+                      <p className="text-sm text-black/60 dark:text-white/60">
+                        {campaign.system}
+                        {dm && <> &middot; DM: {dm.display_name}</>}
+                      </p>
+                      <p className="text-xs text-black/60 dark:text-white/60">
+                        {seatsLeftLabel(approvedHeadcount(campaign.id), campaign.capacity)}
+                        {campaign.location && <> &middot; {campaign.location}</>}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
 
           <ul className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <li className="group rounded-xl border border-black/10 p-5 transition hover:-translate-y-1 hover:shadow-md dark:border-white/10">

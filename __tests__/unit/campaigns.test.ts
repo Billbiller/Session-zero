@@ -10,6 +10,8 @@ import {
   manualReopen,
   duplicateCampaign,
   listRelatedCampaigns,
+  setCampaignSpotlight,
+  listSpotlightCampaigns,
   CampaignError,
   CAMPAIGN_TONE_TAGS,
 } from "@/lib/campaigns";
@@ -1300,5 +1302,113 @@ describe("campaign setting tags, structure, and gameplay focus (backlog #64)", (
     expect(copy.setting_tags).toEqual(["high-fantasy", "wilderness-frontier"]);
     expect(copy.structure).toBe("episodic");
     expect(copy.gameplay_focus).toEqual(["exploration", "roleplay", "combat"]);
+  });
+});
+
+describe("admin-curated spotlight (backlog #68)", () => {
+  // Same ADMIN_EMAIL set-then-restore pattern boards.test.ts uses for
+  // backlog #48's moderation tests.
+  function makeAdmin(email: string) {
+    const original = process.env.ADMIN_EMAIL;
+    process.env.ADMIN_EMAIL = email;
+    try {
+      return signUp("Admin " + email, email, "testpassword123");
+    } finally {
+      if (original === undefined) delete process.env.ADMIN_EMAIL;
+      else process.env.ADMIN_EMAIL = original;
+    }
+  }
+  function makeCampaign(dmId: string, title: string) {
+    return createCampaign({ dmId, title, description: "", system: "S", capacity: 4 });
+  }
+  // Every test in this file shares one DB, so scope assertions to the
+  // campaigns each test itself created.
+  function spotlightIds(ids: string[]) {
+    return listSpotlightCampaigns(1000)
+      .map((c) => c.id)
+      .filter((id) => ids.includes(id));
+  }
+
+  it("a new campaign is not spotlighted and is absent from the spotlight list", () => {
+    const dm = makeDm("dm-spot1@example.com");
+    const c = makeCampaign(dm.id, "Plain");
+    expect(c.spotlighted_at).toBeNull();
+    expect(getCampaign(c.id)?.spotlighted_at).toBeNull();
+    expect(spotlightIds([c.id])).toEqual([]);
+  });
+
+  it("a site admin can spotlight any DM's campaign and clear it again", () => {
+    const admin = makeAdmin("admin-spot2@example.com");
+    const dm = makeDm("dm-spot2@example.com");
+    const c = makeCampaign(dm.id, "Featured");
+    const on = setCampaignSpotlight(c.id, admin.id, true);
+    expect(on.spotlighted_at).not.toBeNull();
+    expect(getCampaign(c.id)?.spotlighted_at).toBe(on.spotlighted_at);
+    expect(spotlightIds([c.id])).toEqual([c.id]);
+
+    const off = setCampaignSpotlight(c.id, admin.id, false);
+    expect(off.spotlighted_at).toBeNull();
+    expect(spotlightIds([c.id])).toEqual([]);
+  });
+
+  it("rejects a non-admin, including the campaign's own DM", () => {
+    const dm = makeDm("dm-spot3@example.com");
+    const stranger = makeDm("stranger-spot3@example.com");
+    const c = makeCampaign(dm.id, "Self-promo");
+    expect(() => setCampaignSpotlight(c.id, dm.id, true)).toThrow(CampaignError);
+    expect(() => setCampaignSpotlight(c.id, stranger.id, true)).toThrow(CampaignError);
+    expect(getCampaign(c.id)?.spotlighted_at).toBeNull();
+  });
+
+  it("rejects an unknown campaign id", () => {
+    const admin = makeAdmin("admin-spot4@example.com");
+    expect(() => setCampaignSpotlight("no-such-campaign", admin.id, true)).toThrow(
+      "Campaign not found."
+    );
+  });
+
+  it("hides cancelled or closed campaigns without un-spotlighting them", () => {
+    const admin = makeAdmin("admin-spot5@example.com");
+    const dm = makeDm("dm-spot5@example.com");
+    const cancelled = makeCampaign(dm.id, "Cancelled one");
+    // capacity 1: approving one player auto-closes it to new requests.
+    const closed = createCampaign({ dmId: dm.id, title: "Full one", description: "", system: "S", capacity: 1 });
+    setCampaignSpotlight(cancelled.id, admin.id, true);
+    setCampaignSpotlight(closed.id, admin.id, true);
+    setCancelled(cancelled.id, dm.id, true);
+    const player = makeDm("player-spot5@example.com");
+    approveRequest(requestJoin(closed.id, player.id).id, dm.id);
+    expect(getCampaign(closed.id)?.accepting_requests).toBe(0);
+    expect(spotlightIds([cancelled.id, closed.id])).toEqual([]);
+    // Still flagged -- reappears automatically if the DM reopens it.
+    expect(getCampaign(cancelled.id)?.spotlighted_at).not.toBeNull();
+    setCancelled(cancelled.id, dm.id, false);
+    expect(spotlightIds([cancelled.id, closed.id])).toEqual([cancelled.id]);
+  });
+
+  it("orders most recently spotlighted first and respects the limit", async () => {
+    const admin = makeAdmin("admin-spot6@example.com");
+    const dm = makeDm("dm-spot6@example.com");
+    const a = makeCampaign(dm.id, "A");
+    const b = makeCampaign(dm.id, "B");
+    setCampaignSpotlight(a.id, admin.id, true);
+    await new Promise((r) => setTimeout(r, 5));
+    setCampaignSpotlight(b.id, admin.id, true);
+    expect(spotlightIds([a.id, b.id])).toEqual([b.id, a.id]);
+    // Re-spotlighting bumps a campaign back to the front.
+    await new Promise((r) => setTimeout(r, 5));
+    setCampaignSpotlight(a.id, admin.id, true);
+    expect(spotlightIds([a.id, b.id])).toEqual([a.id, b.id]);
+    expect(listSpotlightCampaigns(1)).toHaveLength(1);
+    expect(listSpotlightCampaigns().length).toBeLessThanOrEqual(3);
+  });
+
+  it("is never carried over by duplicateCampaign", () => {
+    const admin = makeAdmin("admin-spot7@example.com");
+    const dm = makeDm("dm-spot7@example.com");
+    const original = makeCampaign(dm.id, "Spotlit original");
+    setCampaignSpotlight(original.id, admin.id, true);
+    const copy = duplicateCampaign(original.id, dm.id);
+    expect(getCampaign(copy.id)?.spotlighted_at).toBeNull();
   });
 });
