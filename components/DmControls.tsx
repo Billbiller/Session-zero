@@ -9,11 +9,17 @@ import {
   CAMPAIGN_STRUCTURE_LABELS,
   CAMPAIGN_TONE_TAGS,
   CAMPAIGN_TONE_TAG_LABELS,
+  CONTENT_WARNING_TAGS,
+  CONTENT_WARNING_TAG_LABELS,
   DANGER_LEVELS,
   DANGER_LEVEL_LABELS,
+  SAFETY_TOOL_TAGS,
+  SAFETY_TOOL_TAG_LABELS,
   SESSION_FORMATS,
   SESSION_FORMAT_LABELS,
   type Campaign,
+  type CampaignContentWarningTag,
+  type CampaignSafetyToolTag,
   type CampaignSettingTag,
   type CampaignStructure,
   type CampaignToneTag,
@@ -41,6 +47,12 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
   const [settingTags, setSettingTags] = useState<CampaignSettingTag[]>(campaign.setting_tags);
   const [structure, setStructure] = useState<CampaignStructure | "">(campaign.structure ?? "");
   const [gameplayFocus, setGameplayFocus] = useState<GameplayPillar[]>(campaign.gameplay_focus);
+  const [contentWarningTags, setContentWarningTags] = useState<CampaignContentWarningTag[]>(
+    campaign.content_warning_tags
+  );
+  const [safetyToolTags, setSafetyToolTags] = useState<CampaignSafetyToolTag[]>(
+    campaign.safety_tool_tags
+  );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
@@ -53,6 +65,18 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
 
   function toggleSettingTag(tag: CampaignSettingTag) {
     setSettingTags((current) =>
+      current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]
+    );
+  }
+
+  function toggleContentWarningTag(tag: CampaignContentWarningTag) {
+    setContentWarningTags((current) =>
+      current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]
+    );
+  }
+
+  function toggleSafetyToolTag(tag: CampaignSafetyToolTag) {
+    setSafetyToolTags((current) =>
       current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]
     );
   }
@@ -78,6 +102,8 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
         settingTags,
         structure: structure === "" ? null : structure,
         gameplayFocus,
+        contentWarningTags,
+        safetyToolTags,
       }),
     });
     setSubmitting(false);
@@ -310,6 +336,36 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
             </select>
           </label>
           <GameplayFocusRanker value={gameplayFocus} onChange={setGameplayFocus} />
+          <fieldset className="flex flex-col gap-1">
+            <legend>Content warnings (pick any that apply)</legend>
+            <div className="flex flex-wrap gap-3">
+              {CONTENT_WARNING_TAGS.map((tag) => (
+                <label key={tag} className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={contentWarningTags.includes(tag)}
+                    onChange={() => toggleContentWarningTag(tag)}
+                  />
+                  {CONTENT_WARNING_TAG_LABELS[tag]}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset className="flex flex-col gap-1">
+            <legend>Safety tools used (pick any that apply)</legend>
+            <div className="flex flex-wrap gap-3">
+              {SAFETY_TOOL_TAGS.map((tag) => (
+                <label key={tag} className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={safetyToolTags.includes(tag)}
+                    onChange={() => toggleSafetyToolTag(tag)}
+                  />
+                  {SAFETY_TOOL_TAG_LABELS[tag]}
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <label className="flex items-center gap-2">
             <input
               type="checkbox"

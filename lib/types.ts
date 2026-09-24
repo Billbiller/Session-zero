@@ -115,6 +115,18 @@ export interface Campaign {
    * hasn't said, same nullable-enum convention as danger_level/
    * session_format. */
   structure: CampaignStructure | null;
+  /** Backlog #69 (competitive research vs. StartPlaying.games): DM-declared
+   * content advisories for this table -- see CONTENT_WARNING_TAGS' own doc
+   * comment below for the closed-vocabulary reasoning. Same JSON-in-TEXT-
+   * column/parse-on-read shape as tone_tags/setting_tags, always an array,
+   * defaulting to empty (no warnings declared, not a claim that nothing
+   * applies -- an absent DM simply hasn't filled this in yet). */
+  content_warning_tags: CampaignContentWarningTag[];
+  /** Backlog #69: named safety-tool frameworks the DM says this table
+   * uses (X-card, Lines & Veils, etc.) -- see SAFETY_TOOL_TAGS' own doc
+   * comment below. Same shape and defaulting as content_warning_tags
+   * above. */
+  safety_tool_tags: CampaignSafetyToolTag[];
   /** Backlog #67 (competitive research vs. StartPlaying.games): set once
    * at duplication time by duplicateCampaign (backlog #47), never updated
    * afterward. Points at the ultimate original a duplication lineage
@@ -240,6 +252,68 @@ export const CAMPAIGN_STRUCTURE_LABELS: Record<CampaignStructure, string> = {
   linear: "Linear / driven",
   sandbox: "Sandbox / open world",
   episodic: "Episodic",
+};
+
+/** Backlog #69 (competitive research vs. StartPlaying.games): closed
+ * vocabulary for a DM's upfront content advisories -- directly answers
+ * the Lines & Veils gap backlog #64 deliberately left open ("a live,
+ * two-way conversation doesn't fit a static field"). This is the other,
+ * genuinely useful half: a DM transparently *disclosing* what a table's
+ * content includes, in the same DM-set, player-visible, heads-up-filter
+ * spirit as danger_level/tone_tags -- not a survey, just upfront
+ * disclosure a prospective player can read before ever requesting a
+ * seat. Curated rather than free text for the same "reliable browse/
+ * filter matching" reasoning as every other tag list in this file. */
+export const CONTENT_WARNING_TAGS = [
+  "character-death",
+  "graphic-violence",
+  "body-horror",
+  "torture",
+  "sexual-content",
+  "substance-use",
+  "suicide-or-self-harm-themes",
+  "abuse-or-domestic-violence",
+  "racism-or-bigotry",
+  "phobia-triggers",
+] as const;
+
+export type CampaignContentWarningTag = (typeof CONTENT_WARNING_TAGS)[number];
+
+export const CONTENT_WARNING_TAG_LABELS: Record<CampaignContentWarningTag, string> = {
+  "character-death": "Character death",
+  "graphic-violence": "Graphic violence",
+  "body-horror": "Body horror",
+  torture: "Torture",
+  "sexual-content": "Sexual content",
+  "substance-use": "Substance use",
+  "suicide-or-self-harm-themes": "Suicide or self-harm themes",
+  "abuse-or-domestic-violence": "Abuse or domestic violence",
+  "racism-or-bigotry": "Racism or bigotry",
+  "phobia-triggers": "Phobia triggers (e.g. spiders, confined spaces)",
+};
+
+/** Backlog #69: closed vocabulary for named, real safety-tool frameworks
+ * a DM says this table uses -- "Session Zero" here means the tabletop
+ * practice of a pre-campaign check-in conversation, not this app's own
+ * name; the label below spells that out to avoid the obvious confusion.
+ * Same curated-multi-select shape as CONTENT_WARNING_TAGS above; a table
+ * can genuinely use more than one tool at once. */
+export const SAFETY_TOOL_TAGS = [
+  "x-card",
+  "open-door-policy",
+  "lines-and-veils",
+  "session-zero-conversation",
+  "consent-checklist",
+] as const;
+
+export type CampaignSafetyToolTag = (typeof SAFETY_TOOL_TAGS)[number];
+
+export const SAFETY_TOOL_TAG_LABELS: Record<CampaignSafetyToolTag, string> = {
+  "x-card": "X-card",
+  "open-door-policy": "Open Door policy",
+  "lines-and-veils": "Lines & Veils",
+  "session-zero-conversation": "Session Zero conversation (the tabletop practice, not this app)",
+  "consent-checklist": "Consent checklist",
 };
 
 export type MembershipStatus = "pending" | "approved" | "declined" | "left";

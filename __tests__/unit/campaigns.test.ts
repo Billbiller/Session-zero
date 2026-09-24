@@ -15,7 +15,12 @@ import {
   CampaignError,
   CAMPAIGN_TONE_TAGS,
 } from "@/lib/campaigns";
-import { CAMPAIGN_SETTING_TAGS, GAMEPLAY_PILLARS } from "@/lib/types";
+import {
+  CAMPAIGN_SETTING_TAGS,
+  CONTENT_WARNING_TAGS,
+  GAMEPLAY_PILLARS,
+  SAFETY_TOOL_TAGS,
+} from "@/lib/types";
 import { requestJoin, approveRequest } from "@/lib/memberships";
 
 function makeDm(email: string) {
@@ -1412,3 +1417,182 @@ describe("admin-curated spotlight (backlog #68)", () => {
     expect(getCampaign(copy.id)?.spotlighted_at).toBeNull();
   });
 });
+
+
+describe("campaign content warnings and safety tools (backlog #69)", () => {
+  it("defaults content_warning_tags/safety_tool_tags to an empty array on create", () => {
+    const dm = makeDm("dm-cw1@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(campaign.content_warning_tags).toEqual([]);
+    expect(campaign.safety_tool_tags).toEqual([]);
+  });
+
+  it("sets content_warning_tags and safety_tool_tags on create", () => {
+    const dm = makeDm("dm-cw2@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      contentWarningTags: ["character-death", "graphic-violence"],
+      safetyToolTags: ["x-card", "lines-and-veils"],
+    });
+    expect(campaign.content_warning_tags).toEqual(["character-death", "graphic-violence"]);
+    expect(campaign.safety_tool_tags).toEqual(["x-card", "lines-and-veils"]);
+  });
+
+  it("rejects a content warning that isn't in CONTENT_WARNING_TAGS, on create and update", () => {
+    const dm = makeDm("dm-cw3@example.com");
+    expect(() =>
+      createCampaign({
+        dmId: dm.id,
+        title: "T",
+        description: "",
+        system: "S",
+        capacity: 4,
+        contentWarningTags: ["not-a-real-warning"],
+      })
+    ).toThrow(CampaignError);
+
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T2",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(() =>
+      updateCampaign(campaign.id, dm.id, { contentWarningTags: ["not-a-real-warning"] })
+    ).toThrow(CampaignError);
+  });
+
+  it("rejects a safety tool that isn't in SAFETY_TOOL_TAGS, on create and update", () => {
+    const dm = makeDm("dm-cw4@example.com");
+    expect(() =>
+      createCampaign({
+        dmId: dm.id,
+        title: "T",
+        description: "",
+        system: "S",
+        capacity: 4,
+        safetyToolTags: ["not-a-real-tool"],
+      })
+    ).toThrow(CampaignError);
+
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T2",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(() =>
+      updateCampaign(campaign.id, dm.id, { safetyToolTags: ["not-a-real-tool"] })
+    ).toThrow(CampaignError);
+  });
+
+  it("accepts the entire CONTENT_WARNING_TAGS and SAFETY_TOOL_TAGS vocabularies at once", () => {
+    // Unlike tone_tags/setting_tags, these caps aren't a "force a real
+    // choice" device -- a DM should be able to disclose everything that
+    // applies, so the full vocabulary must always be a valid selection.
+    const dm = makeDm("dm-cw5@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      contentWarningTags: [...CONTENT_WARNING_TAGS],
+      safetyToolTags: [...SAFETY_TOOL_TAGS],
+    });
+    expect(campaign.content_warning_tags).toEqual([...CONTENT_WARNING_TAGS]);
+    expect(campaign.safety_tool_tags).toEqual([...SAFETY_TOOL_TAGS]);
+  });
+
+  it("lets the DM set, change, and clear content_warning_tags and safety_tool_tags via update", () => {
+    const dm = makeDm("dm-cw6@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const set = updateCampaign(campaign.id, dm.id, {
+      contentWarningTags: ["torture"],
+      safetyToolTags: ["consent-checklist"],
+    });
+    expect(set.content_warning_tags).toEqual(["torture"]);
+    expect(set.safety_tool_tags).toEqual(["consent-checklist"]);
+
+    const changed = updateCampaign(campaign.id, dm.id, {
+      contentWarningTags: ["sexual-content", "substance-use"],
+      safetyToolTags: ["open-door-policy"],
+    });
+    expect(changed.content_warning_tags).toEqual(["sexual-content", "substance-use"]);
+    expect(changed.safety_tool_tags).toEqual(["open-door-policy"]);
+
+    const cleared = updateCampaign(campaign.id, dm.id, {
+      contentWarningTags: [],
+      safetyToolTags: [],
+    });
+    expect(cleared.content_warning_tags).toEqual([]);
+    expect(cleared.safety_tool_tags).toEqual([]);
+  });
+
+  it("leaves content_warning_tags and safety_tool_tags untouched when omitted from an update", () => {
+    const dm = makeDm("dm-cw7@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      contentWarningTags: ["racism-or-bigotry"],
+      safetyToolTags: ["session-zero-conversation"],
+    });
+    const updated = updateCampaign(campaign.id, dm.id, { title: "New title" });
+    expect(updated.content_warning_tags).toEqual(["racism-or-bigotry"]);
+    expect(updated.safety_tool_tags).toEqual(["session-zero-conversation"]);
+  });
+
+  it("persists content_warning_tags and safety_tool_tags across a fresh read", () => {
+    const dm = makeDm("dm-cw8@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      contentWarningTags: ["body-horror", "phobia-triggers"],
+      safetyToolTags: ["x-card"],
+    });
+    const fetched = getCampaign(campaign.id);
+    expect(fetched?.content_warning_tags).toEqual(["body-horror", "phobia-triggers"]);
+    expect(fetched?.safety_tool_tags).toEqual(["x-card"]);
+  });
+
+  it("carries content_warning_tags and safety_tool_tags over on duplicateCampaign", () => {
+    const dm = makeDm("dm-cw9@example.com");
+    const original = createCampaign({
+      dmId: dm.id,
+      title: "Original",
+      description: "",
+      system: "S",
+      capacity: 4,
+      contentWarningTags: ["suicide-or-self-harm-themes"],
+      safetyToolTags: ["lines-and-veils", "consent-checklist"],
+    });
+    const copy = duplicateCampaign(original.id, dm.id);
+    expect(copy.content_warning_tags).toEqual(["suicide-or-self-harm-themes"]);
+    expect(copy.safety_tool_tags).toEqual(["lines-and-veils", "consent-checklist"]);
+  });
+});
+

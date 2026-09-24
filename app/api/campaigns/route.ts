@@ -6,7 +6,9 @@ import {
   CAMPAIGN_SETTING_TAGS,
   CAMPAIGN_STRUCTURES,
   CAMPAIGN_TONE_TAGS,
+  CONTENT_WARNING_TAGS,
   GAMEPLAY_PILLARS,
+  SAFETY_TOOL_TAGS,
   SESSION_FORMATS,
   type SessionFormat,
 } from "@/lib/types";
@@ -61,6 +63,8 @@ const createSchema = z.object({
   settingTags: z.array(z.enum(CAMPAIGN_SETTING_TAGS)).max(3).optional(),
   gameplayFocus: z.array(z.enum(GAMEPLAY_PILLARS)).max(3).optional(),
   structure: z.enum(CAMPAIGN_STRUCTURES).optional(),
+  contentWarningTags: z.array(z.enum(CONTENT_WARNING_TAGS)).max(CONTENT_WARNING_TAGS.length).optional(),
+  safetyToolTags: z.array(z.enum(SAFETY_TOOL_TAGS)).max(SAFETY_TOOL_TAGS.length).optional(),
 });
 
 export async function POST(request: NextRequest) {

@@ -87,6 +87,13 @@ CREATE TABLE IF NOT EXISTS campaigns (
   setting_tags TEXT NOT NULL DEFAULT '[]',
   gameplay_focus TEXT NOT NULL DEFAULT '[]',
   structure TEXT CHECK (structure IS NULL OR structure IN ('linear','sandbox','episodic')),
+  -- Backlog #69 (competitive research vs. StartPlaying.games): DM-declared
+  -- content advisories and named safety-tool frameworks, JSON-encoded --
+  -- see lib/types.ts's CONTENT_WARNING_TAGS/SAFETY_TOOL_TAGS doc comments.
+  -- Same JSON-array-column/parse-on-read shape as tone_tags/setting_tags
+  -- above.
+  content_warning_tags TEXT NOT NULL DEFAULT '[]',
+  safety_tool_tags TEXT NOT NULL DEFAULT '[]',
   -- Backlog #67 (competitive research vs. StartPlaying.games): set once,
   -- at duplication time, by duplicateCampaign (backlog #47) -- never
   -- updated afterward. Points at the *ultimate* original a lineage of
@@ -913,6 +920,15 @@ if (!campaignColumns.some((c) => c.name === "duplicated_from_id")) {
 // campaignColumns snapshot.
 if (!campaignColumns.some((c) => c.name === "spotlighted_at")) {
   db.exec("ALTER TABLE campaigns ADD COLUMN spotlighted_at TEXT");
+}
+// Backlog #69: DM-declared content warnings and safety-tool frameworks.
+// New databases already get these columns from the CREATE TABLE statement
+// above; reuses the same campaignColumns snapshot.
+if (!campaignColumns.some((c) => c.name === "content_warning_tags")) {
+  db.exec("ALTER TABLE campaigns ADD COLUMN content_warning_tags TEXT NOT NULL DEFAULT '[]'");
+}
+if (!campaignColumns.some((c) => c.name === "safety_tool_tags")) {
+  db.exec("ALTER TABLE campaigns ADD COLUMN safety_tool_tags TEXT NOT NULL DEFAULT '[]'");
 }
 if (!profileColumns.some((c) => c.name === "tone_tags")) {
   db.exec("ALTER TABLE profiles ADD COLUMN tone_tags TEXT NOT NULL DEFAULT '[]'");

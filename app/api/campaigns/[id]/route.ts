@@ -10,8 +10,10 @@ import {
   CAMPAIGN_SETTING_TAGS,
   CAMPAIGN_STRUCTURES,
   CAMPAIGN_TONE_TAGS,
+  CONTENT_WARNING_TAGS,
   DANGER_LEVELS,
   GAMEPLAY_PILLARS,
+  SAFETY_TOOL_TAGS,
   SESSION_FORMATS,
   type Membership,
 } from "@/lib/types";
@@ -72,6 +74,9 @@ const updateSchema = z.object({
   gameplayFocus: z.array(z.enum(GAMEPLAY_PILLARS)).max(3).optional(),
   // undefined = leave unchanged; null = clear; a recognized structure = set it.
   structure: z.enum(CAMPAIGN_STRUCTURES).nullable().optional(),
+  // undefined = leave unchanged; a provided array replaces the whole list.
+  contentWarningTags: z.array(z.enum(CONTENT_WARNING_TAGS)).max(CONTENT_WARNING_TAGS.length).optional(),
+  safetyToolTags: z.array(z.enum(SAFETY_TOOL_TAGS)).max(SAFETY_TOOL_TAGS.length).optional(),
 });
 
 export async function PATCH(

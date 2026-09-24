@@ -6,10 +6,14 @@ import {
   CAMPAIGN_SETTING_TAGS,
   CAMPAIGN_STRUCTURES,
   CAMPAIGN_TONE_TAGS,
+  CONTENT_WARNING_TAGS,
   DANGER_LEVELS,
   GAMEPLAY_PILLARS,
+  SAFETY_TOOL_TAGS,
   SESSION_FORMATS,
   type Campaign,
+  type CampaignContentWarningTag,
+  type CampaignSafetyToolTag,
   type CampaignSettingTag,
   type CampaignStructure,
   type CampaignToneTag,
@@ -35,6 +39,15 @@ const MAX_TONE_TAGS = 5;
 // reasoning as MAX_TONE_TAGS above, scaled to the smaller 6-tag
 // CAMPAIGN_SETTING_TAGS vocabulary.
 const MAX_SETTING_TAGS = 3;
+// Backlog #69: unlike the style/preference tag lists above, these caps
+// are NOT a "force a real choice" device -- a content-warning disclosure
+// should list everything that applies, not a curated favorites-only
+// subset. Set to each vocabulary's own full length, so the cap only ever
+// rejects a literal duplicate-padded array, never a legitimately thorough
+// one; validateContentWarningTags/validateSafetyToolTags below still
+// reject anything outside the closed vocabulary.
+const MAX_CONTENT_WARNING_TAGS = CONTENT_WARNING_TAGS.length;
+const MAX_SAFETY_TOOL_TAGS = SAFETY_TOOL_TAGS.length;
 
 function isKnownDangerLevel(value: string): value is DangerLevel {
   return (DANGER_LEVELS as readonly string[]).includes(value);
@@ -82,6 +95,42 @@ function validateSettingTags(tags: string[]): void {
   }
 }
 
+function isKnownContentWarningTag(value: string): value is CampaignContentWarningTag {
+  return (CONTENT_WARNING_TAGS as readonly string[]).includes(value);
+}
+
+/** Backlog #69: same validation shape as validateToneTags/
+ * validateSettingTags above, against the closed CONTENT_WARNING_TAGS
+ * vocabulary. See MAX_CONTENT_WARNING_TAGS' own doc comment for why its
+ * cap doesn't force a choice the way the style/preference tag caps do. */
+function validateContentWarningTags(tags: string[]): void {
+  if (tags.length > MAX_CONTENT_WARNING_TAGS) {
+    throw new CampaignError(`You can select at most ${MAX_CONTENT_WARNING_TAGS} content warnings.`);
+  }
+  for (const tag of tags) {
+    if (!isKnownContentWarningTag(tag)) {
+      throw new CampaignError(`"${tag}" isn't a valid content warning.`);
+    }
+  }
+}
+
+function isKnownSafetyToolTag(value: string): value is CampaignSafetyToolTag {
+  return (SAFETY_TOOL_TAGS as readonly string[]).includes(value);
+}
+
+/** Backlog #69: same validation shape as validateContentWarningTags
+ * above, against the closed SAFETY_TOOL_TAGS vocabulary. */
+function validateSafetyToolTags(tags: string[]): void {
+  if (tags.length > MAX_SAFETY_TOOL_TAGS) {
+    throw new CampaignError(`You can select at most ${MAX_SAFETY_TOOL_TAGS} safety tools.`);
+  }
+  for (const tag of tags) {
+    if (!isKnownSafetyToolTag(tag)) {
+      throw new CampaignError(`"${tag}" isn't a valid safety tool.`);
+    }
+  }
+}
+
 function isKnownStructure(value: string): value is CampaignStructure {
   return (CAMPAIGN_STRUCTURES as readonly string[]).includes(value);
 }
@@ -113,10 +162,15 @@ function validateGameplayFocus(ranking: string[]): void {
 // (rather than going through this file's own getCampaign/listCampaigns)
 // can parse tone_tags the same way -- see lib/profiles.ts's myCampaigns.
 export interface CampaignRow
-  extends Omit<Campaign, "tone_tags" | "setting_tags" | "gameplay_focus"> {
+  extends Omit<
+    Campaign,
+    "tone_tags" | "setting_tags" | "gameplay_focus" | "content_warning_tags" | "safety_tool_tags"
+  > {
   tone_tags: string;
   setting_tags: string;
   gameplay_focus: string;
+  content_warning_tags: string;
+  safety_tool_tags: string;
 }
 
 /** Parses a JSON-encoded array column, falling back to an empty array on
@@ -143,6 +197,8 @@ export function rowToCampaign(row: CampaignRow): Campaign {
     tone_tags: parseJsonArrayColumn(row.tone_tags) as CampaignToneTag[],
     setting_tags: parseJsonArrayColumn(row.setting_tags) as CampaignSettingTag[],
     gameplay_focus: parseJsonArrayColumn(row.gameplay_focus) as GameplayFocusRanking,
+    content_warning_tags: parseJsonArrayColumn(row.content_warning_tags) as CampaignContentWarningTag[],
+    safety_tool_tags: parseJsonArrayColumn(row.safety_tool_tags) as CampaignSafetyToolTag[],
   };
 }
 
@@ -191,6 +247,14 @@ export function createCampaign(input: {
    * creation time like sessionFormat above (unlike dangerLevel, which is
    * only settable via updateCampaign after creation). */
   structure?: CampaignStructure;
+  /** Backlog #69: DM-declared content advisories -- see
+   * Campaign.content_warning_tags' doc comment in lib/types.ts. Defaults
+   * to an empty array. */
+  contentWarningTags?: string[];
+  /** Backlog #69: named safety-tool frameworks this table uses -- see
+   * Campaign.safety_tool_tags' doc comment in lib/types.ts. Defaults to
+   * an empty array. */
+  safetyToolTags?: string[];
   /** Backlog #67: set only by duplicateCampaign, to the ultimate original
    * campaign's id -- see Campaign.duplicated_from_id's doc comment in
    * lib/types.ts. Not exposed on /campaigns/new; every other caller of
@@ -216,6 +280,10 @@ export function createCampaign(input: {
   validateSettingTags(settingTags);
   const gameplayFocus = input.gameplayFocus ?? [];
   validateGameplayFocus(gameplayFocus);
+  const contentWarningTags = input.contentWarningTags ?? [];
+  validateContentWarningTags(contentWarningTags);
+  const safetyToolTags = input.safetyToolTags ?? [];
+  validateSafetyToolTags(safetyToolTags);
   const now = new Date().toISOString();
   const campaign: Campaign = {
     id: uuidv4(),
@@ -236,6 +304,8 @@ export function createCampaign(input: {
     setting_tags: settingTags as CampaignSettingTag[],
     gameplay_focus: gameplayFocus as GameplayFocusRanking,
     structure: input.structure ?? null,
+    content_warning_tags: contentWarningTags as CampaignContentWarningTag[],
+    safety_tool_tags: safetyToolTags as CampaignSafetyToolTag[],
     duplicated_from_id: input.duplicatedFromId ?? null,
     spotlighted_at: null,
     created_at: now,
@@ -243,14 +313,16 @@ export function createCampaign(input: {
   };
   db.prepare(
     `INSERT INTO campaigns
-      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, new_player_friendly, session_format, starting_level, tone_tags, setting_tags, gameplay_focus, structure, duplicated_from_id, spotlighted_at, created_at, updated_at)
+      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, new_player_friendly, session_format, starting_level, tone_tags, setting_tags, gameplay_focus, structure, content_warning_tags, safety_tool_tags, duplicated_from_id, spotlighted_at, created_at, updated_at)
      VALUES
-      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @new_player_friendly, @session_format, @starting_level, @tone_tags, @setting_tags, @gameplay_focus, @structure, @duplicated_from_id, @spotlighted_at, @created_at, @updated_at)`
+      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @new_player_friendly, @session_format, @starting_level, @tone_tags, @setting_tags, @gameplay_focus, @structure, @content_warning_tags, @safety_tool_tags, @duplicated_from_id, @spotlighted_at, @created_at, @updated_at)`
   ).run({
     ...campaign,
     tone_tags: JSON.stringify(toneTags),
     setting_tags: JSON.stringify(settingTags),
     gameplay_focus: JSON.stringify(gameplayFocus),
+    content_warning_tags: JSON.stringify(contentWarningTags),
+    safety_tool_tags: JSON.stringify(safetyToolTags),
   });
   return campaign;
 }
@@ -299,6 +371,13 @@ export function updateCampaign(
      * set it -- same three-state convention as dangerLevel/sessionFormat
      * above. */
     structure: CampaignStructure | null;
+    /** undefined = leave unchanged, matching every other tag list here. A
+     * provided array always replaces the whole list (no partial add/
+     * remove), same full-replace convention as toneTags/settingTags. */
+    contentWarningTags: string[];
+    /** undefined = leave unchanged, same full-replace convention as
+     * contentWarningTags above. */
+    safetyToolTags: string[];
   }>
 ): Campaign {
   const campaign = getCampaign(id);
@@ -344,6 +423,12 @@ export function updateCampaign(
   if (updates.gameplayFocus !== undefined) {
     validateGameplayFocus(updates.gameplayFocus);
   }
+  if (updates.contentWarningTags !== undefined) {
+    validateContentWarningTags(updates.contentWarningTags);
+  }
+  if (updates.safetyToolTags !== undefined) {
+    validateSafetyToolTags(updates.safetyToolTags);
+  }
   if (
     updates.structure !== undefined &&
     updates.structure !== null &&
@@ -354,6 +439,10 @@ export function updateCampaign(
   const nextToneTags = (updates.toneTags ?? campaign.tone_tags) as CampaignToneTag[];
   const nextSettingTags = (updates.settingTags ?? campaign.setting_tags) as CampaignSettingTag[];
   const nextGameplayFocus = (updates.gameplayFocus ?? campaign.gameplay_focus) as GameplayFocusRanking;
+  const nextContentWarningTags = (updates.contentWarningTags ??
+    campaign.content_warning_tags) as CampaignContentWarningTag[];
+  const nextSafetyToolTags = (updates.safetyToolTags ??
+    campaign.safety_tool_tags) as CampaignSafetyToolTag[];
   const next: Campaign = {
     ...campaign,
     title: updates.title !== undefined ? updates.title.trim() : campaign.title,
@@ -376,6 +465,8 @@ export function updateCampaign(
     setting_tags: nextSettingTags,
     gameplay_focus: nextGameplayFocus,
     structure: updates.structure !== undefined ? updates.structure : campaign.structure,
+    content_warning_tags: nextContentWarningTags,
+    safety_tool_tags: nextSafetyToolTags,
     updated_at: new Date().toISOString(),
   };
   db.prepare(
@@ -384,12 +475,15 @@ export function updateCampaign(
      new_player_friendly=@new_player_friendly, session_format=@session_format,
      starting_level=@starting_level, tone_tags=@tone_tags,
      setting_tags=@setting_tags, gameplay_focus=@gameplay_focus, structure=@structure,
+     content_warning_tags=@content_warning_tags, safety_tool_tags=@safety_tool_tags,
      updated_at=@updated_at WHERE id=@id`
   ).run({
     ...next,
     tone_tags: JSON.stringify(nextToneTags),
     setting_tags: JSON.stringify(nextSettingTags),
     gameplay_focus: JSON.stringify(nextGameplayFocus),
+    content_warning_tags: JSON.stringify(nextContentWarningTags),
+    safety_tool_tags: JSON.stringify(nextSafetyToolTags),
   });
   return next;
 }
@@ -428,6 +522,12 @@ export function duplicateCampaign(id: string, dmId: string): Campaign {
     settingTags: source.setting_tags,
     gameplayFocus: source.gameplay_focus,
     structure: source.structure ?? undefined,
+    // Backlog #69: content warnings/safety tools describe the table's
+    // content policy, which is exactly the kind of reusable "setup" a
+    // west-marches/one-shot DM duplicating a table wants carried over,
+    // same reasoning as toneTags/settingTags above.
+    contentWarningTags: source.content_warning_tags,
+    safetyToolTags: source.safety_tool_tags,
     // Backlog #67: flat lineage, not a parent-chain -- a duplicate of a
     // duplicate still points at the ultimate original (source's own
     // duplicated_from_id if it has one, otherwise source itself), so

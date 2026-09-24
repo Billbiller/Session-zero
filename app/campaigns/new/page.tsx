@@ -9,8 +9,14 @@ import {
   CAMPAIGN_STRUCTURE_LABELS,
   CAMPAIGN_TONE_TAGS,
   CAMPAIGN_TONE_TAG_LABELS,
+  CONTENT_WARNING_TAGS,
+  CONTENT_WARNING_TAG_LABELS,
+  SAFETY_TOOL_TAGS,
+  SAFETY_TOOL_TAG_LABELS,
   SESSION_FORMATS,
   SESSION_FORMAT_LABELS,
+  type CampaignContentWarningTag,
+  type CampaignSafetyToolTag,
   type CampaignSettingTag,
   type CampaignStructure,
   type CampaignToneTag,
@@ -32,6 +38,8 @@ export default function NewCampaignPage() {
   const [settingTags, setSettingTags] = useState<CampaignSettingTag[]>([]);
   const [structure, setStructure] = useState<CampaignStructure | "">("");
   const [gameplayFocus, setGameplayFocus] = useState<GameplayPillar[]>([]);
+  const [contentWarningTags, setContentWarningTags] = useState<CampaignContentWarningTag[]>([]);
+  const [safetyToolTags, setSafetyToolTags] = useState<CampaignSafetyToolTag[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
@@ -44,6 +52,18 @@ export default function NewCampaignPage() {
 
   function toggleSettingTag(tag: CampaignSettingTag) {
     setSettingTags((current) =>
+      current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]
+    );
+  }
+
+  function toggleContentWarningTag(tag: CampaignContentWarningTag) {
+    setContentWarningTags((current) =>
+      current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]
+    );
+  }
+
+  function toggleSafetyToolTag(tag: CampaignSafetyToolTag) {
+    setSafetyToolTags((current) =>
       current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]
     );
   }
@@ -68,6 +88,8 @@ export default function NewCampaignPage() {
         settingTags,
         structure: structure || undefined,
         gameplayFocus,
+        contentWarningTags,
+        safetyToolTags,
       }),
     });
     setSubmitting(false);
@@ -207,6 +229,36 @@ export default function NewCampaignPage() {
           </select>
         </label>
         <GameplayFocusRanker value={gameplayFocus} onChange={setGameplayFocus} />
+        <fieldset className="flex flex-col gap-1 text-sm">
+          <legend>Content warnings (pick any that apply)</legend>
+          <div className="flex flex-wrap gap-3">
+            {CONTENT_WARNING_TAGS.map((tag) => (
+              <label key={tag} className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={contentWarningTags.includes(tag)}
+                  onChange={() => toggleContentWarningTag(tag)}
+                />
+                {CONTENT_WARNING_TAG_LABELS[tag]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset className="flex flex-col gap-1 text-sm">
+          <legend>Safety tools used (pick any that apply)</legend>
+          <div className="flex flex-wrap gap-3">
+            {SAFETY_TOOL_TAGS.map((tag) => (
+              <label key={tag} className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={safetyToolTags.includes(tag)}
+                  onChange={() => toggleSafetyToolTag(tag)}
+                />
+                {SAFETY_TOOL_TAG_LABELS[tag]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"

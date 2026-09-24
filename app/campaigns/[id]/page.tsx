@@ -16,8 +16,10 @@ import {
   CAMPAIGN_SETTING_TAG_LABELS,
   CAMPAIGN_STRUCTURE_LABELS,
   CAMPAIGN_TONE_TAG_LABELS,
+  CONTENT_WARNING_TAG_LABELS,
   DANGER_LEVEL_LABELS,
   GAMEPLAY_PILLAR_LABELS,
+  SAFETY_TOOL_TAG_LABELS,
   SESSION_FORMAT_LABELS,
   type Membership,
   type User,
@@ -197,6 +199,24 @@ export default async function CampaignDetailPage({
         {campaign.gameplay_focus.length > 0 && (
           <p className="mt-1 text-xs text-black/60 dark:text-white/60">
             Focus: {campaign.gameplay_focus.map((p) => GAMEPLAY_PILLAR_LABELS[p]).join(" > ")}
+          </p>
+        )}
+        {/* Backlog #69: kept visually separate from the mood/style pill
+            line above -- these are safety disclosures a prospective
+            player should be able to spot at a glance, not just another
+            style tag mixed into a long inline list. */}
+        {campaign.content_warning_tags.length > 0 && (
+          <p className="mt-2 text-xs">
+            <span className="font-medium">Content warnings:</span>{" "}
+            {campaign.content_warning_tags
+              .map((tag) => CONTENT_WARNING_TAG_LABELS[tag])
+              .join(", ")}
+          </p>
+        )}
+        {campaign.safety_tool_tags.length > 0 && (
+          <p className="mt-1 text-xs">
+            <span className="font-medium">Safety tools used:</span>{" "}
+            {campaign.safety_tool_tags.map((tag) => SAFETY_TOOL_TAG_LABELS[tag]).join(", ")}
           </p>
         )}
         {campaign.description && <p className="mt-2 text-sm">{campaign.description}</p>}
