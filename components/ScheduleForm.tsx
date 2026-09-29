@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ScheduleStatus } from "@/lib/types";
+import { RECURRENCES, RECURRENCE_LABELS, type Recurrence, type ScheduleStatus } from "@/lib/types";
 import Section from "@/components/Section";
 
 const STATUS_LABEL: Record<ScheduleStatus, string> = {
@@ -23,14 +23,20 @@ export default function ScheduleForm({
   campaignId,
   isDm,
   nextSessionAt,
+  recurrence,
   status,
 }: {
   campaignId: string;
   isDm: boolean;
   nextSessionAt: string | null;
+  /** Backlog #70: edited together with nextSessionAt below -- see
+   * lib/types.ts's Campaign.recurrence doc comment for why these two
+   * fields are always set/cleared as a pair. */
+  recurrence: Recurrence | null;
   status: ScheduleStatus;
 }) {
   const [value, setValue] = useState(toLocalInputValue(nextSessionAt));
+  const [recurrenceValue, setRecurrenceValue] = useState<Recurrence | "">(recurrence ?? "");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
@@ -43,7 +49,13 @@ export default function ScheduleForm({
     const res = await fetch(`/api/campaigns/${campaignId}/schedule`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nextSessionAt: iso }),
+      // Recurrence only means anything alongside a date -- clearing the
+      // date always clears recurrence too, same as lib/schedule.ts's
+      // updateSchedule itself enforces server-side.
+      body: JSON.stringify({
+        nextSessionAt: iso,
+        recurrence: iso ? recurrenceValue || null : null,
+      }),
     });
     setSubmitting(false);
     const data = await res.json().catch(() => ({}));
@@ -63,6 +75,7 @@ export default function ScheduleForm({
           <>
             {" "}
             &middot; {new Date(nextSessionAt).toLocaleString()}
+            {recurrence && <> &middot; {RECURRENCE_LABELS[recurrence]}</>}
             {" "}
             &middot;{" "}
             <a href={`/api/campaigns/${campaignId}/calendar`} className="underline">
@@ -82,6 +95,22 @@ export default function ScheduleForm({
               className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
           </label>
+          <label className="flex flex-col gap-1">
+            Repeats
+            <select
+              value={recurrenceValue}
+              onChange={(e) => setRecurrenceValue(e.target.value as Recurrence | "")}
+              disabled={!value}
+              className="rounded border border-black/20 px-3 py-1.5 disabled:opacity-50 dark:border-white/20 dark:bg-transparent"
+            >
+              <option value="">One-time</option>
+              {RECURRENCES.map((r) => (
+                <option key={r} value={r}>
+                  {RECURRENCE_LABELS[r]}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="submit"
             disabled={submitting}
@@ -92,7 +121,10 @@ export default function ScheduleForm({
           {value && (
             <button
               type="button"
-              onClick={() => setValue("")}
+              onClick={() => {
+                setValue("");
+                setRecurrenceValue("");
+              }}
               className="underline"
             >
               Clear

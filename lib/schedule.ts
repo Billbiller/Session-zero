@@ -3,9 +3,13 @@ import { getCampaign } from "./campaigns";
 import { notify } from "./notifications";
 import { activePartyUserIds } from "./access";
 import { clearRsvpsForCampaign } from "./sessionRsvps";
-import type { Campaign, ScheduleStatus } from "./types";
+import { RECURRENCES, type Campaign, type Recurrence, type ScheduleStatus } from "./types";
 
 export class ScheduleError extends Error {}
+
+function isKnownRecurrence(value: string): value is Recurrence {
+  return (RECURRENCES as readonly string[]).includes(value);
+}
 
 /** Compared as UTC instants, so this is timezone-safe regardless of server/client TZ. */
 export function computeScheduleStatus(
@@ -20,7 +24,15 @@ export function computeScheduleStatus(
 export function updateSchedule(
   campaignId: string,
   dmId: string,
-  nextSessionAt: string | null
+  nextSessionAt: string | null,
+  /** Backlog #70: an optional weekly/biweekly cadence, always set/cleared
+   * together with nextSessionAt -- they're edited in the same
+   * ScheduleForm control and describe the same schedule, so this
+   * defaults to null (no recurrence) rather than "leave unchanged" like
+   * updateCampaign's own fields. Clearing nextSessionAt back to null
+   * always clears recurrence too, since a cadence with no anchor date is
+   * meaningless. */
+  recurrence: Recurrence | null = null
 ): Campaign {
   const campaign = getCampaign(campaignId);
   if (!campaign) throw new ScheduleError("Campaign not found.");
@@ -33,10 +45,14 @@ export function updateSchedule(
       throw new ScheduleError("Invalid date.");
     }
   }
+  if (recurrence !== null && !isKnownRecurrence(recurrence)) {
+    throw new ScheduleError("Not a recognized recurrence.");
+  }
+  const nextRecurrence = nextSessionAt ? recurrence : null;
   const now = new Date().toISOString();
   db.prepare(
-    "UPDATE campaigns SET next_session_at = ?, updated_at = ? WHERE id = ?"
-  ).run(nextSessionAt, now, campaignId);
+    "UPDATE campaigns SET next_session_at = ?, recurrence = ?, updated_at = ? WHERE id = ?"
+  ).run(nextSessionAt, nextRecurrence, now, campaignId);
 
   // Backlog #35: an RSVP for last week's date is meaningless once the
   // date changes -- clear every existing RSVP the moment the scheduled

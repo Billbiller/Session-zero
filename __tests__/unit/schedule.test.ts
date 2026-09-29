@@ -80,4 +80,42 @@ describe("updateSchedule", () => {
     const cleared = updateSchedule(campaign.id, dm.id, null);
     expect(cleared.next_session_at).toBeNull();
   });
+
+  // Backlog #70 (competitive research vs. StartPlaying.games).
+  it("lets the DM set a weekly or biweekly recurrence alongside the date", () => {
+    const { dm, campaign } = setup("sc5");
+    const iso = new Date(Date.now() + 100000).toISOString();
+    const weekly = updateSchedule(campaign.id, dm.id, iso, "weekly");
+    expect(weekly.recurrence).toBe("weekly");
+    const biweekly = updateSchedule(campaign.id, dm.id, iso, "biweekly");
+    expect(biweekly.recurrence).toBe("biweekly");
+  });
+
+  it("defaults recurrence to null when omitted, clearing any previously-set recurrence", () => {
+    // ScheduleForm always sends both fields together in one PUT, so an
+    // omitted recurrence here means "the DM didn't pick one this time" --
+    // the same semantics as a fresh one-time date, not "leave unchanged".
+    const { dm, campaign } = setup("sc6");
+    const iso = new Date(Date.now() + 100000).toISOString();
+    updateSchedule(campaign.id, dm.id, iso, "weekly");
+    const reset = updateSchedule(campaign.id, dm.id, iso);
+    expect(reset.recurrence).toBeNull();
+  });
+
+  it("rejects an unrecognized recurrence value", () => {
+    const { dm, campaign } = setup("sc7");
+    const iso = new Date(Date.now() + 100000).toISOString();
+    expect(() =>
+      updateSchedule(campaign.id, dm.id, iso, "monthly" as never)
+    ).toThrow(ScheduleError);
+  });
+
+  it("clears recurrence when the date itself is cleared back to unscheduled", () => {
+    const { dm, campaign } = setup("sc8");
+    const iso = new Date(Date.now() + 100000).toISOString();
+    updateSchedule(campaign.id, dm.id, iso, "weekly");
+    const cleared = updateSchedule(campaign.id, dm.id, null, "weekly");
+    expect(cleared.next_session_at).toBeNull();
+    expect(cleared.recurrence).toBeNull();
+  });
 });

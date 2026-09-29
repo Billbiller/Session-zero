@@ -32,6 +32,7 @@ import RosterPanel from "@/components/RosterPanel";
 import RelatedCampaignsPanel from "@/components/RelatedCampaignsPanel";
 import SpotlightToggle from "@/components/SpotlightToggle";
 import ScheduleForm from "@/components/ScheduleForm";
+import UpcomingSessionsPreview from "@/components/UpcomingSessionsPreview";
 import PartyNotesPanel from "@/components/PartyNotesPanel";
 import CampaignChatPanel from "@/components/CampaignChatPanel";
 import SessionRsvpPanel from "@/components/SessionRsvpPanel";
@@ -222,6 +223,14 @@ export default async function CampaignDetailPage({
         {campaign.description && <p className="mt-2 text-sm">{campaign.description}</p>}
       </div>
 
+      {/* Backlog #70: deliberately public, outside the hasPrivateAccess
+          gate below -- a prospective (not-yet-approved) viewer is exactly
+          who this is for. */}
+      <UpcomingSessionsPreview
+        nextSessionAt={campaign.next_session_at}
+        recurrence={campaign.recurrence}
+      />
+
       <CampaignRatingPanel campaignId={id} />
 
       <JoinLeaveControls
@@ -327,6 +336,7 @@ export default async function CampaignDetailPage({
             campaignId={id}
             isDm={isDm}
             nextSessionAt={campaign.next_session_at}
+            recurrence={campaign.recurrence}
             status={computeScheduleStatus(campaign.next_session_at)}
           />
           {campaign.next_session_at && <SessionRsvpPanel campaignId={id} viewerId={viewer?.id ?? null} />}

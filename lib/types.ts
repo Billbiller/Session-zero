@@ -44,6 +44,25 @@ export const SESSION_FORMAT_LABELS: Record<SessionFormat, string> = {
   hybrid: "Hybrid (in person, with remote seats)",
 };
 
+/** Backlog #70 (competitive research vs. StartPlaying.games): an
+ * optional recurring cadence for a campaign's schedule, paired with
+ * Campaign.next_session_at -- see that field's own doc comment below and
+ * lib/upcomingSessions.ts's projectUpcomingSessions(). Deliberately just
+ * two fixed intervals rather than a full recurrence-rule mini-language
+ * (day-of-week/time-of-day already come from next_session_at itself, so
+ * "weekly" only needs to mean "same day/time, every 7 days"); null means
+ * one-off/irregular scheduling, the historical default. Same
+ * CHECK-constrained nullable-enum convention as DANGER_LEVELS/
+ * SESSION_FORMATS above. */
+export const RECURRENCES = ["weekly", "biweekly"] as const;
+
+export type Recurrence = (typeof RECURRENCES)[number];
+
+export const RECURRENCE_LABELS: Record<Recurrence, string> = {
+  weekly: "Weekly",
+  biweekly: "Every two weeks",
+};
+
 export interface Campaign {
   id: string;
   dm_id: string;
@@ -54,6 +73,17 @@ export interface Campaign {
   accepting_requests: number; // 0 | 1
   cancelled: number; // 0 | 1
   next_session_at: string | null;
+  /** Backlog #70 (competitive research vs. StartPlaying.games): an
+   * optional weekly/biweekly cadence paired with next_session_at, used to
+   * project a short list of upcoming session dates for a viewer who
+   * hasn't joined yet -- see lib/upcomingSessions.ts's
+   * projectUpcomingSessions(). null means one-off/irregular scheduling
+   * (the historical default, unchanged): only the single next_session_at
+   * date is shown, no projection. Set/cleared together with
+   * next_session_at via lib/schedule.ts's updateSchedule(), not through
+   * updateCampaign -- the two fields describe the same schedule and are
+   * always edited together in ScheduleForm. */
+  recurrence: Recurrence | null;
   /** DM-set, player-visible heads-up filter for how lethal/deadly this
    * table runs — explicitly not a scoreboard or a judgment on DM skill,
    * just advance notice for a player deciding whether to join. null means

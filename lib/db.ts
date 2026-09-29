@@ -54,6 +54,13 @@ CREATE TABLE IF NOT EXISTS campaigns (
   accepting_requests INTEGER NOT NULL DEFAULT 1,
   cancelled INTEGER NOT NULL DEFAULT 0,
   next_session_at TEXT,
+  -- Backlog #70 (competitive research vs. StartPlaying.games): optional
+  -- weekly/biweekly cadence paired with next_session_at -- see
+  -- lib/types.ts's Campaign.recurrence doc comment. No CHECK constraint
+  -- here (SQLite ALTER TABLE ADD COLUMN can't add one to an existing
+  -- table, same limitation noted for duplicated_from_id's FK above);
+  -- validated application-side in lib/schedule.ts's updateSchedule.
+  recurrence TEXT,
   danger_level TEXT CHECK (danger_level IS NULL OR danger_level IN ('low-lethality','moderate','high-lethality','deadly-osr')),
   location TEXT NOT NULL DEFAULT '',
   -- Backlog #40: DM-set, player-visible flag echoing the prototype's "New
@@ -929,6 +936,13 @@ if (!campaignColumns.some((c) => c.name === "content_warning_tags")) {
 }
 if (!campaignColumns.some((c) => c.name === "safety_tool_tags")) {
   db.exec("ALTER TABLE campaigns ADD COLUMN safety_tool_tags TEXT NOT NULL DEFAULT '[]'");
+}
+// Backlog #70 (competitive research vs. StartPlaying.games): optional
+// weekly/biweekly cadence paired with next_session_at. New databases
+// already get this column from the CREATE TABLE statement above; reuses
+// the same campaignColumns snapshot.
+if (!campaignColumns.some((c) => c.name === "recurrence")) {
+  db.exec("ALTER TABLE campaigns ADD COLUMN recurrence TEXT");
 }
 if (!profileColumns.some((c) => c.name === "tone_tags")) {
   db.exec("ALTER TABLE profiles ADD COLUMN tone_tags TEXT NOT NULL DEFAULT '[]'");

@@ -295,6 +295,7 @@ export function createCampaign(input: {
     accepting_requests: 1,
     cancelled: 0,
     next_session_at: null,
+    recurrence: null,
     danger_level: null,
     location: (input.location ?? "").trim(),
     new_player_friendly: input.newPlayerFriendly ? 1 : 0,
@@ -313,9 +314,9 @@ export function createCampaign(input: {
   };
   db.prepare(
     `INSERT INTO campaigns
-      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, danger_level, location, new_player_friendly, session_format, starting_level, tone_tags, setting_tags, gameplay_focus, structure, content_warning_tags, safety_tool_tags, duplicated_from_id, spotlighted_at, created_at, updated_at)
+      (id, dm_id, title, description, system, capacity, accepting_requests, cancelled, next_session_at, recurrence, danger_level, location, new_player_friendly, session_format, starting_level, tone_tags, setting_tags, gameplay_focus, structure, content_warning_tags, safety_tool_tags, duplicated_from_id, spotlighted_at, created_at, updated_at)
      VALUES
-      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @danger_level, @location, @new_player_friendly, @session_format, @starting_level, @tone_tags, @setting_tags, @gameplay_focus, @structure, @content_warning_tags, @safety_tool_tags, @duplicated_from_id, @spotlighted_at, @created_at, @updated_at)`
+      (@id, @dm_id, @title, @description, @system, @capacity, @accepting_requests, @cancelled, @next_session_at, @recurrence, @danger_level, @location, @new_player_friendly, @session_format, @starting_level, @tone_tags, @setting_tags, @gameplay_focus, @structure, @content_warning_tags, @safety_tool_tags, @duplicated_from_id, @spotlighted_at, @created_at, @updated_at)`
   ).run({
     ...campaign,
     tone_tags: JSON.stringify(toneTags),
