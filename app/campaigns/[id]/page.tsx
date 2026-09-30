@@ -33,6 +33,7 @@ import RelatedCampaignsPanel from "@/components/RelatedCampaignsPanel";
 import SpotlightToggle from "@/components/SpotlightToggle";
 import ScheduleForm from "@/components/ScheduleForm";
 import UpcomingSessionsPreview from "@/components/UpcomingSessionsPreview";
+import PartyCompositionPreview from "@/components/PartyCompositionPreview";
 import PartyNotesPanel from "@/components/PartyNotesPanel";
 import CampaignChatPanel from "@/components/CampaignChatPanel";
 import SessionRsvpPanel from "@/components/SessionRsvpPanel";
@@ -230,6 +231,17 @@ export default async function CampaignDetailPage({
         nextSessionAt={campaign.next_session_at}
         recurrence={campaign.recurrence}
       />
+
+      {/* Backlog #71: same "deliberately public, outside hasPrivateAccess"
+          shape as UpcomingSessionsPreview above -- shown only while the
+          campaign is genuinely open to a prospective joiner (accepting
+          requests and not cancelled, mirroring SpotlightToggle's own
+          "eligible" condition below); PartyCompositionPreview itself
+          renders nothing when there's no active linked character with a
+          usable archetype to show. */}
+      {!campaign.cancelled && !!campaign.accepting_requests && (
+        <PartyCompositionPreview characters={campaignCharacters} />
+      )}
 
       <CampaignRatingPanel campaignId={id} />
 
