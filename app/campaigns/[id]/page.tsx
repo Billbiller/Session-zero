@@ -19,6 +19,7 @@ import {
   CONTENT_WARNING_TAG_LABELS,
   DANGER_LEVEL_LABELS,
   GAMEPLAY_PILLAR_LABELS,
+  PLATFORM_TAG_LABELS,
   SAFETY_TOOL_TAG_LABELS,
   SESSION_FORMAT_LABELS,
   type Membership,
@@ -201,6 +202,17 @@ export default async function CampaignDetailPage({
         {campaign.gameplay_focus.length > 0 && (
           <p className="mt-1 text-xs text-black/60 dark:text-white/60">
             Focus: {campaign.gameplay_focus.map((p) => GAMEPLAY_PILLAR_LABELS[p]).join(" > ")}
+          </p>
+        )}
+        {/* Backlog #72: same "own short line, not folded into the tag
+            pill list above" shape as the content-warnings/safety-tools
+            lines below -- shown whenever the DM has declared at least
+            one platform/tool, regardless of session_format (an
+            in-person table can still note it uses a VTT for maps). */}
+        {campaign.platform_tags.length > 0 && (
+          <p className="mt-2 text-xs">
+            <span className="font-medium">Platforms / tools used:</span>{" "}
+            {campaign.platform_tags.map((tag) => PLATFORM_TAG_LABELS[tag]).join(", ")}
           </p>
         )}
         {/* Backlog #69: kept visually separate from the mood/style pill

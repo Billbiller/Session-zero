@@ -74,6 +74,13 @@ CREATE TABLE IF NOT EXISTS campaigns (
   -- SESSION_FORMATS doc comment for the full reasoning. Null (unset) is
   -- the default, same as danger_level.
   session_format TEXT CHECK (session_format IS NULL OR session_format IN ('in_person','remote','hybrid')),
+  -- Backlog #72 (competitive research vs. StartPlaying.games): curated
+  -- multi-select of platforms/tools this table uses (voice/video, VTT,
+  -- digital sheet provider), JSON-encoded -- see lib/types.ts's
+  -- PLATFORM_TAGS/Campaign.platform_tags doc comments. Same
+  -- JSON-array-column/parse-on-read shape as tone_tags/
+  -- content_warning_tags/safety_tool_tags above.
+  platform_tags TEXT NOT NULL DEFAULT '[]',
   -- Backlog #30: free-text starting level/rank -- see lib/types.ts's
   -- Campaign.starting_level doc comment for why this is text, not an
   -- integer. Null means the DM hasn't said.
@@ -943,6 +950,13 @@ if (!campaignColumns.some((c) => c.name === "safety_tool_tags")) {
 // the same campaignColumns snapshot.
 if (!campaignColumns.some((c) => c.name === "recurrence")) {
   db.exec("ALTER TABLE campaigns ADD COLUMN recurrence TEXT");
+}
+// Backlog #72 (competitive research vs. StartPlaying.games): which
+// platforms/tools a table uses. New databases already get this column
+// from the CREATE TABLE statement above; reuses the same campaignColumns
+// snapshot taken before any ALTER TABLE on this table ran.
+if (!campaignColumns.some((c) => c.name === "platform_tags")) {
+  db.exec("ALTER TABLE campaigns ADD COLUMN platform_tags TEXT NOT NULL DEFAULT '[]'");
 }
 if (!profileColumns.some((c) => c.name === "tone_tags")) {
   db.exec("ALTER TABLE profiles ADD COLUMN tone_tags TEXT NOT NULL DEFAULT '[]'");

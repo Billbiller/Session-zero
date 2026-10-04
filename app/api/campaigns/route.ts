@@ -8,6 +8,7 @@ import {
   CAMPAIGN_TONE_TAGS,
   CONTENT_WARNING_TAGS,
   GAMEPLAY_PILLARS,
+  PLATFORM_TAGS,
   SAFETY_TOOL_TAGS,
   SESSION_FORMATS,
   type SessionFormat,
@@ -65,6 +66,7 @@ const createSchema = z.object({
   structure: z.enum(CAMPAIGN_STRUCTURES).optional(),
   contentWarningTags: z.array(z.enum(CONTENT_WARNING_TAGS)).max(CONTENT_WARNING_TAGS.length).optional(),
   safetyToolTags: z.array(z.enum(SAFETY_TOOL_TAGS)).max(SAFETY_TOOL_TAGS.length).optional(),
+  platformTags: z.array(z.enum(PLATFORM_TAGS)).max(PLATFORM_TAGS.length).optional(),
 });
 
 export async function POST(request: NextRequest) {

@@ -44,6 +44,42 @@ export const SESSION_FORMAT_LABELS: Record<SessionFormat, string> = {
   hybrid: "Hybrid (in person, with remote seats)",
 };
 
+/** Backlog #72 (competitive research vs. StartPlaying.games): which
+ * tools a remote/hybrid table actually uses (voice/video, a virtual
+ * tabletop, a digital character sheet) -- StartPlaying lists these per
+ * game with a one-line blurb per platform so an applicant knows upfront
+ * whether they already have the accounts/software needed, instead of
+ * finding out only after being approved. Curated multi-select, same
+ * closed-vocabulary-but-multi-select shape as CAMPAIGN_TONE_TAGS/
+ * CONTENT_WARNING_TAGS above (a table can genuinely use more than one
+ * tool at once, e.g. voice in Discord plus maps in Roll20) -- see
+ * Campaign.platform_tags' own doc comment below. Not conditioned on
+ * session_format at the schema/validation level: an in-person table that
+ * still uses a VTT for maps, or hasn't set a format yet, can set this
+ * too (see DmControls/the campaign-creation form, which show the field
+ * unconditionally rather than hiding it behind session_format). */
+export const PLATFORM_TAGS = [
+  "discord",
+  "roll20",
+  "foundry-vtt",
+  "dndbeyond",
+  "zoom",
+  "google-meet",
+  "in-person-no-tools",
+] as const;
+
+export type CampaignPlatformTag = (typeof PLATFORM_TAGS)[number];
+
+export const PLATFORM_TAG_LABELS: Record<CampaignPlatformTag, string> = {
+  discord: "Discord",
+  roll20: "Roll20",
+  "foundry-vtt": "Foundry VTT",
+  dndbeyond: "D&D Beyond",
+  zoom: "Zoom",
+  "google-meet": "Google Meet",
+  "in-person-no-tools": "In-person, no tools needed",
+};
+
 /** Backlog #70 (competitive research vs. StartPlaying.games): an
  * optional recurring cadence for a campaign's schedule, paired with
  * Campaign.next_session_at -- see that field's own doc comment below and
@@ -107,6 +143,13 @@ export interface Campaign {
    * existed default to null via the ALTER TABLE migration in lib/db.ts,
    * same as danger_level did. */
   session_format: SessionFormat | null;
+  /** Backlog #72 (competitive research vs. StartPlaying.games): curated
+   * multi-select of which platforms/tools this table actually uses -- see
+   * PLATFORM_TAGS' own doc comment above. Same JSON-in-TEXT-column/
+   * parse-on-read shape as tone_tags/content_warning_tags/safety_tool_tags
+   * (rowToCampaign in lib/campaigns.ts), always an array, defaulting to
+   * empty (no platforms declared, not a claim that none are used). */
+  platform_tags: CampaignPlatformTag[];
   /** Backlog #30: free-text starting level/rank, not a rigid integer --
    * systems vary too much in how they express this ("Level 3" vs. "Tier
    * 2" vs. a narrative milestone like "just past the prologue") for a

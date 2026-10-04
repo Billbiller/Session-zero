@@ -13,12 +13,15 @@ import {
   CONTENT_WARNING_TAG_LABELS,
   DANGER_LEVELS,
   DANGER_LEVEL_LABELS,
+  PLATFORM_TAGS,
+  PLATFORM_TAG_LABELS,
   SAFETY_TOOL_TAGS,
   SAFETY_TOOL_TAG_LABELS,
   SESSION_FORMATS,
   SESSION_FORMAT_LABELS,
   type Campaign,
   type CampaignContentWarningTag,
+  type CampaignPlatformTag,
   type CampaignSafetyToolTag,
   type CampaignSettingTag,
   type CampaignStructure,
@@ -53,6 +56,9 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
   const [safetyToolTags, setSafetyToolTags] = useState<CampaignSafetyToolTag[]>(
     campaign.safety_tool_tags
   );
+  const [platformTags, setPlatformTags] = useState<CampaignPlatformTag[]>(
+    campaign.platform_tags
+  );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
@@ -81,6 +87,12 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
     );
   }
 
+  function togglePlatformTag(tag: CampaignPlatformTag) {
+    setPlatformTags((current) =>
+      current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]
+    );
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -104,6 +116,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
         gameplayFocus,
         contentWarningTags,
         safetyToolTags,
+        platformTags,
       }),
     });
     setSubmitting(false);
@@ -280,6 +293,21 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
               ))}
             </select>
           </label>
+          <fieldset className="flex flex-col gap-1">
+            <legend>Platforms / tools used (pick any that apply)</legend>
+            <div className="flex flex-wrap gap-3">
+              {PLATFORM_TAGS.map((tag) => (
+                <label key={tag} className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={platformTags.includes(tag)}
+                    onChange={() => togglePlatformTag(tag)}
+                  />
+                  {PLATFORM_TAG_LABELS[tag]}
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <label className="flex flex-col gap-1">
             Starting level
             <input

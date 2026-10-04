@@ -19,6 +19,7 @@ import {
   CAMPAIGN_SETTING_TAGS,
   CONTENT_WARNING_TAGS,
   GAMEPLAY_PILLARS,
+  PLATFORM_TAGS,
   SAFETY_TOOL_TAGS,
 } from "@/lib/types";
 import { requestJoin, approveRequest } from "@/lib/memberships";
@@ -1593,6 +1594,138 @@ describe("campaign content warnings and safety tools (backlog #69)", () => {
     const copy = duplicateCampaign(original.id, dm.id);
     expect(copy.content_warning_tags).toEqual(["suicide-or-self-harm-themes"]);
     expect(copy.safety_tool_tags).toEqual(["lines-and-veils", "consent-checklist"]);
+  });
+
+  // Backlog #72: platform_tags -- same validation/CRUD/duplicate shape
+  // as content_warning_tags/safety_tool_tags above.
+  it("defaults platform_tags to an empty array on create", () => {
+    const dm = makeDm("dm-plat1@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(campaign.platform_tags).toEqual([]);
+  });
+
+  it("sets platform_tags on create", () => {
+    const dm = makeDm("dm-plat2@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      sessionFormat: "remote",
+      platformTags: ["discord", "roll20"],
+    });
+    expect(campaign.platform_tags).toEqual(["discord", "roll20"]);
+  });
+
+  it("rejects a platform/tool that isn't in PLATFORM_TAGS, on create and update", () => {
+    const dm = makeDm("dm-plat3@example.com");
+    expect(() =>
+      createCampaign({
+        dmId: dm.id,
+        title: "T",
+        description: "",
+        system: "S",
+        capacity: 4,
+        platformTags: ["not-a-real-platform"],
+      })
+    ).toThrow(CampaignError);
+
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T2",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    expect(() =>
+      updateCampaign(campaign.id, dm.id, { platformTags: ["not-a-real-platform"] })
+    ).toThrow(CampaignError);
+  });
+
+  it("accepts the entire PLATFORM_TAGS vocabulary at once", () => {
+    // Same "full vocabulary is a legitimate selection" reasoning as
+    // CONTENT_WARNING_TAGS/SAFETY_TOOL_TAGS -- a table can genuinely use
+    // several platforms/tools at once.
+    const dm = makeDm("dm-plat4@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      platformTags: [...PLATFORM_TAGS],
+    });
+    expect(campaign.platform_tags).toEqual([...PLATFORM_TAGS]);
+  });
+
+  it("lets the DM set, change, and clear platform_tags via update", () => {
+    const dm = makeDm("dm-plat5@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+    });
+    const set = updateCampaign(campaign.id, dm.id, { platformTags: ["zoom"] });
+    expect(set.platform_tags).toEqual(["zoom"]);
+
+    const changed = updateCampaign(campaign.id, dm.id, {
+      platformTags: ["foundry-vtt", "dndbeyond"],
+    });
+    expect(changed.platform_tags).toEqual(["foundry-vtt", "dndbeyond"]);
+
+    const cleared = updateCampaign(campaign.id, dm.id, { platformTags: [] });
+    expect(cleared.platform_tags).toEqual([]);
+  });
+
+  it("leaves platform_tags untouched when omitted from an update", () => {
+    const dm = makeDm("dm-plat6@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      platformTags: ["google-meet"],
+    });
+    const updated = updateCampaign(campaign.id, dm.id, { title: "New title" });
+    expect(updated.platform_tags).toEqual(["google-meet"]);
+  });
+
+  it("persists platform_tags across a fresh read", () => {
+    const dm = makeDm("dm-plat7@example.com");
+    const campaign = createCampaign({
+      dmId: dm.id,
+      title: "T",
+      description: "",
+      system: "S",
+      capacity: 4,
+      platformTags: ["in-person-no-tools"],
+    });
+    const fetched = getCampaign(campaign.id);
+    expect(fetched?.platform_tags).toEqual(["in-person-no-tools"]);
+  });
+
+  it("carries platform_tags over on duplicateCampaign", () => {
+    const dm = makeDm("dm-plat8@example.com");
+    const original = createCampaign({
+      dmId: dm.id,
+      title: "Original",
+      description: "",
+      system: "S",
+      capacity: 4,
+      platformTags: ["discord", "roll20"],
+    });
+    const copy = duplicateCampaign(original.id, dm.id);
+    expect(copy.platform_tags).toEqual(["discord", "roll20"]);
   });
 });
 

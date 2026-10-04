@@ -13,6 +13,7 @@ import {
   CONTENT_WARNING_TAGS,
   DANGER_LEVELS,
   GAMEPLAY_PILLARS,
+  PLATFORM_TAGS,
   SAFETY_TOOL_TAGS,
   SESSION_FORMATS,
   type Membership,
@@ -77,6 +78,7 @@ const updateSchema = z.object({
   // undefined = leave unchanged; a provided array replaces the whole list.
   contentWarningTags: z.array(z.enum(CONTENT_WARNING_TAGS)).max(CONTENT_WARNING_TAGS.length).optional(),
   safetyToolTags: z.array(z.enum(SAFETY_TOOL_TAGS)).max(SAFETY_TOOL_TAGS.length).optional(),
+  platformTags: z.array(z.enum(PLATFORM_TAGS)).max(PLATFORM_TAGS.length).optional(),
 });
 
 export async function PATCH(
