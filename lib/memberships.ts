@@ -4,9 +4,11 @@ import { getCampaign, approvedHeadcount, CampaignError } from "./campaigns";
 import { notify } from "./notifications";
 import { recordCampaignBecameFull } from "./feed";
 import { activePartyUserIds } from "./access";
-import type { Membership } from "./types";
+import type { Membership, MembershipStatus, DmResponsivenessStats } from "./types";
 
 export class MembershipError extends Error {}
+
+const DM_RESPONSIVENESS_WINDOW_DAYS = 90;
 
 function activeMembership(campaignId: string, userId: string): Membership | null {
   const row = db
@@ -195,6 +197,57 @@ export function listRequests(
   return db
     .prepare("SELECT * FROM memberships WHERE campaign_id = ? ORDER BY created_at ASC")
     .all(campaignId) as Membership[];
+}
+
+
+/** Backlog #73 (competitive research vs. StartPlaying.games): see
+ * DmResponsivenessStats' own doc comment in lib/types.ts for the full
+ * shape/derivation writeup. Scoped by `created_at` (when the request
+ * was *received*), not `updated_at` -- a 90-day-old request resolved
+ * yesterday should still count toward this window on the "total
+ * received" side, not just a request that both arrived and resolved
+ * recently. Joins to `campaigns` for the dm_id scope rather than adding
+ * a denormalized column to `memberships`, matching every other
+ * cross-table stats query in this app (e.g. lib/stats.ts's
+ * getUserStats). */
+export function getDmResponsivenessStats(
+  dmId: string,
+  windowDays: number = DM_RESPONSIVENESS_WINDOW_DAYS
+): DmResponsivenessStats {
+  const cutoff = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000).toISOString();
+  const rows = db
+    .prepare(
+      `SELECT m.status as status, m.created_at as created_at, m.updated_at as updated_at
+       FROM memberships m
+       JOIN campaigns c ON c.id = m.campaign_id
+       WHERE c.dm_id = ? AND m.created_at >= ?`
+    )
+    .all(dmId, cutoff) as { status: MembershipStatus; created_at: string; updated_at: string }[];
+
+  const total = rows.length;
+  const resolvedRows = rows.filter((r) => r.status !== "pending");
+  const resolved = resolvedRows.length;
+
+  let averageResponseHours: number | null = null;
+  if (resolved > 0) {
+    const totalHours = resolvedRows.reduce((sum, r) => {
+      const hours =
+        (new Date(r.updated_at).getTime() - new Date(r.created_at).getTime()) / (1000 * 60 * 60);
+      // Defensive floor -- shouldn't go negative in practice (updated_at
+      // is only ever set at or after created_at), but a clamp is cheap
+      // insurance against this ever reading as a negative response time.
+      return sum + Math.max(hours, 0);
+    }, 0);
+    averageResponseHours = totalHours / resolved;
+  }
+
+  return {
+    windowDays,
+    total,
+    resolved,
+    responseRate: total > 0 ? resolved / total : null,
+    averageResponseHours,
+  };
 }
 
 export { CampaignError };

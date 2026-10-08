@@ -7,6 +7,7 @@ import {
   declineRequest,
   leaveCampaign,
   listRequests,
+  getDmResponsivenessStats,
   MembershipError,
 } from "@/lib/memberships";
 import { listNotifications } from "@/lib/notifications";
@@ -158,4 +159,114 @@ describe("memberships", () => {
     expect(listRequests(campaign.id, "approved")).toHaveLength(1);
     expect(listRequests(campaign.id)).toHaveLength(2);
   });
+
+describe("getDmResponsivenessStats (backlog #73)", () => {
+  it("reads as no data for a DM who has never received a request", () => {
+    const { dm } = setupCampaign(4, "r1");
+    const stats = getDmResponsivenessStats(dm.id);
+    expect(stats).toEqual({
+      windowDays: 90,
+      total: 0,
+      resolved: 0,
+      responseRate: null,
+      averageResponseHours: null,
+    });
+  });
+
+  it("counts a still-pending request toward total but not resolved", () => {
+    const { dm, campaign } = setupCampaign(4, "r2");
+    const player = signUp("Player", "r2-p@example.com", "testpassword123");
+    requestJoin(campaign.id, player.id);
+
+    const stats = getDmResponsivenessStats(dm.id);
+    expect(stats.total).toBe(1);
+    expect(stats.resolved).toBe(0);
+    expect(stats.responseRate).toBe(0);
+    expect(stats.averageResponseHours).toBeNull();
+  });
+
+  it("computes response rate and average response time across resolved requests", () => {
+    const { dm, campaign } = setupCampaign(4, "r3");
+    const approved = signUp("Approved", "r3-a@example.com", "testpassword123");
+    const declined = signUp("Declined", "r3-d@example.com", "testpassword123");
+    const stillPending = signUp("Pending", "r3-p@example.com", "testpassword123");
+
+    const m1 = requestJoin(campaign.id, approved.id);
+    const m2 = requestJoin(campaign.id, declined.id);
+    requestJoin(campaign.id, stillPending.id);
+
+    approveRequest(m1.id, dm.id);
+    declineRequest(m2.id, dm.id);
+
+    // Backdate created_at/updated_at directly (relative to *now*, so this
+    // stays inside the default 90-day window regardless of when the
+    // suite runs) so the response-time math is exact and deterministic
+    // rather than racing real wall-clock time.
+    const hoursAgo = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000).toISOString();
+    db.prepare("UPDATE memberships SET created_at = ?, updated_at = ? WHERE id = ?").run(
+      hoursAgo(10),
+      hoursAgo(8), // created 10h ago, resolved 8h ago -> 2 hour response time
+      m1.id
+    );
+    db.prepare("UPDATE memberships SET created_at = ?, updated_at = ? WHERE id = ?").run(
+      hoursAgo(10),
+      hoursAgo(6), // created 10h ago, resolved 6h ago -> 4 hour response time
+      m2.id
+    );
+
+    const stats = getDmResponsivenessStats(dm.id);
+    expect(stats.total).toBe(3);
+    expect(stats.resolved).toBe(2);
+    expect(stats.responseRate).toBeCloseTo(2 / 3);
+    expect(stats.averageResponseHours).toBeCloseTo(3); // (2 + 4) / 2
+  });
+
+  it("counts a membership that later left as resolved, not pending", () => {
+    const { dm, campaign } = setupCampaign(4, "r4");
+    const player = signUp("Player", "r4-p@example.com", "testpassword123");
+    const membership = requestJoin(campaign.id, player.id);
+    approveRequest(membership.id, dm.id);
+    leaveCampaign(campaign.id, player.id);
+
+    const stats = getDmResponsivenessStats(dm.id);
+    expect(stats.total).toBe(1);
+    expect(stats.resolved).toBe(1);
+    expect(stats.responseRate).toBe(1);
+  });
+
+  it("excludes requests received outside the rolling window", () => {
+    const { dm, campaign } = setupCampaign(4, "r5");
+    const oldPlayer = signUp("Old", "r5-old@example.com", "testpassword123");
+    const recentPlayer = signUp("Recent", "r5-recent@example.com", "testpassword123");
+
+    const oldMembership = requestJoin(campaign.id, oldPlayer.id);
+    requestJoin(campaign.id, recentPlayer.id);
+
+    const farPast = new Date(Date.now() - 200 * 24 * 60 * 60 * 1000).toISOString();
+    db.prepare("UPDATE memberships SET created_at = ?, updated_at = ? WHERE id = ?").run(
+      farPast,
+      farPast,
+      oldMembership.id
+    );
+
+    const stats = getDmResponsivenessStats(dm.id, 90);
+    expect(stats.total).toBe(1);
+  });
+
+  it("supports a custom window size", () => {
+    const { dm, campaign } = setupCampaign(4, "r6");
+    const player = signUp("Player", "r6-p@example.com", "testpassword123");
+    const membership = requestJoin(campaign.id, player.id);
+
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    db.prepare("UPDATE memberships SET created_at = ?, updated_at = ? WHERE id = ?").run(
+      tenDaysAgo,
+      tenDaysAgo,
+      membership.id
+    );
+
+    expect(getDmResponsivenessStats(dm.id, 30).total).toBe(1);
+    expect(getDmResponsivenessStats(dm.id, 5).total).toBe(0);
+  });
+});
 });

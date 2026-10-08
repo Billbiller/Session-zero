@@ -1605,6 +1605,32 @@ export interface AttendanceStats {
   rate: number | null;
 }
 
+/** Backlog #73: a DM's responsiveness on join requests -- "average
+ * response time" and "response rate," both derived entirely from
+ * existing `memberships` timestamps (created_at = request sent,
+ * updated_at = approved/declined) with no new schema, scoped to a
+ * rolling window (default last 90 days, see
+ * lib/memberships.ts's getDmResponsivenessStats) so an inactive DM's
+ * stats from long ago don't linger as artificially good or bad
+ * forever. `total` is every request received in the window regardless
+ * of status; `resolved` is however many of those are no longer
+ * pending (approved, declined, or later left -- 'left' only ever
+ * follows an approval, so it still counts as a prompt resolution).
+ * `averageResponseHours` is the mean created_at -> updated_at gap
+ * across resolved requests only (a still-pending request has no
+ * resolution time yet). Both `responseRate` and `averageResponseHours`
+ * are null (not 0) when there's nothing to compute from, matching this
+ * app's established unrated/no-data-yet convention (e.g.
+ * AttendanceStats above, RatingSummary) rather than reading silence as
+ * a bad score. */
+export interface DmResponsivenessStats {
+  windowDays: number;
+  total: number;
+  resolved: number;
+  responseRate: number | null;
+  averageResponseHours: number | null;
+}
+
 /** Backlog #50: a signed-in user's complete self-service data export --
  * every row across this app's schema that traces back to their own
  * account, flattened into one JSON-serializable object for download (see

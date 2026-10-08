@@ -7,6 +7,8 @@ import { listCharactersForUser } from "@/lib/characters";
 import { getCampaign } from "@/lib/campaigns";
 import { getUserRatingSummary } from "@/lib/ratings";
 import { getAttendanceStats } from "@/lib/attendance";
+import { getDmResponsivenessStats } from "@/lib/memberships";
+import { formatResponseTime } from "@/lib/responsivenessCopy";
 import { getUserStats } from "@/lib/stats";
 import { getAvailabilitySlots, summarizeAvailabilityByDay } from "@/lib/availability";
 import { isFollowing, followerCount, followingCount } from "@/lib/follows";
@@ -117,6 +119,50 @@ function attendanceLine(stats: { recorded: number; attended: number; rate: numbe
   );
 }
 
+/** Backlog #73 (competitive research vs. StartPlaying.games): a DM's
+ * join-request responsiveness, styled to match attendanceLine()/
+ * reputationLine() above -- "No join requests yet" (not "0%") when
+ * total is 0, the same unrated-not-zero convention. Shown for every
+ * profile, DM or not (mirroring attendanceLine's own "render
+ * everywhere, fall back to a no-data message" convention), rather than
+ * gated on stats.campaignsAsDm, since a brand-new DM's first-ever
+ * request should start showing up the moment it happens rather than
+ * waiting for some other threshold. See lib/memberships.ts's
+ * getDmResponsivenessStats for the rolling-window derivation. */
+function dmResponsivenessLine(stats: {
+  windowDays: number;
+  total: number;
+  resolved: number;
+  responseRate: number | null;
+  averageResponseHours: number | null;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-sm font-medium">DM responsiveness</p>
+      {stats.total === 0 ? (
+        <p className="text-sm text-black/60 dark:text-white/60">No join requests yet</p>
+      ) : (
+        <>
+          <p className="text-sm">
+            {Math.round((stats.responseRate ?? 0) * 100)}% response rate{" "}
+            <span className="text-black/60 dark:text-white/60">
+              ({stats.resolved}/{stats.total} request{stats.total === 1 ? "" : "s"})
+            </span>
+          </p>
+          {stats.averageResponseHours !== null && (
+            <p className="text-xs text-black/60 dark:text-white/60">
+              Avg response time: {formatResponseTime(stats.averageResponseHours)}
+            </p>
+          )}
+          <p className="text-xs text-black/60 dark:text-white/60">
+            Last {stats.windowDays} days
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default async function PlayerProfilePage({
   params,
 }: {
@@ -134,6 +180,7 @@ export default async function PlayerProfilePage({
   const characters = listCharactersForUser(id);
   const ratingSummary = getUserRatingSummary(id);
   const attendanceStats = getAttendanceStats(id);
+  const dmResponsiveness = getDmResponsivenessStats(id);
   const stats = getUserStats(id);
   const availabilitySlots = getAvailabilitySlots(id);
   const followers = followerCount(id);
@@ -189,6 +236,7 @@ export default async function PlayerProfilePage({
         {reputationLine("As DM", ratingSummary.asDm)}
         {reputationLine("As player", ratingSummary.asPlayer)}
         {attendanceLine(attendanceStats)}
+        {dmResponsivenessLine(dmResponsiveness)}
       </div>
 
       <StatsPanel stats={stats} />
