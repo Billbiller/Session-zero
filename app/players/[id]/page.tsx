@@ -223,7 +223,7 @@ export default async function PlayerProfilePage({
               <FollowButton userId={id} initiallyFollowing={viewerIsFollowing} />
               <Link
                 href={`/messages/${id}`}
-                className="whitespace-nowrap rounded border border-black/10 px-3 py-1 text-sm dark:border-white/10"
+                className="whitespace-nowrap rounded-lg border border-black/10 px-3 py-1 text-sm dark:border-white/10"
               >
                 Message
               </Link>
@@ -232,7 +232,7 @@ export default async function PlayerProfilePage({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 rounded border border-black/10 p-3 dark:border-white/10 sm:flex-row sm:gap-6">
+      <div className="flex flex-col gap-3 rounded-lg border border-black/10 p-3 dark:border-white/10 sm:flex-row sm:gap-6">
         {reputationLine("As DM", ratingSummary.asDm)}
         {reputationLine("As player", ratingSummary.asPlayer)}
         {attendanceLine(attendanceStats)}

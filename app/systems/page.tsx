@@ -24,7 +24,7 @@ export default async function SystemsIndexPage() {
         {systems.map((system) => (
           <li
             key={system.slug}
-            className="rounded border border-black/10 p-4 dark:border-white/10"
+            className="rounded-lg border border-black/10 p-4 dark:border-white/10"
           >
             <Link href={`/systems/${system.slug}`} className="font-medium hover:underline">
               {system.name}
@@ -35,7 +35,7 @@ export default async function SystemsIndexPage() {
             </p>
           </li>
         ))}
-        <li className="rounded border border-dashed border-black/20 p-4 dark:border-white/20">
+        <li className="rounded-lg border border-dashed border-black/20 p-4 dark:border-white/20">
           <Link href="/campaigns" className="font-medium hover:underline">
             Other / homebrew
           </Link>

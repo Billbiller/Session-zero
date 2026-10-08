@@ -169,7 +169,7 @@ export default function InitiativeTrackerPanel({ campaignId }: { campaignId: str
           {entries.map((entry, i) => (
             <li
               key={entry.id}
-              className="rounded border border-black/10 p-2 text-sm dark:border-white/10"
+              className="rounded-lg border border-black/10 p-2 text-sm dark:border-white/10"
             >
               {editingId === entry.id ? (
                 <div className="flex flex-col gap-2">
@@ -179,7 +179,7 @@ export default function InitiativeTrackerPanel({ campaignId }: { campaignId: str
                       onChange={(e) => setEditName(e.target.value)}
                       placeholder="Name"
                       aria-label="Combatant name"
-                      className="min-w-32 flex-1 rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+                      className="min-w-32 flex-1 rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                     />
                     <input
                       type="number"
@@ -187,14 +187,14 @@ export default function InitiativeTrackerPanel({ campaignId }: { campaignId: str
                       onChange={(e) => setEditInitiative(e.target.value)}
                       placeholder="Init."
                       aria-label="Initiative"
-                      className="w-20 rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+                      className="w-20 rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                     />
                     <input
                       value={editHp}
                       onChange={(e) => setEditHp(e.target.value)}
                       placeholder="HP (e.g. 18/24)"
                       aria-label="HP"
-                      className="w-32 rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+                      className="w-32 rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                     />
                   </div>
                   <textarea
@@ -203,13 +203,13 @@ export default function InitiativeTrackerPanel({ campaignId }: { campaignId: str
                     placeholder="Notes / conditions"
                     aria-label="Notes / conditions"
                     rows={2}
-                    className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+                    className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                   />
                   <div className="flex gap-2">
                     <button
                       disabled={busy}
                       onClick={() => saveEdit(entry.id)}
-                      className="rounded bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                      className="rounded-lg bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
                     >
                       Save
                     </button>
@@ -233,7 +233,7 @@ export default function InitiativeTrackerPanel({ campaignId }: { campaignId: str
                         disabled={busy || i === 0}
                         onClick={() => move(entry.id, "up")}
                         aria-label={`Move ${entry.name} up`}
-                        className="rounded border border-black/20 px-1.5 disabled:opacity-30 dark:border-white/20"
+                        className="rounded-lg border border-black/20 px-1.5 disabled:opacity-30 dark:border-white/20"
                       >
                         ↑
                       </button>
@@ -241,7 +241,7 @@ export default function InitiativeTrackerPanel({ campaignId }: { campaignId: str
                         disabled={busy || i === entries.length - 1}
                         onClick={() => move(entry.id, "down")}
                         aria-label={`Move ${entry.name} down`}
-                        className="rounded border border-black/20 px-1.5 disabled:opacity-30 dark:border-white/20"
+                        className="rounded-lg border border-black/20 px-1.5 disabled:opacity-30 dark:border-white/20"
                       >
                         ↓
                       </button>
@@ -270,7 +270,7 @@ export default function InitiativeTrackerPanel({ campaignId }: { campaignId: str
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-36 rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+            className="w-36 rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -279,7 +279,7 @@ export default function InitiativeTrackerPanel({ campaignId }: { campaignId: str
             type="number"
             value={initiative}
             onChange={(e) => setInitiative(e.target.value)}
-            className="w-20 rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+            className="w-20 rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -288,7 +288,7 @@ export default function InitiativeTrackerPanel({ campaignId }: { campaignId: str
             value={hp}
             onChange={(e) => setHp(e.target.value)}
             placeholder="e.g. 18/24"
-            className="w-28 rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+            className="w-28 rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <label className="flex flex-1 min-w-32 flex-col gap-1">
@@ -296,13 +296,13 @@ export default function InitiativeTrackerPanel({ campaignId }: { campaignId: str
           <input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <button
           type="submit"
           disabled={busy || !name.trim() || initiative === ""}
-          className="rounded bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="rounded-lg bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
         >
           Add
         </button>

@@ -25,7 +25,7 @@ export default async function BoardsIndexPage() {
         </div>
         <Link
           href="/boards/search"
-          className="shrink-0 rounded border border-black/20 px-3 py-1.5 text-sm dark:border-white/20"
+          className="shrink-0 rounded-lg border border-black/20 px-3 py-1.5 text-sm dark:border-white/20"
         >
           Search boards
         </Link>
@@ -33,7 +33,7 @@ export default async function BoardsIndexPage() {
 
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {boards.map((board) => (
-          <li key={board.slug} className="rounded border border-black/10 p-4 dark:border-white/10">
+          <li key={board.slug} className="rounded-lg border border-black/10 p-4 dark:border-white/10">
             <Link href={`/boards/${board.slug}`} className="font-medium hover:underline">
               {board.name}
             </Link>

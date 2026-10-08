@@ -77,7 +77,7 @@ export default function FriendsPage() {
             {pendingReceived.map((p) => (
               <li
                 key={p.id}
-                className="flex items-center justify-between gap-3 rounded border border-black/10 p-3 text-sm dark:border-white/10"
+                className="flex items-center justify-between gap-3 rounded-lg border border-black/10 p-3 text-sm dark:border-white/10"
               >
                 <Link href={`/players/${p.id}`} className="underline">
                   {p.display_name}
@@ -86,14 +86,14 @@ export default function FriendsPage() {
                   <button
                     onClick={() => act(p.id, "PATCH")}
                     disabled={busyId === p.id}
-                    className="whitespace-nowrap rounded bg-black px-3 py-1 text-xs text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                    className="whitespace-nowrap rounded-lg bg-black px-3 py-1 text-xs text-white disabled:opacity-50 dark:bg-white dark:text-black"
                   >
                     Accept
                   </button>
                   <button
                     onClick={() => act(p.id, "DELETE")}
                     disabled={busyId === p.id}
-                    className="whitespace-nowrap rounded border border-black/10 px-3 py-1 text-xs disabled:opacity-50 dark:border-white/10"
+                    className="whitespace-nowrap rounded-lg border border-black/10 px-3 py-1 text-xs disabled:opacity-50 dark:border-white/10"
                   >
                     Decline
                   </button>
@@ -113,7 +113,7 @@ export default function FriendsPage() {
             {pendingSent.map((p) => (
               <li
                 key={p.id}
-                className="flex items-center justify-between gap-3 rounded border border-black/10 p-3 text-sm dark:border-white/10"
+                className="flex items-center justify-between gap-3 rounded-lg border border-black/10 p-3 text-sm dark:border-white/10"
               >
                 <Link href={`/players/${p.id}`} className="underline">
                   {p.display_name}
@@ -121,7 +121,7 @@ export default function FriendsPage() {
                 <button
                   onClick={() => act(p.id, "DELETE")}
                   disabled={busyId === p.id}
-                  className="whitespace-nowrap rounded border border-black/10 px-3 py-1 text-xs disabled:opacity-50 dark:border-white/10"
+                  className="whitespace-nowrap rounded-lg border border-black/10 px-3 py-1 text-xs disabled:opacity-50 dark:border-white/10"
                 >
                   Cancel
                 </button>
@@ -142,7 +142,7 @@ export default function FriendsPage() {
             {friends.map((f) => (
               <li
                 key={f.id}
-                className="flex items-center justify-between gap-3 rounded border border-black/10 p-3 text-sm dark:border-white/10"
+                className="flex items-center justify-between gap-3 rounded-lg border border-black/10 p-3 text-sm dark:border-white/10"
               >
                 <Link href={`/players/${f.id}`} className="underline">
                   {f.display_name}
@@ -150,7 +150,7 @@ export default function FriendsPage() {
                 <button
                   onClick={() => act(f.id, "DELETE")}
                   disabled={busyId === f.id}
-                  className="whitespace-nowrap rounded border border-black/10 px-3 py-1 text-xs disabled:opacity-50 dark:border-white/10"
+                  className="whitespace-nowrap rounded-lg border border-black/10 px-3 py-1 text-xs disabled:opacity-50 dark:border-white/10"
                 >
                   Unfriend
                 </button>

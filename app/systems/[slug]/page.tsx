@@ -82,7 +82,7 @@ export default async function SystemHubPage({
             return (
               <li
                 key={campaign.id}
-                className="rounded border border-black/10 p-4 dark:border-white/10"
+                className="rounded-lg border border-black/10 p-4 dark:border-white/10"
               >
                 <Link href={`/campaigns/${campaign.id}`} className="font-medium hover:underline">
                   {campaign.title}
@@ -138,7 +138,7 @@ export default async function SystemHubPage({
         </div>
       )}
 
-      <div className="rounded border border-dashed border-black/20 p-4 text-sm dark:border-white/20">
+      <div className="rounded-lg border border-dashed border-black/20 p-4 text-sm dark:border-white/20">
         Running something else, or a homebrew system? Every system is welcome --{" "}
         <Link href="/campaigns" className="underline">
           browse or post to the full campaign list

@@ -22,9 +22,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <div className="print:hidden">
           <NavBar user={user ? { displayName: user.display_name, isAdmin: admin } : null} />
         </div>
-        <main className="flex-1 mx-auto w-full max-w-4xl px-4 py-6 print:max-w-none print:p-0">
+        <main className="flex-1 mx-auto w-full max-w-6xl px-4 py-8 sm:py-10 print:max-w-none print:p-0">
           {children}
         </main>
+        <footer className="print:hidden border-t border-black/10 py-8 text-center text-sm text-black/50 dark:border-white/10 dark:text-white/50">
+          Session Zero &middot; find your table, run your campaign.
+        </footer>
       </body>
     </html>
   );

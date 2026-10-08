@@ -61,7 +61,7 @@ export default function DeletePostButton({
         <button
           disabled={submitting}
           onClick={handleDelete}
-          className="rounded bg-red-600 px-2 py-0.5 text-white disabled:opacity-50"
+          className="rounded-lg bg-red-600 px-2 py-0.5 text-white disabled:opacity-50"
         >
           Yes, delete
         </button>

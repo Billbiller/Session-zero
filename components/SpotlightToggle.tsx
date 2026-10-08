@@ -55,7 +55,7 @@ export default function SpotlightToggle({
       <button
         disabled={submitting}
         onClick={toggle}
-        className="rounded border border-black/20 px-3 py-1 text-sm disabled:opacity-50 dark:border-white/20"
+        className="rounded-lg border border-black/20 px-3 py-1 text-sm disabled:opacity-50 dark:border-white/20"
       >
         {spotlighted ? "Remove from spotlight" : "Spotlight on home page"}
       </button>

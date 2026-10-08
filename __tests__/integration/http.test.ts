@@ -86,8 +86,11 @@ beforeAll(async () => {
   // Invoke the local `next` binary directly (not via `npx`), which would
   // otherwise fork an extra wrapper process that doesn't reliably forward
   // the kill signal on to the actual server process in afterAll.
-  const nextBin = path.join(PROJECT_ROOT, "node_modules", ".bin", "next");
-  server = spawn(nextBin, ["start", "-p", String(PORT)], {
+  // Run it through the current node binary rather than the .bin shim, which
+  // is a shell script on POSIX and a .cmd file on Windows (spawning the
+  // extensionless shim fails there with ENOENT).
+  const nextBin = path.join(PROJECT_ROOT, "node_modules", "next", "dist", "bin", "next");
+  server = spawn(process.execPath, [nextBin, "start", "-p", String(PORT)], {
     cwd: PROJECT_ROOT,
     env: { ...process.env, SQLITE_DB_PATH: DB_PATH },
     stdio: "inherit",

@@ -275,7 +275,7 @@ export default function SubRequestPanel({
             maxLength={500}
             placeholder="e.g. Can't make it Sept 20th, need someone to run my rogue for one session."
             aria-label="Sub request note"
-            className="rounded border border-black/20 px-3 py-2 text-sm dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-2 text-sm dark:border-white/20 dark:bg-transparent"
           />
           <div className="flex flex-col gap-2 sm:flex-row">
             <label className="flex flex-1 flex-col gap-1 text-xs">
@@ -284,7 +284,7 @@ export default function SubRequestPanel({
                 type="datetime-local"
                 value={neededAt}
                 onChange={(e) => setNeededAt(e.target.value)}
-                className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+                className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
               />
             </label>
             <label className="flex flex-1 flex-col gap-1 text-xs">
@@ -295,7 +295,7 @@ export default function SubRequestPanel({
                 onChange={(e) => setLocation(e.target.value)}
                 maxLength={200}
                 placeholder={campaignLocation || "Same as campaign"}
-                className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+                className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
               />
             </label>
           </div>
@@ -306,7 +306,7 @@ export default function SubRequestPanel({
               <select
                 value={characterId}
                 onChange={(e) => setCharacterId(e.target.value)}
-                className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+                className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
               >
                 <option value="">No specific character</option>
                 {myCharacters.map((c) => (
@@ -320,7 +320,7 @@ export default function SubRequestPanel({
           <button
             disabled={posting}
             onClick={post}
-            className="w-fit rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"
+            className="w-fit rounded-lg bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"
           >
             Post a sub request
           </button>
@@ -382,7 +382,7 @@ export default function SubRequestPanel({
                   <button
                     disabled={busyId === r.id}
                     onClick={() => setStatus(r.id, "filled")}
-                    className="rounded bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                    className="rounded-lg bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
                   >
                     Mark filled
                   </button>
@@ -397,7 +397,7 @@ export default function SubRequestPanel({
               )}
 
               {isOwner && volunteers && (
-                <ul className="mt-2 flex flex-col gap-1 rounded bg-black/5 p-2 text-xs dark:bg-white/5">
+                <ul className="mt-2 flex flex-col gap-1 rounded-lg bg-black/5 p-2 text-xs dark:bg-white/5">
                   {volunteers.length === 0 && <li>No volunteers yet.</li>}
                   {volunteers.map((v) => (
                     <li key={v.id} className="flex items-center justify-between gap-2">
@@ -409,7 +409,7 @@ export default function SubRequestPanel({
                         <button
                           disabled={busyId === r.id}
                           onClick={() => selectVolunteer(r.id, v.volunteer_id)}
-                          className="shrink-0 rounded border border-black/20 px-2 py-0.5 disabled:opacity-50 dark:border-white/20"
+                          className="shrink-0 rounded-lg border border-black/20 px-2 py-0.5 disabled:opacity-50 dark:border-white/20"
                         >
                           Select for approval
                         </button>
@@ -420,7 +420,7 @@ export default function SubRequestPanel({
               )}
 
               {activePlacement && (
-                <div className="mt-2 rounded border border-black/10 p-2 text-xs dark:border-white/10">
+                <div className="mt-2 rounded-lg border border-black/10 p-2 text-xs dark:border-white/10">
                   <p className="font-medium">
                     {activePlacement.status === "confirmed" ? "Confirmed: " : "Selected: "}
                     {activePlacement.volunteerName}
@@ -445,13 +445,13 @@ export default function SubRequestPanel({
                         maxLength={500}
                         placeholder="Guardrails for whoever runs this character (e.g. no permanent death, ask before spending our one rare potion)"
                         aria-label="Guardrails note for whoever runs this character"
-                        className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+                        className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                       />
                       <div className="flex gap-2">
                         <button
                           disabled={busyId === activePlacement.id}
                           onClick={() => ownerReview(activePlacement.id, true)}
-                          className="rounded bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                          className="rounded-lg bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
                         >
                           Approve
                         </button>
@@ -477,7 +477,7 @@ export default function SubRequestPanel({
                       <button
                         disabled={busyId === activePlacement.id}
                         onClick={() => dmReview(activePlacement.id, true)}
-                        className="rounded bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                        className="rounded-lg bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
                       >
                         Approve
                       </button>
@@ -526,12 +526,12 @@ export default function SubRequestPanel({
                         maxLength={500}
                         placeholder="Optional note to the requester"
                         aria-label="Note to the requester (optional)"
-                        className="flex-1 rounded border border-black/20 px-2 py-1 text-xs dark:border-white/20 dark:bg-transparent"
+                        className="flex-1 rounded-lg border border-black/20 px-2 py-1 text-xs dark:border-white/20 dark:bg-transparent"
                       />
                       <button
                         disabled={busyId === r.id}
                         onClick={() => volunteer(r.id)}
-                        className="w-fit rounded bg-black px-2 py-1 text-xs text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                        className="w-fit rounded-lg bg-black px-2 py-1 text-xs text-white disabled:opacity-50 dark:bg-white dark:text-black"
                       >
                         Volunteer
                       </button>

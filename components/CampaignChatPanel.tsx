@@ -88,7 +88,7 @@ export default function CampaignChatPanel({
             return (
               <li key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                 <div
-                  className={`max-w-[80%] rounded border p-2 text-sm dark:border-white/10 ${
+                  className={`max-w-[80%] rounded-lg border p-2 text-sm dark:border-white/10 ${
                     mine ? "border-black/20 bg-black/5 dark:bg-white/10" : "border-black/10"
                   }`}
                 >
@@ -121,12 +121,12 @@ export default function CampaignChatPanel({
           aria-label="Message the table"
           rows={2}
           maxLength={4000}
-          className="rounded border border-black/10 p-2 text-sm dark:border-white/10 dark:bg-transparent"
+          className="rounded-lg border border-black/10 p-2 text-sm dark:border-white/10 dark:bg-transparent"
         />
         <button
           type="submit"
           disabled={sending || !draft.trim()}
-          className="self-start rounded border border-black/10 px-3 py-1 text-sm disabled:opacity-50 dark:border-white/10"
+          className="self-start rounded-lg border border-black/10 px-3 py-1 text-sm disabled:opacity-50 dark:border-white/10"
         >
           {sending ? "Sending..." : "Send"}
         </button>

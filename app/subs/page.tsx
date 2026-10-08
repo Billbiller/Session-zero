@@ -42,7 +42,7 @@ export default async function SubsPage({
           <select
             name="sort"
             defaultValue={sort}
-            className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
           >
             <option value="soonest">Soonest needed</option>
             <option value="newest">Newest posted</option>
@@ -54,7 +54,7 @@ export default async function SubsPage({
         </label>
         <button
           type="submit"
-          className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20"
+          className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20"
         >
           Apply
         </button>
@@ -62,7 +62,7 @@ export default async function SubsPage({
 
       <ul className="flex flex-col gap-4 text-sm">
         {requests.map((r) => (
-          <li key={r.id} className="rounded border border-black/10 p-3 dark:border-white/10">
+          <li key={r.id} className="rounded-lg border border-black/10 p-3 dark:border-white/10">
             <p className="font-medium">
               <Link href={`/campaigns/${r.campaign_id}`} className="underline">
                 {r.campaignTitle}

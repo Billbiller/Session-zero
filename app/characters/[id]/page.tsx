@@ -48,7 +48,7 @@ export default async function CharacterSheetPage({
         </div>
       </div>
 
-      <div className="rounded border border-black/10 p-4 dark:border-white/10 print:border-0 print:p-0">
+      <div className="rounded-lg border border-black/10 p-4 dark:border-white/10 print:border-0 print:p-0">
         <p className="mb-3 text-xs text-black/60 dark:text-white/60">
           Character sheet{owner ? ` — played by ${owner.display_name}` : ""}
         </p>

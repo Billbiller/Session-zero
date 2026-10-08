@@ -61,7 +61,7 @@ export default function JoinLeaveControls({
         {!confirmingLeave ? (
           <button
             onClick={() => setConfirmingLeave(true)}
-            className="w-fit rounded border border-red-600 px-3 py-1.5 text-sm text-red-600"
+            className="w-fit rounded-lg border border-red-600 px-3 py-1.5 text-sm text-red-600"
           >
             Leave campaign
           </button>
@@ -71,7 +71,7 @@ export default function JoinLeaveControls({
             <button
               disabled={submitting}
               onClick={() => act("leave")}
-              className="rounded bg-red-600 px-3 py-1 text-white disabled:opacity-50"
+              className="rounded-lg bg-red-600 px-3 py-1 text-white disabled:opacity-50"
             >
               Yes, leave
             </button>
@@ -99,7 +99,7 @@ export default function JoinLeaveControls({
       <button
         disabled={submitting}
         onClick={() => act("join")}
-        className="w-fit rounded bg-black px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+        className="w-fit rounded-lg bg-black px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
       >
         {submitting ? "Requesting..." : "Request to join"}
       </button>

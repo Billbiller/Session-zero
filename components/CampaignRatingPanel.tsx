@@ -146,7 +146,7 @@ export default function CampaignRatingPanel({ campaignId }: { campaignId: string
                 <button
                   disabled={submitting}
                   onClick={submit}
-                  className="w-fit rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                  className="w-fit rounded-lg bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"
                 >
                   {existing ? "Update rating" : "Submit rating"}
                 </button>

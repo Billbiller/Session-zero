@@ -41,7 +41,7 @@ export default function MessagesPage() {
           <li key={c.otherUserId}>
             <Link
               href={`/messages/${c.otherUserId}`}
-              className={`flex items-center justify-between gap-3 rounded border p-3 text-sm dark:border-white/10 ${
+              className={`flex items-center justify-between gap-3 rounded-lg border p-3 text-sm dark:border-white/10 ${
                 c.unreadCount > 0 ? "border-black/20" : "border-black/10 opacity-80"
               }`}
             >

@@ -19,7 +19,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
  * — an empty dashboard is still useful context ("nothing logged yet"). */
 export default function StatsPanel({ stats }: { stats: UserStats }) {
   return (
-    <div className="rounded border border-black/10 p-3 dark:border-white/10">
+    <div className="rounded-lg border border-black/10 p-3 dark:border-white/10">
       <h2 className="mb-2 text-sm font-medium">Stats</h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Campaigns DMed" value={stats.campaignsAsDm} />

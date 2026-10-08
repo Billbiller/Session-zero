@@ -60,7 +60,7 @@ export default function NotificationsPage() {
         {items.map((n) => (
           <li
             key={n.id}
-            className={`rounded border p-3 text-sm dark:border-white/10 ${
+            className={`rounded-lg border p-3 text-sm dark:border-white/10 ${
               n.read ? "border-black/10 opacity-60" : "border-black/20"
             }`}
           >

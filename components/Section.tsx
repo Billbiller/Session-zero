@@ -23,7 +23,7 @@ export default function Section({
   className?: string;
 }) {
   return (
-    <div className={`rounded border border-black/10 p-4 dark:border-white/10 ${className}`.trim()}>
+    <div className={`rounded-xl border border-black/10 bg-surface p-5 shadow-[var(--shadow-card)] dark:border-white/10 ${className}`.trim()}>
       {children}
     </div>
   );

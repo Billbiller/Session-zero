@@ -210,3 +210,16 @@ Future sessions: if you introduce a genuinely new pattern (a new badge
 style, a new button variant, a second semantic color), add it to this doc
 in the same session rather than leaving it undocumented for the next
 person to reverse-engineer from a diff.
+
+## Modernization pass (Oct 2026)
+
+Global look is now driven from `app/globals.css`, not per-file: `--color-black`
+is re-pointed at a deep ink-violet, a brand violet (`--brand`, `bg-brand-soft`,
+`text-brand-strong`) and surface tokens (`bg-surface`, `bg-surface-muted`,
+`--shadow-card`, `--shadow-pop`) exist for light and dark, bare
+inputs/selects/textareas/buttons get a modern default in `@layer base`, and
+`button.bg-black` / `a.bg-black` render as the violet primary button.
+`NavBar` is sticky with active-link state, a mobile menu and a user dropdown;
+`Section` is a `rounded-xl` card with a soft shadow; `<main>` is `max-w-6xl`
+(the campaign detail page narrows itself to `max-w-4xl`). Prefer these
+tokens over the amber/rose palette described above, which is now legacy.

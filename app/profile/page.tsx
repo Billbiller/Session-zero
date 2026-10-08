@@ -177,7 +177,7 @@ export default function ProfilePage() {
               rows={4}
               maxLength={2000}
               placeholder="Tell other players a bit about yourself and how you like to play."
-              className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -187,7 +187,7 @@ export default function ProfilePage() {
               onChange={(e) => setPreferredSystems(e.target.value)}
               maxLength={300}
               placeholder="e.g. D&D 5e, Pathfinder 2e, Call of Cthulhu"
-              className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -197,7 +197,7 @@ export default function ProfilePage() {
               onChange={(e) => setAvailability(e.target.value)}
               maxLength={300}
               placeholder="e.g. Weeknights after 7pm ET, most Saturdays"
-              className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -207,7 +207,7 @@ export default function ProfilePage() {
               onChange={(e) => setLocation(e.target.value)}
               maxLength={200}
               placeholder="e.g. Austin, TX or Online/Remote"
-              className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
           </label>
           <label className="flex items-center gap-2">
@@ -225,7 +225,7 @@ export default function ProfilePage() {
               onChange={(e) =>
                 setSessionFormatPreference(e.target.value as SessionFormatPreference | "")
               }
-              className="w-fit rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="w-fit rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             >
               <option value="">Not set</option>
               {SESSION_FORMAT_PREFERENCES.map((pref) => (
@@ -270,7 +270,7 @@ export default function ProfilePage() {
             <select
               value={structurePreference}
               onChange={(e) => setStructurePreference(e.target.value as CampaignStructure | "")}
-              className="w-fit rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="w-fit rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             >
               <option value="">Not set</option>
               {CAMPAIGN_STRUCTURES.map((s) => (
@@ -285,7 +285,7 @@ export default function ProfilePage() {
             <select
               value={dangerLevelPreference}
               onChange={(e) => setDangerLevelPreference(e.target.value as DangerLevel | "")}
-              className="w-fit rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="w-fit rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             >
               <option value="">Not set</option>
               {DANGER_LEVELS.map((level) => (
@@ -317,7 +317,7 @@ export default function ProfilePage() {
             <button
               type="submit"
               disabled={saving}
-              className="rounded bg-black px-3 py-1.5 font-medium text-white disabled:opacity-60 dark:bg-white dark:text-black"
+              className="rounded-lg bg-black px-3 py-1.5 font-medium text-white disabled:opacity-60 dark:bg-white dark:text-black"
             >
               {saving ? "Saving..." : "Save"}
             </button>

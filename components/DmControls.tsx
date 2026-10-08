@@ -184,14 +184,14 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setEditing(true)}
-            className="rounded border border-black/20 px-3 py-1.5 text-sm dark:border-white/20"
+            className="rounded-lg border border-black/20 px-3 py-1.5 text-sm dark:border-white/20"
           >
             Edit details
           </button>
           <button
             disabled={submitting}
             onClick={toggleCancel}
-            className="rounded border border-black/20 px-3 py-1.5 text-sm dark:border-white/20"
+            className="rounded-lg border border-black/20 px-3 py-1.5 text-sm dark:border-white/20"
           >
             {campaign.cancelled ? "Un-cancel campaign" : "Cancel campaign"}
           </button>
@@ -199,7 +199,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
             <button
               disabled={submitting}
               onClick={reopen}
-              className="rounded border border-black/20 px-3 py-1.5 text-sm dark:border-white/20"
+              className="rounded-lg border border-black/20 px-3 py-1.5 text-sm dark:border-white/20"
             >
               Reopen for requests
             </button>
@@ -208,7 +208,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
             disabled={submitting}
             onClick={duplicate}
             title="Copy this campaign's setup (title, system, capacity, and other details) into a brand-new campaign, with an empty roster and no schedule."
-            className="rounded border border-black/20 px-3 py-1.5 text-sm dark:border-white/20"
+            className="rounded-lg border border-black/20 px-3 py-1.5 text-sm dark:border-white/20"
           >
             Duplicate campaign
           </button>
@@ -220,7 +220,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -228,7 +228,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
             <input
               value={system}
               onChange={(e) => setSystem(e.target.value)}
-              className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -237,7 +237,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -247,7 +247,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
               min={1}
               value={capacity}
               onChange={(e) => setCapacity(Number(e.target.value))}
-              className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -257,7 +257,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
               onChange={(e) => setLocation(e.target.value)}
               maxLength={200}
               placeholder="e.g. Austin, TX or Online/Remote"
-              className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -265,7 +265,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
             <select
               value={dangerLevel}
               onChange={(e) => setDangerLevel(e.target.value as DangerLevel | "")}
-              className="w-fit rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="w-fit rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             >
               <option value="">Not set</option>
               {DANGER_LEVELS.map((level) => (
@@ -283,7 +283,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
             <select
               value={sessionFormat}
               onChange={(e) => setSessionFormat(e.target.value as SessionFormat | "")}
-              className="w-fit rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="w-fit rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             >
               <option value="">Not set</option>
               {SESSION_FORMATS.map((format) => (
@@ -315,7 +315,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
               onChange={(e) => setStartingLevel(e.target.value)}
               maxLength={100}
               placeholder="e.g. Level 3, Tier 2, or a narrative milestone"
-              className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
           </label>
           <fieldset className="flex flex-col gap-1">
@@ -353,7 +353,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
             <select
               value={structure}
               onChange={(e) => setStructure(e.target.value as CampaignStructure | "")}
-              className="w-fit rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="w-fit rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             >
               <option value="">Not set</option>
               {CAMPAIGN_STRUCTURES.map((s) => (
@@ -406,7 +406,7 @@ export default function DmControls({ campaign }: { campaign: Campaign }) {
             <button
               type="submit"
               disabled={submitting}
-              className="rounded bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+              className="rounded-lg bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
             >
               Save
             </button>

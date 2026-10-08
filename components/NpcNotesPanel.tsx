@@ -110,7 +110,7 @@ export default function NpcNotesPanel({ campaignId }: { campaignId: string }) {
       ) : (
         <ul className="mb-3 flex flex-col gap-2">
           {npcs.map((npc) => (
-            <li key={npc.id} className="rounded border border-black/10 p-2 text-sm dark:border-white/10">
+            <li key={npc.id} className="rounded-lg border border-black/10 p-2 text-sm dark:border-white/10">
               {editingId === npc.id ? (
                 <div className="flex flex-col gap-2">
                   <input
@@ -118,7 +118,7 @@ export default function NpcNotesPanel({ campaignId }: { campaignId: string }) {
                     onChange={(e) => setEditName(e.target.value)}
                     placeholder="Name"
                     aria-label="NPC name"
-                    className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+                    className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                   />
                   <textarea
                     value={editNotes}
@@ -126,13 +126,13 @@ export default function NpcNotesPanel({ campaignId }: { campaignId: string }) {
                     placeholder="Notes"
                     aria-label="NPC notes"
                     rows={3}
-                    className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+                    className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                   />
                   <div className="flex gap-2">
                     <button
                       disabled={busy}
                       onClick={() => saveEdit(npc.id)}
-                      className="rounded bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                      className="rounded-lg bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
                     >
                       Save
                     </button>
@@ -168,7 +168,7 @@ export default function NpcNotesPanel({ campaignId }: { campaignId: string }) {
           onChange={(e) => setName(e.target.value)}
           placeholder="NPC name"
           aria-label="NPC name"
-          className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+          className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
         />
         <textarea
           value={notes}
@@ -176,12 +176,12 @@ export default function NpcNotesPanel({ campaignId }: { campaignId: string }) {
           placeholder="Notes (optional)"
           aria-label="NPC notes"
           rows={2}
-          className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+          className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
         />
         <button
           type="submit"
           disabled={busy || !name.trim()}
-          className="w-fit rounded bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="w-fit rounded-lg bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
         >
           Add NPC
         </button>

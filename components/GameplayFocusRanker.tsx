@@ -47,7 +47,7 @@ export default function GameplayFocusRanker({
           {ranked.map((pillar, index) => (
             <li
               key={pillar}
-              className="flex items-center justify-between gap-2 rounded border border-black/10 px-2 py-1 dark:border-white/10"
+              className="flex items-center justify-between gap-2 rounded-lg border border-black/10 px-2 py-1 dark:border-white/10"
             >
               <span>
                 {index + 1}. {GAMEPLAY_PILLAR_LABELS[pillar]}
@@ -58,7 +58,7 @@ export default function GameplayFocusRanker({
                   disabled={index === 0}
                   onClick={() => move(index, -1)}
                   aria-label={`Move ${GAMEPLAY_PILLAR_LABELS[pillar]} up`}
-                  className="rounded border border-black/20 px-1.5 disabled:opacity-30 dark:border-white/20"
+                  className="rounded-lg border border-black/20 px-1.5 disabled:opacity-30 dark:border-white/20"
                 >
                   ↑
                 </button>
@@ -67,7 +67,7 @@ export default function GameplayFocusRanker({
                   disabled={index === ranked.length - 1}
                   onClick={() => move(index, 1)}
                   aria-label={`Move ${GAMEPLAY_PILLAR_LABELS[pillar]} down`}
-                  className="rounded border border-black/20 px-1.5 disabled:opacity-30 dark:border-white/20"
+                  className="rounded-lg border border-black/20 px-1.5 disabled:opacity-30 dark:border-white/20"
                 >
                   ↓
                 </button>

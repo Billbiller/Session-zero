@@ -56,14 +56,14 @@ export default function RequestsPanel({
               <button
                 disabled={submittingId === r.id}
                 onClick={() => resolve(r.id, "approve")}
-                className="rounded bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                className="rounded-lg bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
               >
                 Approve
               </button>
               <button
                 disabled={submittingId === r.id}
                 onClick={() => resolve(r.id, "decline")}
-                className="rounded border border-black/20 px-2 py-1 dark:border-white/20"
+                className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20"
               >
                 Decline
               </button>

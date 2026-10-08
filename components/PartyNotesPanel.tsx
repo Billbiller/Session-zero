@@ -53,13 +53,13 @@ export default function PartyNotesPanel({
             onChange={(e) => setContent(e.target.value)}
             rows={6}
             aria-label="Party notes"
-            className="rounded border border-black/20 px-3 py-2 text-sm dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-2 text-sm dark:border-white/20 dark:bg-transparent"
           />
           <div className="flex gap-2 text-sm">
             <button
               disabled={submitting}
               onClick={save}
-              className="rounded bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+              className="rounded-lg bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
             >
               Save
             </button>

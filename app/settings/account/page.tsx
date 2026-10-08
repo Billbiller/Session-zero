@@ -44,7 +44,7 @@ export default async function AccountSettingsPage() {
         </nav>
       </div>
 
-      <div className="flex flex-col gap-2 rounded border border-black/10 p-4 text-sm dark:border-white/10">
+      <div className="flex flex-col gap-2 rounded-lg border border-black/10 p-4 text-sm dark:border-white/10">
         <p className="font-medium">Download everything this app has on you</p>
         <p className="text-black/60 dark:text-white/60">
           Your account, profile, characters, campaigns, messages, ratings, notifications, and
@@ -52,13 +52,13 @@ export default async function AccountSettingsPage() {
         </p>
         <a
           href="/api/account/export"
-          className="mt-1 inline-block w-fit rounded border border-black/20 px-3 py-1.5 underline dark:border-white/20"
+          className="mt-1 inline-block w-fit rounded-lg border border-black/20 px-3 py-1.5 underline dark:border-white/20"
         >
           Download my data (.json)
         </a>
       </div>
 
-      <div className="flex flex-col gap-2 rounded border border-black/10 p-4 text-sm dark:border-white/10">
+      <div className="flex flex-col gap-2 rounded-lg border border-black/10 p-4 text-sm dark:border-white/10">
         <p className="font-medium">Delete your account</p>
         <p className="text-black/60 dark:text-white/60">
           Account deletion isn&apos;t available in the app yet. Some of your data (like campaigns

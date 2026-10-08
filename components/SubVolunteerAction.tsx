@@ -76,12 +76,12 @@ export default function SubVolunteerAction({
             maxLength={500}
             placeholder="Optional note to the requester"
             aria-label="Note to the requester (optional)"
-            className="flex-1 rounded border border-black/20 px-2 py-1 text-xs dark:border-white/20 dark:bg-transparent"
+            className="flex-1 rounded-lg border border-black/20 px-2 py-1 text-xs dark:border-white/20 dark:bg-transparent"
           />
           <button
             disabled={busy}
             onClick={volunteer}
-            className="w-fit rounded bg-black px-2 py-1 text-xs text-white disabled:opacity-50 dark:bg-white dark:text-black"
+            className="w-fit rounded-lg bg-black px-2 py-1 text-xs text-white disabled:opacity-50 dark:bg-white dark:text-black"
           >
             Volunteer
           </button>

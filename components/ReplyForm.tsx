@@ -68,12 +68,12 @@ export default function ReplyForm({
           aria-label="Reply"
           rows={3}
           maxLength={5000}
-          className="rounded border border-black/10 p-2 text-sm dark:border-white/10 dark:bg-transparent"
+          className="rounded-lg border border-black/10 p-2 text-sm dark:border-white/10 dark:bg-transparent"
         />
         <button
           type="submit"
           disabled={submitting || !body.trim()}
-          className="w-fit rounded bg-black px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="w-fit rounded-lg bg-black px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
         >
           {submitting ? "Posting..." : "Post reply"}
         </button>

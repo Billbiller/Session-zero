@@ -59,7 +59,7 @@ export default async function FeedPage({
       ) : (
         <ul className="flex flex-col gap-3">
           {items.map((event) => (
-            <li key={event.id} className="rounded border border-black/10 p-3 text-sm dark:border-white/10">
+            <li key={event.id} className="rounded-lg border border-black/10 p-3 text-sm dark:border-white/10">
               <p>
                 <Link href={`/players/${event.actor_id}`} className="font-medium hover:underline">
                   {event.actorName}

@@ -27,7 +27,7 @@ export default function Sheet5eSummary({ sheet }: { sheet: Sheet5e }) {
 
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
         {ABILITY_SCORES_5E.map((ability) => (
-          <div key={ability} className="rounded border border-black/10 p-2 text-center dark:border-white/10">
+          <div key={ability} className="rounded-lg border border-black/10 p-2 text-center dark:border-white/10">
             <p className="text-xs text-black/60 dark:text-white/60">
               {ABILITY_SCORE_5E_LABELS[ability].slice(0, 3).toUpperCase()}
             </p>

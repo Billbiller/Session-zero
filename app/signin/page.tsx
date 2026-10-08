@@ -72,7 +72,7 @@ export default function SignInPage() {
               required
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
             />
           </label>
         )}
@@ -83,7 +83,7 @@ export default function SignInPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
@@ -94,7 +94,7 @@ export default function SignInPage() {
             minLength={mode === "signup" ? 8 : undefined}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
           />
           {mode === "signup" && (
             <span className="text-xs text-black/50 dark:text-white/50">
@@ -106,7 +106,7 @@ export default function SignInPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="rounded bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
         >
           {submitting
             ? mode === "signin"

@@ -68,12 +68,12 @@ export default function ReportPostButton({
           placeholder="Reason (optional)"
           aria-label="Reason for reporting (optional)"
           maxLength={500}
-          className="rounded border border-black/10 px-2 py-0.5 dark:border-white/10 dark:bg-black"
+          className="rounded-lg border border-black/10 px-2 py-0.5 dark:border-white/10 dark:bg-black"
         />
         <button
           disabled={submitting}
           onClick={submit}
-          className="rounded bg-black px-2 py-0.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="rounded-lg bg-black px-2 py-0.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
         >
           Submit
         </button>

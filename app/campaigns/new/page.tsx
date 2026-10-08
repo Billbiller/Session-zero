@@ -126,7 +126,7 @@ export default function NewCampaignPage() {
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
@@ -136,7 +136,7 @@ export default function NewCampaignPage() {
             value={system}
             onChange={(e) => setSystem(e.target.value)}
             placeholder="e.g. D&D 5e"
-            className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
@@ -145,7 +145,7 @@ export default function NewCampaignPage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={4}
-            className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
@@ -156,7 +156,7 @@ export default function NewCampaignPage() {
             min={1}
             value={capacity}
             onChange={(e) => setCapacity(Number(e.target.value))}
-            className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
@@ -166,7 +166,7 @@ export default function NewCampaignPage() {
             onChange={(e) => setLocation(e.target.value)}
             maxLength={200}
             placeholder="e.g. Austin, TX or Online/Remote"
-            className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
@@ -174,7 +174,7 @@ export default function NewCampaignPage() {
           <select
             value={sessionFormat}
             onChange={(e) => setSessionFormat(e.target.value as SessionFormat | "")}
-            className="w-fit rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+            className="w-fit rounded-lg border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
           >
             <option value="">Not set</option>
             {SESSION_FORMATS.map((format) => (
@@ -206,7 +206,7 @@ export default function NewCampaignPage() {
             onChange={(e) => setStartingLevel(e.target.value)}
             maxLength={100}
             placeholder="e.g. Level 3, Tier 2, or a narrative milestone"
-            className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <fieldset className="flex flex-col gap-1 text-sm">
@@ -244,7 +244,7 @@ export default function NewCampaignPage() {
           <select
             value={structure}
             onChange={(e) => setStructure(e.target.value as CampaignStructure | "")}
-            className="w-fit rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+            className="w-fit rounded-lg border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
           >
             <option value="">Not set</option>
             {CAMPAIGN_STRUCTURES.map((s) => (
@@ -297,7 +297,7 @@ export default function NewCampaignPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="rounded bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
         >
           {submitting ? "Posting..." : "Post campaign"}
         </button>

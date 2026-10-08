@@ -47,7 +47,7 @@ export default async function BoardPage({
       ) : (
         <ul className="flex flex-col gap-3">
           {items.map((thread) => (
-            <li key={thread.id} className="rounded border border-black/10 p-4 dark:border-white/10">
+            <li key={thread.id} className="rounded-lg border border-black/10 p-4 dark:border-white/10">
               <Link href={`/boards/${slug}/${thread.id}`} className="font-medium hover:underline">
                 {thread.title}
               </Link>

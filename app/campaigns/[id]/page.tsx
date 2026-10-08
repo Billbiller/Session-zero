@@ -110,17 +110,17 @@ export default async function CampaignDetailPage({
   const chatUnreadCount = viewer && access ? getUnreadCampaignMessageCount(id, viewer.id) : 0;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+      <div className="rounded-2xl border border-black/10 bg-gradient-to-br from-violet-50 to-fuchsia-50 p-6 shadow-[var(--shadow-card)] dark:border-white/10 dark:from-violet-500/10 dark:to-fuchsia-500/5">
+        <h1 className="text-3xl font-bold tracking-tight">
           {campaign.title}
-          {campaign.cancelled && (
-            <span className="ml-2 rounded bg-red-100 px-2 py-0.5 text-sm font-normal text-red-700 dark:bg-red-900 dark:text-red-200">
+          {!!campaign.cancelled && (
+            <span className="ml-2 rounded-lg bg-red-100 px-2 py-0.5 text-sm font-normal text-red-700 dark:bg-red-900 dark:text-red-200">
               Cancelled
             </span>
           )}
         </h1>
-        <p className="text-sm text-black/60 dark:text-white/60">
+        <p className="mt-1 text-sm leading-7 text-black/65 dark:text-white/65">
           {campaign.system} &middot; DM:{" "}
           {dm ? (
             <Link href={`/players/${dm.id}`} className="underline">

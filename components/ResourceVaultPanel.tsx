@@ -162,7 +162,7 @@ export default function ResourceVaultPanel({
             return (
               <li
                 key={resource.id}
-                className="rounded border border-black/10 p-2 text-sm dark:border-white/10"
+                className="rounded-lg border border-black/10 p-2 text-sm dark:border-white/10"
               >
                 {editingId === resource.id ? (
                   <div className="flex flex-col gap-2">
@@ -171,7 +171,7 @@ export default function ResourceVaultPanel({
                       onChange={(e) => setEditName(e.target.value)}
                       placeholder="Name"
                       aria-label="Resource name"
-                      className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+                      className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                     />
                     <textarea
                       value={editDescription}
@@ -179,13 +179,13 @@ export default function ResourceVaultPanel({
                       placeholder="Description"
                       aria-label="Resource description"
                       rows={2}
-                      className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+                      className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
                     />
                     <div className="flex gap-2">
                       <button
                         disabled={busy}
                         onClick={() => saveEdit(resource.id)}
-                        className="rounded bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                        className="rounded-lg bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
                       >
                         Save
                       </button>
@@ -202,7 +202,7 @@ export default function ResourceVaultPanel({
                         <img
                           src={resource.data_url}
                           alt=""
-                          className="h-12 w-12 shrink-0 rounded object-cover"
+                          className="h-12 w-12 shrink-0 rounded-lg object-cover"
                         />
                       ) : (
                         <span className="text-2xl leading-none">
@@ -254,7 +254,7 @@ export default function ResourceVaultPanel({
           placeholder="Name"
           aria-label="Resource name"
           maxLength={150}
-          className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+          className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
         />
         <textarea
           value={description}
@@ -262,7 +262,7 @@ export default function ResourceVaultPanel({
           placeholder="Description (optional)"
           aria-label="Resource description"
           rows={2}
-          className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+          className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
         />
         <input
           type="file"
@@ -275,7 +275,7 @@ export default function ResourceVaultPanel({
         <button
           type="submit"
           disabled={busy || !name.trim() || !dataUrl}
-          className="w-fit rounded bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="w-fit rounded-lg bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
         >
           Upload
         </button>

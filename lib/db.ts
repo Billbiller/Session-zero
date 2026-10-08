@@ -17,6 +17,9 @@ if (dir && dir !== ".") {
 }
 
 const db = new Database(dbPath);
+// Parallel `next build` workers all open a brand-new file at once; wait
+// for each other's schema/WAL setup instead of failing with "database is locked".
+db.pragma("busy_timeout = 30000");
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
 
@@ -1027,9 +1030,12 @@ function ensureSeedAccountId(): string {
     | undefined;
   if (existing) return existing.id;
 
+  // INSERT OR IGNORE + re-select: `next build` initializes this module in
+  // many parallel workers against a brand-new database file, and a plain
+  // check-then-insert lost that race with a UNIQUE(users.email) failure.
   const id = uuidv4();
   db.prepare(
-    `INSERT INTO users (id, display_name, email, password_hash, is_admin, created_at)
+    `INSERT OR IGNORE INTO users (id, display_name, email, password_hash, is_admin, created_at)
      VALUES (?, ?, ?, ?, 0, ?)`
   ).run(
     id,
@@ -1038,7 +1044,8 @@ function ensureSeedAccountId(): string {
     bcrypt.hashSync(uuidv4() + uuidv4(), 10),
     new Date().toISOString()
   );
-  return id;
+  const row = db.prepare("SELECT id FROM users WHERE email = ?").get(SEED_ACCOUNT_EMAIL) as { id: string };
+  return row.id;
 }
 
 // One starter thread's worth of seed content per curated board topic

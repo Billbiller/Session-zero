@@ -59,7 +59,7 @@ export default function NotificationSettingsPage() {
         {rows.map((row) => (
           <li
             key={row.type}
-            className="flex items-center justify-between rounded border border-black/10 p-3 text-sm dark:border-white/10"
+            className="flex items-center justify-between rounded-lg border border-black/10 p-3 text-sm dark:border-white/10"
           >
             <span>{row.label}</span>
             <label className="inline-flex items-center gap-2">

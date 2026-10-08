@@ -92,7 +92,7 @@ export default function ScheduleForm({
               type="datetime-local"
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -101,7 +101,7 @@ export default function ScheduleForm({
               value={recurrenceValue}
               onChange={(e) => setRecurrenceValue(e.target.value as Recurrence | "")}
               disabled={!value}
-              className="rounded border border-black/20 px-3 py-1.5 disabled:opacity-50 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-3 py-1.5 disabled:opacity-50 dark:border-white/20 dark:bg-transparent"
             >
               <option value="">One-time</option>
               {RECURRENCES.map((r) => (
@@ -114,7 +114,7 @@ export default function ScheduleForm({
           <button
             type="submit"
             disabled={submitting}
-            className="rounded bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+            className="rounded-lg bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
           >
             Save
           </button>

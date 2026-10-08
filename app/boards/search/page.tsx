@@ -42,12 +42,12 @@ export default async function BoardSearchPage({
             defaultValue={q}
             placeholder="Keyword in a thread or reply"
             autoFocus
-            className="w-72 rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+            className="w-72 rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <button
           type="submit"
-          className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20"
+          className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20"
         >
           Search
         </button>
@@ -72,7 +72,7 @@ export default async function BoardSearchPage({
             return (
               <li
                 key={result.id}
-                className="rounded border border-black/10 p-4 dark:border-white/10"
+                className="rounded-lg border border-black/10 p-4 dark:border-white/10"
               >
                 <p className="text-xs text-black/60 dark:text-white/60">
                   {board?.name ?? result.board_slug}

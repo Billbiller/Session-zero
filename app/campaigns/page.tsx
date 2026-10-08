@@ -91,18 +91,18 @@ export default async function CampaignsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Browse campaigns</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Browse campaigns</h1>
           <Link
             href="/systems"
-            className="text-sm text-black/60 hover:underline dark:text-white/60"
+            className="text-sm text-black/60 hover:text-brand hover:underline dark:text-white/60"
           >
             Browse by system
           </Link>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex rounded border border-black/20 text-sm dark:border-white/20">
+          <div className="flex overflow-hidden rounded-lg border border-black/15 bg-surface text-sm font-medium dark:border-white/20">
             <Link
               href={{
                 pathname: "/campaigns",
@@ -133,47 +133,50 @@ export default async function CampaignsPage({
           </div>
           <Link
             href="/campaigns/new"
-            className="rounded bg-black px-3 py-1.5 text-sm font-medium text-white dark:bg-white dark:text-black"
+            className="rounded-lg bg-black px-3 py-1.5 text-sm font-medium text-white dark:bg-white dark:text-black"
           >
             Post a campaign
           </Link>
         </div>
       </div>
 
-      <form className="flex flex-wrap items-end gap-3 text-sm" method="get">
-        <label className="flex flex-col gap-1">
+      <form
+        className="flex flex-wrap items-end gap-4 rounded-2xl border border-black/10 bg-surface p-5 text-sm shadow-[var(--shadow-card)] dark:border-white/10"
+        method="get"
+      >
+        <label className="flex flex-col gap-1 font-medium">
           Search
           <input
             name="q"
             defaultValue={q}
             placeholder="Keyword in title, description, or system"
-            className="w-64 rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+            className="w-64 rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
           />
         </label>
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1 font-medium">
           System
           <input
             name="system"
             defaultValue={system}
             placeholder="e.g. D&D 5e"
-            className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
           />
         </label>
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1 font-medium">
           Location
           <input
             name="location"
             defaultValue={location}
             placeholder="e.g. Austin or Online"
-            className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
           />
         </label>
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1 font-medium">
           Format
           <select
             name="sessionFormat"
             defaultValue={sessionFormat ?? ""}
-            className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
           >
             <option value="">Any</option>
             {SESSION_FORMATS.map((format) => (
@@ -183,19 +186,19 @@ export default async function CampaignsPage({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1 font-medium">
           Sort
           <select
             name="sort"
             defaultValue={sort}
-            className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
           >
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
             <option value="title">Title (A-Z)</option>
           </select>
         </label>
-        <label className="flex items-center gap-2 pb-2">
+        <label className="flex items-center gap-2 pb-2 font-medium">
           <input
             type="checkbox"
             name="newPlayerFriendly"
@@ -204,27 +207,30 @@ export default async function CampaignsPage({
           />
           New-player friendly only
         </label>
-        <fieldset className="flex flex-col gap-1">
-          <legend>Tone / style (any of)</legend>
-          <div className="flex flex-wrap gap-3">
+        <fieldset className="flex w-full flex-col gap-2">
+          <legend className="font-medium">Tone / style (any of)</legend>
+          <div className="flex flex-wrap gap-2">
             {CAMPAIGN_TONE_TAGS.map((tag) => (
-              <label key={tag} className="flex items-center gap-1.5">
+              <label key={tag} className="cursor-pointer">
                 <input
                   type="checkbox"
                   name="toneTags"
                   value={tag}
                   defaultChecked={toneTags.includes(tag)}
+                  className="peer sr-only"
                 />
-                {CAMPAIGN_TONE_TAG_LABELS[tag]}
+                <span className="inline-block rounded-full border border-black/15 px-3 py-1 text-xs font-medium transition peer-checked:border-brand peer-checked:bg-brand-soft peer-checked:text-brand-strong peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 hover:border-black/40 dark:border-white/20">
+                  {CAMPAIGN_TONE_TAG_LABELS[tag]}
+                </span>
               </label>
             ))}
           </div>
         </fieldset>
         <button
           type="submit"
-          className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20"
+          className="rounded-lg bg-black px-5 py-2 font-semibold text-white"
         >
-          Apply
+          Apply filters
         </button>
       </form>
 
@@ -253,9 +259,20 @@ export default async function CampaignsPage({
       )}
 
       {items.length === 0 && (
-        <p className="text-sm text-black/60 dark:text-white/60">
-          {q || system || location ? "No campaigns match your search." : "No campaigns match yet."}
-        </p>
+        <div className="rounded-2xl border border-dashed border-black/20 bg-surface-muted px-6 py-14 text-center dark:border-white/20">
+          <p className="text-lg font-semibold">
+            {q || system || location ? "No campaigns match your search." : "No campaigns here yet."}
+          </p>
+          <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+            Try loosening the filters, or be the first to post a table.
+          </p>
+          <Link
+            href="/campaigns/new"
+            className="mt-5 inline-flex rounded-lg bg-black px-5 py-2 text-sm font-semibold text-white"
+          >
+            Post a campaign
+          </Link>
+        </div>
       )}
 
       {view === "discover" ? (
@@ -284,16 +301,16 @@ export default async function CampaignsPage({
         />
       ) : (
         <>
-          <ul className="flex flex-col gap-3">
+          <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {items.map((campaign) => {
               const dm = getUserById(campaign.dm_id);
               const headcount = approvedHeadcount(campaign.id);
               return (
                 <li
                   key={campaign.id}
-                  className="rounded border border-black/10 p-4 dark:border-white/10"
+                  className="flex flex-col gap-2 rounded-2xl border border-black/10 bg-surface p-5 shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-[var(--shadow-pop)] dark:border-white/10"
                 >
-                  <Link href={`/campaigns/${campaign.id}`} className="font-medium hover:underline">
+                  <Link href={`/campaigns/${campaign.id}`} className="text-lg font-semibold hover:text-brand">
                     {campaign.title}
                   </Link>
                   <p className="text-sm text-black/60 dark:text-white/60">
@@ -309,31 +326,33 @@ export default async function CampaignsPage({
                     {!campaign.accepting_requests && " (closed to new requests)"}
                     {campaign.location && <> &middot; {campaign.location}</>}
                   </p>
-                  {campaign.session_format && (
-                    <span className="mt-1 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20">
+                  <div className="flex flex-wrap gap-1.5">
+                    {campaign.session_format && (
+                    <span className="inline-block rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-medium text-brand-strong">
                       {SESSION_FORMAT_LABELS[campaign.session_format]}
                     </span>
                   )}
                   {campaign.starting_level && (
-                    <span className="mt-1 ml-2 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20">
+                    <span className="inline-block rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-medium text-brand-strong">
                       Starting level: {campaign.starting_level}
                     </span>
                   )}
                   {!!campaign.new_player_friendly && (
-                    <span className="mt-1 ml-2 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20">
+                    <span className="inline-block rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-medium text-brand-strong">
                       New-player friendly
                     </span>
                   )}
                   {campaign.tone_tags.map((tag) => (
                     <span
                       key={tag}
-                      className="mt-1 ml-2 inline-block rounded-full border border-black/20 px-2 py-0.5 text-xs dark:border-white/20"
+                      className="inline-block rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-medium text-brand-strong"
                     >
                       {CAMPAIGN_TONE_TAG_LABELS[tag]}
                     </span>
                   ))}
+                  </div>
                   {campaign.description && (
-                    <p className="mt-1 text-sm">{campaign.description}</p>
+                    <p className="line-clamp-3 text-sm text-black/75 dark:text-white/75">{campaign.description}</p>
                   )}
                 </li>
               );

@@ -39,7 +39,7 @@ export default function NewThreadForm({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="w-fit rounded bg-black px-3 py-1.5 text-sm font-medium text-white dark:bg-white dark:text-black"
+        className="w-fit rounded-lg bg-black px-3 py-1.5 text-sm font-medium text-white dark:bg-white dark:text-black"
       >
         Start a new thread
       </button>
@@ -76,7 +76,7 @@ export default function NewThreadForm({
           placeholder="Thread title"
           aria-label="Thread title"
           maxLength={200}
-          className="rounded border border-black/10 p-2 text-sm dark:border-white/10 dark:bg-transparent"
+          className="rounded-lg border border-black/10 p-2 text-sm dark:border-white/10 dark:bg-transparent"
         />
         <textarea
           value={body}
@@ -85,20 +85,20 @@ export default function NewThreadForm({
           aria-label="Thread body"
           rows={4}
           maxLength={10000}
-          className="rounded border border-black/10 p-2 text-sm dark:border-white/10 dark:bg-transparent"
+          className="rounded-lg border border-black/10 p-2 text-sm dark:border-white/10 dark:bg-transparent"
         />
         <div className="flex gap-2">
           <button
             type="submit"
             disabled={submitting || !title.trim() || !body.trim()}
-            className="w-fit rounded bg-black px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+            className="w-fit rounded-lg bg-black px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
           >
             {submitting ? "Posting..." : "Post thread"}
           </button>
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="w-fit rounded border border-black/10 px-3 py-1.5 text-sm dark:border-white/10"
+            className="w-fit rounded-lg border border-black/10 px-3 py-1.5 text-sm dark:border-white/10"
           >
             Cancel
           </button>

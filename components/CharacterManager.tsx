@@ -273,7 +273,7 @@ export default function CharacterManager({
 
     if (!sheet) {
       return (
-        <div className="rounded border border-dashed border-black/20 p-3 text-sm dark:border-white/20">
+        <div className="rounded-lg border border-dashed border-black/20 p-3 text-sm dark:border-white/20">
           <p className="text-black/60 dark:text-white/60">
             This character is playing in a D&amp;D 5e campaign.
           </p>
@@ -293,7 +293,7 @@ export default function CharacterManager({
     }
 
     return (
-      <div className="flex flex-col gap-3 rounded border border-black/20 p-3 text-sm dark:border-white/20">
+      <div className="flex flex-col gap-3 rounded-lg border border-black/20 p-3 text-sm dark:border-white/20">
         <div className="flex items-center justify-between">
           <p className="font-medium">5e stat block</p>
           <button
@@ -323,7 +323,7 @@ export default function CharacterManager({
                     },
                   })
                 }
-                className="rounded border border-black/20 px-1 py-1 dark:border-white/20 dark:bg-transparent"
+                className="rounded-lg border border-black/20 px-1 py-1 dark:border-white/20 dark:bg-transparent"
               />
               <span className="text-black/60 dark:text-white/60">
                 {formatModifier(abilityModifier(sheet.abilityScores[ability]))}
@@ -340,7 +340,7 @@ export default function CharacterManager({
             max={MAX_PROFICIENCY_BONUS}
             value={sheet.proficiencyBonus}
             onChange={(e) => setSheet({ ...sheet, proficiencyBonus: Number(e.target.value) })}
-            className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
           />
         </label>
 
@@ -399,7 +399,7 @@ export default function CharacterManager({
               max={40}
               value={sheet.armorClass}
               onChange={(e) => setSheet({ ...sheet, armorClass: Number(e.target.value) })}
-              className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
             />
           </label>
           <label className="flex w-24 flex-col gap-1 text-xs">
@@ -409,7 +409,7 @@ export default function CharacterManager({
               min={0}
               value={sheet.hitPointsCurrent}
               onChange={(e) => setSheet({ ...sheet, hitPointsCurrent: Number(e.target.value) })}
-              className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
             />
           </label>
           <label className="flex w-24 flex-col gap-1 text-xs">
@@ -419,7 +419,7 @@ export default function CharacterManager({
               min={0}
               value={sheet.hitPointsMax}
               onChange={(e) => setSheet({ ...sheet, hitPointsMax: Number(e.target.value) })}
-              className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
             />
           </label>
           <label className="flex w-24 flex-col gap-1 text-xs">
@@ -428,7 +428,7 @@ export default function CharacterManager({
               value={sheet.hitDice}
               onChange={(e) => setSheet({ ...sheet, hitDice: e.target.value })}
               placeholder="3d8"
-              className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
             />
           </label>
         </div>
@@ -441,7 +441,7 @@ export default function CharacterManager({
             rows={3}
             maxLength={2000}
             placeholder="A longsword, a shield, a backpack of adventuring gear..."
-            className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
           />
         </label>
 
@@ -466,7 +466,7 @@ export default function CharacterManager({
                       ),
                     })
                   }
-                  className="rounded border border-black/20 px-1 py-1 dark:border-white/20 dark:bg-transparent"
+                  className="rounded-lg border border-black/20 px-1 py-1 dark:border-white/20 dark:bg-transparent"
                 />
               </label>
             ))}
@@ -484,7 +484,7 @@ export default function CharacterManager({
     submitLabel: string
   ) {
     return (
-      <div className="flex flex-col gap-2 rounded border border-black/10 p-3 text-sm dark:border-white/10">
+      <div className="flex flex-col gap-2 rounded-lg border border-black/10 p-3 text-sm dark:border-white/10">
         <label className="flex flex-col gap-1">
           Name
           <input
@@ -492,7 +492,7 @@ export default function CharacterManager({
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             maxLength={100}
             placeholder="Character name"
-            className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -502,7 +502,7 @@ export default function CharacterManager({
             onChange={(e) => setForm({ ...form, archetype: e.target.value })}
             maxLength={150}
             placeholder="e.g. Level 5 Ranger, or Techno-mage archetype"
-            className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -510,7 +510,7 @@ export default function CharacterManager({
           <select
             value={form.avatarEmoji}
             onChange={(e) => setForm({ ...form, avatarEmoji: e.target.value })}
-            className="w-fit rounded border border-black/20 px-2 py-1 text-lg dark:border-white/20 dark:bg-transparent"
+            className="w-fit rounded-lg border border-black/20 px-2 py-1 text-lg dark:border-white/20 dark:bg-transparent"
           >
             {CHARACTER_AVATARS.map((emoji) => (
               <option key={emoji} value={emoji}>
@@ -558,7 +558,7 @@ export default function CharacterManager({
           <select
             value={form.campaignId}
             onChange={(e) => setForm({ ...form, campaignId: e.target.value })}
-            className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
           >
             <option value="">Not linked to a campaign</option>
             {campaignOptionsFor(form).map((c) => (
@@ -577,7 +577,7 @@ export default function CharacterManager({
             rows={2}
             maxLength={1000}
             placeholder="A short description."
-            className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -588,7 +588,7 @@ export default function CharacterManager({
             rows={4}
             maxLength={4000}
             placeholder="Where they came from, what they want."
-            className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -596,7 +596,7 @@ export default function CharacterManager({
           <select
             value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value as typeof form.status })}
-            className="w-fit rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+            className="w-fit rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
           >
             {CHARACTER_STATUSES.map((status) => (
               <option key={status} value={status}>
@@ -614,7 +614,7 @@ export default function CharacterManager({
               rows={2}
               maxLength={2000}
               placeholder="How it ended."
-              className="rounded border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
+              className="rounded-lg border border-black/20 px-2 py-1 dark:border-white/20 dark:bg-transparent"
             />
           </label>
         )}
@@ -622,7 +622,7 @@ export default function CharacterManager({
           <button
             disabled={submitting || !form.name.trim()}
             onClick={onSubmit}
-            className="w-fit rounded bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+            className="w-fit rounded-lg bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
           >
             {submitLabel}
           </button>

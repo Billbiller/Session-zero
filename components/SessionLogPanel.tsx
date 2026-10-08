@@ -25,7 +25,7 @@ function AttendanceChecklist({
   onToggle: (userId: string) => void;
 }) {
   return (
-    <ul className="flex flex-col gap-1 rounded border border-black/10 p-2 dark:border-white/10">
+    <ul className="flex flex-col gap-1 rounded-lg border border-black/10 p-2 dark:border-white/10">
       {members.map((m) => (
         <li key={m.id}>
           <label className="flex items-center gap-2">
@@ -222,7 +222,7 @@ export default function SessionLogPanel({
             rows={3}
             placeholder="What happened this session?"
             aria-label="New session log entry"
-            className="rounded border border-black/20 px-3 py-2 text-sm dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-2 text-sm dark:border-white/20 dark:bg-transparent"
           />
           {partyMembers.length > 0 && (
             <div className="flex flex-col gap-2 text-xs">
@@ -252,7 +252,7 @@ export default function SessionLogPanel({
           <button
             disabled={submitting}
             onClick={post}
-            className="w-fit rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"
+            className="w-fit rounded-lg bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"
           >
             Post entry
           </button>
@@ -268,13 +268,13 @@ export default function SessionLogPanel({
                   onChange={(e) => setEditContent(e.target.value)}
                   rows={3}
                   aria-label="Edit session log entry"
-                  className="rounded border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
+                  className="rounded-lg border border-black/20 px-3 py-2 dark:border-white/20 dark:bg-transparent"
                 />
                 <div className="flex gap-2">
                   <button
                     disabled={submitting}
                     onClick={() => saveEdit(entry.id)}
-                    className="rounded bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                    className="rounded-lg bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
                   >
                     Save
                   </button>
@@ -357,7 +357,7 @@ export default function SessionLogPanel({
                     <button
                       disabled={submitting}
                       onClick={() => saveAttendance(entry.id)}
-                      className="w-fit rounded bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                      className="w-fit rounded-lg bg-black px-2 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
                     >
                       Save attendance
                     </button>

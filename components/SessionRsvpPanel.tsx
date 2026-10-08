@@ -84,7 +84,7 @@ export default function SessionRsvpPanel({
                 type="button"
                 disabled={saving}
                 onClick={() => save("confirmed")}
-                className={`rounded border px-3 py-1 disabled:opacity-50 ${
+                className={`rounded-lg border px-3 py-1 disabled:opacity-50 ${
                   viewerResponse === "confirmed"
                     ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
                     : "border-black/20 dark:border-white/20"
@@ -96,7 +96,7 @@ export default function SessionRsvpPanel({
                 type="button"
                 disabled={saving}
                 onClick={() => save("declined")}
-                className={`rounded border px-3 py-1 disabled:opacity-50 ${
+                className={`rounded-lg border px-3 py-1 disabled:opacity-50 ${
                   viewerResponse === "declined"
                     ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
                     : "border-black/20 dark:border-white/20"

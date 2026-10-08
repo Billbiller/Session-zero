@@ -113,7 +113,7 @@ export default function DiscoverDeck({
     return (
       <div className="flex flex-col items-center gap-3">
         {availabilityToggle}
-        <div className="flex flex-col items-center gap-3 rounded border border-black/10 p-8 text-center dark:border-white/10">
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-black/10 p-8 text-center dark:border-white/10">
           <p className="text-sm text-black/60 dark:text-white/60">
             {onlyFitsAvailability
               ? "No scheduled campaigns fit your saved availability right now."
@@ -128,13 +128,13 @@ export default function DiscoverDeck({
     return (
       <div className="flex flex-col items-center gap-3">
         {availabilityToggle}
-        <div className="flex flex-col items-center gap-3 rounded border border-black/10 p-8 text-center dark:border-white/10">
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-black/10 p-8 text-center dark:border-white/10">
           <p className="text-sm text-black/60 dark:text-white/60">
             That&apos;s every campaign matching your filters.
           </p>
           <button
             onClick={() => setIndex(0)}
-            className="rounded border border-black/20 px-3 py-1.5 text-sm dark:border-white/20"
+            className="rounded-lg border border-black/20 px-3 py-1.5 text-sm dark:border-white/20"
           >
             Start over
           </button>
@@ -154,7 +154,7 @@ export default function DiscoverDeck({
       <p className="text-xs text-black/60 dark:text-white/60">
         {index + 1} of {visibleCards.length}
       </p>
-      <div className="w-full max-w-md rounded border border-black/10 p-5 dark:border-white/10">
+      <div className="w-full max-w-md rounded-lg border border-black/10 p-5 dark:border-white/10">
         <h2 className="text-lg font-semibold">{card.title}</h2>
         <p className="mt-1 text-sm text-black/60 dark:text-white/60">
           {card.system}
@@ -216,13 +216,13 @@ export default function DiscoverDeck({
       <div className="flex gap-3">
         <button
           onClick={() => setIndex((i) => i + 1)}
-          className="rounded border border-black/20 px-4 py-2 text-sm dark:border-white/20"
+          className="rounded-lg border border-black/20 px-4 py-2 text-sm dark:border-white/20"
         >
           Pass
         </button>
         <Link
           href={`/campaigns/${card.id}`}
-          className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
+          className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
         >
           View &amp; join
         </Link>

@@ -68,7 +68,7 @@ export default function DicePage() {
             key={preset}
             type="button"
             onClick={() => roll(preset)}
-            className="rounded border border-black/20 px-3 py-1.5 text-sm dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-1.5 text-sm dark:border-white/20 dark:bg-transparent"
           >
             {preset}
           </button>
@@ -86,12 +86,12 @@ export default function DicePage() {
             value={notation}
             onChange={(e) => setNotation(e.target.value)}
             placeholder="e.g. 2d6+3"
-            className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
+            className="rounded-lg border border-black/20 px-3 py-1.5 dark:border-white/20 dark:bg-transparent"
           />
         </div>
         <button
           type="submit"
-          className="mt-6 rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
+          className="mt-6 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
         >
           Roll
         </button>

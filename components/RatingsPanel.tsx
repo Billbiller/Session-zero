@@ -142,7 +142,7 @@ export default function RatingsPanel({
                     onChange={(e) => setComment(e.target.value.slice(0, MAX_COMMENT_LENGTH))}
                     rows={3}
                     placeholder="Anything future groups should know?"
-                    className="rounded border border-black/20 px-3 py-1.5 text-sm dark:border-white/20 dark:bg-transparent"
+                    className="rounded-lg border border-black/20 px-3 py-1.5 text-sm dark:border-white/20 dark:bg-transparent"
                   />
                   <p className="text-xs text-black/50 dark:text-white/50">
                     {comment.length}/{MAX_COMMENT_LENGTH}
@@ -152,7 +152,7 @@ export default function RatingsPanel({
                   <button
                     disabled={submitting}
                     onClick={() => submit(t.userId)}
-                    className="w-fit rounded bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                    className="w-fit rounded-lg bg-black px-3 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
                   >
                     {t.existing ? "Update rating" : "Submit rating"}
                   </button>
